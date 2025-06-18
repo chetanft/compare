@@ -1,0 +1,17 @@
+{
+  "accessToken": "YOUR_FIGMA_ACCESS_TOKEN_HERE",
+  "puppeteer": {
+    "headless": "new",
+    "args": ["--no-sandbox", "--disable-setuid-sandbox"]
+  },
+  "thresholds": {
+    "colorDifference": 10,
+    "sizeDifference": 5,
+    "spacingDifference": 3,
+    "fontSizeDifference": 2
+  },
+  "ports": {
+    "server": 3006,
+    "fallback": 3003
+  }
+} 

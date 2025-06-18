@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma-Web Comparison Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input {
+            width: auto;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .api-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .api-endpoint {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            border-left: 4px solid #667eea;
+        }
+
+        .reports-section {
+            margin-top: 30px;
+        }
+
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .report-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .report-link:hover {
+            text-decoration: underline;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .auth-section {
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            background: #f8f9fa;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: monospace;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        small {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Figma-Web Comparison Tool</h1>
+            <p>Compare your Figma designs with live web implementations</p>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <div class="tab active" onclick="showTab('compare')">Compare Designs</div>
+                <div class="tab" onclick="showTab('reports')">View Reports</div>
+                <div class="tab" onclick="showTab('api')">API Reference</div>
+            </div>
+
+            <!-- Compare Tab -->
+            <div id="compare" class="tab-content active">
+                <form id="comparisonForm">
+                    <div class="form-group">
+                        <label for="figmaUrl">Figma Design URL *</label>
+                        <input type="url" id="figmaUrl" name="figmaUrl" required 
+                               placeholder="https://www.figma.com/design/ABC123/Design-Name?node-id=1:2" 
+                               value="https://www.figma.com/design/demo-file-123/Sample-Design?node-id=1:2">
+                        <small>Paste the Figma link from your browser. The tool will automatically extract file ID and node ID.</small>
+                        <div id="figmaUrlInfo" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 6px; display: none;">
+                            <div id="parsedInfo"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="webUrl">Web Page URL *</label>
+                        <input type="url" id="webUrl" name="webUrl" required 
+                               placeholder="https://example.com" value="https://example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="webSelector">CSS Selector (optional)</label>
+                        <input type="text" id="webSelector" name="webSelector" 
+                               placeholder=".btn-primary, #header" value=".btn-primary">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="includeVisual" name="includeVisual">
+                            <label for="includeVisual">Include Visual Comparison</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="requiresAuth" name="requiresAuth" onchange="toggleAuthOptions()">
+                            <label for="requiresAuth">Page Requires Authentication</label>
+                        </div>
+                    </div>
+
+                    <!-- Authentication Options -->
+                    <div id="authOptions" style="display: none;">
+                        <div class="form-group">
+                            <label for="authType">Authentication Method</label>
+                            <select id="authType" name="authType" onchange="toggleAuthFields()">
+                                <option value="credentials">Username & Password</option>
+                                <option value="cookies">Session Cookies</option>
+                                <option value="headers">Authorization Headers</option>
+                                <option value="manual">Manual Login</option>
+                            </select>
+                        </div>
+
+                        <!-- Credentials Auth -->
+                        <div id="credentialsAuth" class="auth-section">
+                            <div class="form-group">
+                                <label for="loginUrl">Login Page URL</label>
+                                <input type="url" id="loginUrl" name="loginUrl" 
+                                       placeholder="https://example.com/login">
+                            </div>
+                            <div class="form-group">
+                                <label for="username">Username/Email</label>
+                                <input type="text" id="username" name="username" 
+                                       placeholder="your-username">
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" name="password" 
+                                       placeholder="your-password">
+                            </div>
+                            <div class="form-group">
+                                <label for="usernameSelector">Username Field Selector (optional)</label>
+                                <input type="text" id="usernameSelector" name="usernameSelector" 
+                                       placeholder="input[name='email']">
+                            </div>
+                            <div class="form-group">
+                                <label for="passwordSelector">Password Field Selector (optional)</label>
+                                <input type="text" id="passwordSelector" name="passwordSelector" 
+                                       placeholder="input[name='password']">
+                            </div>
+                            <div class="form-group">
+                                <label for="submitSelector">Submit Button Selector (optional)</label>
+                                <input type="text" id="submitSelector" name="submitSelector" 
+                                       placeholder="button[type='submit']">
+                            </div>
+                        </div>
+
+                        <!-- Cookies Auth -->
+                        <div id="cookiesAuth" class="auth-section" style="display: none;">
+                            <div class="form-group">
+                                <label for="sessionCookies">Session Cookies (JSON format)</label>
+                                <textarea id="sessionCookies" name="sessionCookies" rows="4" 
+                                          placeholder='[{"name": "session_id", "value": "abc123", "domain": ".example.com"}]'></textarea>
+                                <small>Export cookies from browser dev tools or use a cookie manager extension</small>
+                            </div>
+                        </div>
+
+                        <!-- Headers Auth -->
+                        <div id="headersAuth" class="auth-section" style="display: none;">
+                            <div class="form-group">
+                                <label for="authHeaders">Authorization Headers (JSON format)</label>
+                                <textarea id="authHeaders" name="authHeaders" rows="3" 
+                                          placeholder='{"Authorization": "Bearer your-token", "X-API-Key": "your-key"}'></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Manual Auth -->
+                        <div id="manualAuth" class="auth-section" style="display: none;">
+                            <div class="form-group">
+                                <label for="manualWaitTime">Max Wait Time (seconds)</label>
+                                <input type="number" id="manualWaitTime" name="manualWaitTime" 
+                                       value="300" min="60" max="600">
+                            </div>
+                            <div class="form-group">
+                                <label for="successIndicator">Success Indicator Selector (optional)</label>
+                                <input type="text" id="successIndicator" name="successIndicator" 
+                                       placeholder=".dashboard, .profile-menu">
+                                <small>CSS selector that appears after successful login</small>
+                            </div>
+                            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-top: 10px;">
+                                <strong>ℹ️ Manual Login Process:</strong><br>
+                                1. Browser window will open automatically<br>
+                                2. Complete login manually in the browser<br>
+                                3. Tool will detect login completion and continue<br>
+                                4. Don't close the browser window during this process
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn" id="compareBtn">
+                        🚀 Run Comparison
+                    </button>
+                </form>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing designs... This may take a few moments.</p>
+                </div>
+
+                <div class="result" id="result"></div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports" class="tab-content">
+                <div class="reports-section">
+                    <h3>📊 Generated Reports</h3>
+                    <p>Previously generated comparison reports:</p>
+                    <div id="reportsList"></div>
+                    <button class="btn" onclick="loadReports()" style="margin-top: 20px;">
+                        🔄 Refresh Reports
+                    </button>
+                </div>
+            </div>
+
+            <!-- API Tab -->
+            <div id="api" class="tab-content">
+                <div class="api-section">
+                    <h3>🔌 API Reference</h3>
+                    <p>Use these endpoints to integrate the comparison tool into your workflow:</p>
+
+                    <h4>Supported Figma URL Formats:</h4>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <strong>Design Files:</strong><br>
+                        <code>https://www.figma.com/design/[fileId]/[fileName]?node-id=[nodeId]</code><br><br>
+                        <strong>File View:</strong><br>
+                        <code>https://www.figma.com/file/[fileId]/[fileName]?node-id=[nodeId]</code><br><br>
+                        <strong>Prototype:</strong><br>
+                        <code>https://www.figma.com/proto/[fileId]/[fileName]?node-id=[nodeId]</code><br><br>
+                        <small><strong>Note:</strong> The node-id parameter is optional. If omitted, the entire file will be analyzed.</small>
+                    </div>
+
+                    <h4>Single Comparison</h4>
+                    <div class="api-endpoint">
+                        POST /api/compare
+                    </div>
+
+                    <h4>Batch Comparison</h4>
+                    <div class="api-endpoint">
+                        POST /api/compare/batch
+                    </div>
+
+                    <h4>List Reports</h4>
+                    <div class="api-endpoint">
+                        GET /api/reports
+                    </div>
+
+                    <h4>Health Check</h4>
+                    <div class="api-endpoint">
+                        GET /api/health
+                    </div>
+
+                    <h4>Authentication Examples:</h4>
+                    
+                    <h5>Using Figma URL (Recommended):</h5>
+                    <div class="api-endpoint">
+curl -X POST http://localhost:3003/api/compare \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{<br>
+    "figmaUrl": "https://www.figma.com/design/ABC123/Design-Name?node-id=1:2",<br>
+    "webUrl": "https://example.com/dashboard"<br>
+  }'
+                    </div>
+
+                    <h5>With Authentication:</h5>
+                    <div class="api-endpoint">
+curl -X POST http://localhost:3003/api/compare \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{<br>
+    "figmaUrl": "https://www.figma.com/design/ABC123/Design-Name?node-id=1:2",<br>
+    "webUrl": "https://example.com/dashboard",<br>
+    "authentication": {<br>
+      "type": "credentials",<br>
+      "loginUrl": "https://example.com/login",<br>
+      "username": "user@example.com",<br>
+      "password": "your-password"<br>
+    }<br>
+  }'
+                    </div>
+
+                    <h5>Legacy Format (File ID):</h5>
+                    <div class="api-endpoint">
+curl -X POST http://localhost:3003/api/compare \<br>
+  -H "Content-Type: application/json" \<br>
+  -d '{<br>
+    "figmaFileId": "ABC123",<br>
+    "figmaNodeId": "1:2",<br>
+    "webUrl": "https://example.com",<br>
+    "webSelector": ".btn-primary"<br>
+  }'
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPort = window.location.port || '3001';
+        let apiBase = `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+
+        // Figma URL Parser (simplified version for browser)
+        class FigmaUrlParser {
+            static parseUrl(url) {
+                if (!url || typeof url !== 'string') {
+                    throw new Error('Invalid URL provided');
+                }
+
+                const normalizedUrl = url.trim();
+                
+                if (!this.isFigmaUrl(normalizedUrl)) {
+                    throw new Error('Invalid Figma URL. Must be a figma.com URL.');
+                }
+
+                try {
+                    const urlObj = new URL(normalizedUrl);
+                    const pathname = urlObj.pathname;
+                    const searchParams = urlObj.searchParams;
+
+                    const fileId = this.extractFileId(pathname);
+                    const nodeId = this.extractNodeId(searchParams);
+                    const metadata = this.extractMetadata(pathname, searchParams);
+
+                    return {
+                        fileId,
+                        nodeId,
+                        ...metadata,
+                        originalUrl: url
+                    };
+                } catch (error) {
+                    throw new Error(`Failed to parse Figma URL: ${error.message}`);
+                }
+            }
+
+            static isFigmaUrl(url) {
+                try {
+                    const urlObj = new URL(url);
+                    return urlObj.hostname === 'www.figma.com' || urlObj.hostname === 'figma.com';
+                } catch {
+                    return false;
+                }
+            }
+
+            static extractFileId(pathname) {
+                const patterns = [
+                    /^\/file\/([a-zA-Z0-9]+)/,
+                    /^\/design\/([a-zA-Z0-9]+)/,
+                    /^\/proto\/([a-zA-Z0-9]+)/
+                ];
+
+                for (const pattern of patterns) {
+                    const match = pathname.match(pattern);
+                    if (match) {
+                        return match[1];
+                    }
+                }
+
+                throw new Error('Could not extract file ID from URL');
+            }
+
+            static extractNodeId(searchParams) {
+                const nodeId = searchParams.get('node-id');
+                if (nodeId) {
+                    return nodeId.replace('-', ':');
+                }
+
+                const legacyNodeId = searchParams.get('node_id') || searchParams.get('nodeId');
+                if (legacyNodeId) {
+                    return legacyNodeId.replace('-', ':');
+                }
+
+                return null;
+            }
+
+            static extractMetadata(pathname, searchParams) {
+                const metadata = {};
+
+                const pathParts = pathname.split('/');
+                if (pathParts.length >= 4) {
+                    metadata.fileName = decodeURIComponent(pathParts[3]);
+                }
+
+                if (pathname.startsWith('/file/')) {
+                    metadata.urlType = 'file';
+                } else if (pathname.startsWith('/design/')) {
+                    metadata.urlType = 'design';
+                } else if (pathname.startsWith('/proto/')) {
+                    metadata.urlType = 'prototype';
+                }
+
+                return metadata;
+            }
+        }
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Load reports if reports tab is selected
+            if (tabName === 'reports') {
+                loadReports();
+            }
+        }
+
+        function toggleAuthOptions() {
+            const requiresAuth = document.getElementById('requiresAuth').checked;
+            const authOptions = document.getElementById('authOptions');
+            authOptions.style.display = requiresAuth ? 'block' : 'none';
+        }
+
+        function toggleAuthFields() {
+            const authType = document.getElementById('authType').value;
+            
+            // Hide all auth sections
+            document.querySelectorAll('.auth-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Show selected auth section
+            const selectedSection = document.getElementById(authType + 'Auth');
+            if (selectedSection) {
+                selectedSection.style.display = 'block';
+            }
+        }
+
+        function buildAuthenticationConfig(formData) {
+            const requiresAuth = formData.get('requiresAuth') === 'on';
+            if (!requiresAuth) return null;
+
+            const authType = formData.get('authType');
+            
+            switch (authType) {
+                case 'credentials':
+                    return {
+                        type: 'credentials',
+                        loginUrl: formData.get('loginUrl'),
+                        username: formData.get('username'),
+                        password: formData.get('password'),
+                        usernameSelector: formData.get('usernameSelector') || undefined,
+                        passwordSelector: formData.get('passwordSelector') || undefined,
+                        submitSelector: formData.get('submitSelector') || undefined
+                    };
+                
+                case 'cookies':
+                    try {
+                        const cookiesStr = formData.get('sessionCookies');
+                        return {
+                            type: 'cookies',
+                            cookies: JSON.parse(cookiesStr)
+                        };
+                    } catch (e) {
+                        throw new Error('Invalid cookies JSON format');
+                    }
+                
+                case 'headers':
+                    try {
+                        const headersStr = formData.get('authHeaders');
+                        return {
+                            type: 'headers',
+                            headers: JSON.parse(headersStr)
+                        };
+                    } catch (e) {
+                        throw new Error('Invalid headers JSON format');
+                    }
+                
+                case 'manual':
+                    return {
+                        type: 'manual',
+                        maxWaitTime: parseInt(formData.get('manualWaitTime')) * 1000,
+                        successIndicator: formData.get('successIndicator') || undefined
+                    };
+                
+                default:
+                    return null;
+            }
+        }
+
+        document.getElementById('comparisonForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            
+            try {
+                const authentication = buildAuthenticationConfig(formData);
+                
+                // Parse Figma URL to extract file ID and node ID
+                const figmaUrl = formData.get('figmaUrl');
+                let figmaData;
+                try {
+                    figmaData = FigmaUrlParser.parseUrl(figmaUrl);
+                } catch (error) {
+                    throw new Error(`Invalid Figma URL: ${error.message}`);
+                }
+                
+                const data = {
+                    figmaUrl: figmaUrl,
+                    figmaFileId: figmaData.fileId,
+                    figmaNodeId: figmaData.nodeId || undefined,
+                    webUrl: formData.get('webUrl'),
+                    webSelector: formData.get('webSelector') || undefined,
+                    includeVisual: formData.get('includeVisual') === 'on',
+                    authentication: authentication
+                };
+            } catch (error) {
+                // Show auth config error
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Configuration Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('compareBtn').disabled = true;
+
+            try {
+                const response = await fetch(`${apiBase}/api/compare`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                // Hide loading state
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('compareBtn').disabled = false;
+
+                // Show result
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+
+                if (response.ok && result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ Comparison Complete!</h3>
+                        <p><strong>Components Analyzed:</strong> ${result.summary.componentsAnalyzed}</p>
+                        <p><strong>Total Deviations:</strong> ${result.summary.totalDeviations}</p>
+                        <p><strong>High Severity:</strong> ${result.summary.severity.high}</p>
+                        <p><strong>Medium Severity:</strong> ${result.summary.severity.medium}</p>
+                        <p><strong>Low Severity:</strong> ${result.summary.severity.low}</p>
+                        <div style="margin-top: 20px;">
+                            <a href="${result.reports.html}" target="_blank" class="report-link">
+                                📊 View HTML Report
+                            </a>
+                            <br><br>
+                            <a href="${result.reports.json}" target="_blank" class="report-link">
+                                📄 View JSON Report
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Comparison Failed</h3>
+                        <p><strong>Error:</strong> ${result.message || result.error || 'Unknown error occurred'}</p>
+                    `;
+                }
+            } catch (error) {
+                // Hide loading state
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('compareBtn').disabled = false;
+
+                // Show error
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Connection Error</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>Make sure the server is running on port ${currentPort}</p>
+                `;
+            }
+        });
+
+        async function loadReports() {
+            try {
+                const response = await fetch(`${apiBase}/api/reports`);
+                const data = await response.json();
+                
+                const reportsList = document.getElementById('reportsList');
+                
+                if (data.reports && data.reports.length > 0) {
+                    reportsList.innerHTML = data.reports.map(report => `
+                        <div class="report-item">
+                            <span>${report.name}</span>
+                            <a href="${report.path}" target="_blank" class="report-link">
+                                ${report.type === 'html' ? '📊 View Report' : '📄 Download JSON'}
+                            </a>
+                        </div>
+                    `).join('');
+                } else {
+                    reportsList.innerHTML = '<p>No reports generated yet. Run a comparison to create your first report!</p>';
+                }
+            } catch (error) {
+                document.getElementById('reportsList').innerHTML = 
+                    `<p style="color: #721c24;">Error loading reports: ${error.message}</p>`;
+            }
+        }
+
+        // Real-time Figma URL parsing
+        function parseFigmaUrl() {
+            const figmaUrlInput = document.getElementById('figmaUrl');
+            const figmaUrlInfo = document.getElementById('figmaUrlInfo');
+            const parsedInfo = document.getElementById('parsedInfo');
+            
+            const url = figmaUrlInput.value.trim();
+            
+            if (!url) {
+                figmaUrlInfo.style.display = 'none';
+                return;
+            }
+            
+            try {
+                const parsed = FigmaUrlParser.parseUrl(url);
+                figmaUrlInfo.style.display = 'block';
+                figmaUrlInfo.style.background = '#f0f8ff';
+                figmaUrlInfo.style.borderLeft = '4px solid #28a745';
+                
+                parsedInfo.innerHTML = `
+                    <strong>✅ Valid Figma URL</strong><br>
+                    <small>
+                        <strong>File ID:</strong> ${parsed.fileId}<br>
+                        ${parsed.nodeId ? `<strong>Node ID:</strong> ${parsed.nodeId}<br>` : ''}
+                        ${parsed.fileName ? `<strong>File Name:</strong> ${parsed.fileName}<br>` : ''}
+                        <strong>URL Type:</strong> ${parsed.urlType || 'file'}
+                    </small>
+                `;
+            } catch (error) {
+                if (FigmaUrlParser.isFigmaUrl(url)) {
+                    figmaUrlInfo.style.display = 'block';
+                    figmaUrlInfo.style.background = '#fff5f5';
+                    figmaUrlInfo.style.borderLeft = '4px solid #dc3545';
+                    parsedInfo.innerHTML = `
+                        <strong>❌ Invalid Figma URL</strong><br>
+                        <small>${error.message}</small>
+                    `;
+                } else {
+                    figmaUrlInfo.style.display = 'none';
+                }
+            }
+        }
+
+        // Add event listener for real-time parsing
+        document.getElementById('figmaUrl').addEventListener('input', parseFigmaUrl);
+        document.getElementById('figmaUrl').addEventListener('paste', () => {
+            setTimeout(parseFigmaUrl, 100); // Delay to ensure paste content is processed
+        });
+
+        // Parse initial URL on page load
+        parseFigmaUrl();
+
+        // Load reports on page load
+        loadReports();
+    </script>
+</body>
+</html> 

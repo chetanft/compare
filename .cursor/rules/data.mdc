@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+don't create harcoded and placeholders data and elements without any functionality.
