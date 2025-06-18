@@ -52,9 +52,8 @@ export function getApiBaseUrl(): string {
     return ''; // Empty string will use the current origin with Vite's proxy
   }
 
-  // For production, use the server port
-  const port = getServerPort();
-  return `http://localhost:${port}`;
+  // For production, use relative URL to work with Netlify functions
+  return '';  // Empty string will use the current origin
 }
 
 // Get WebSocket URL with the correct port
@@ -68,5 +67,11 @@ export function getWebSocketUrl(): string {
 
   // In development, use the server port
   const port = getServerPort();
+  
+  // In production, WebSockets are not supported with Netlify functions
+  if (env.MODE === 'production') {
+    return ''; // Will be handled gracefully by the app
+  }
+  
   return `ws://localhost:${port}`;
 } 
