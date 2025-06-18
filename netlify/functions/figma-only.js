@@ -295,6 +295,80 @@ app.get('/socket-fallback', (req, res) => {
   });
 });
 
+// Settings endpoints
+app.get('/api/settings/current', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      figma: {
+        accessToken: process.env.FIGMA_API_KEY ? "**********" : "",
+        enabled: !!process.env.FIGMA_API_KEY
+      },
+      mcp: {
+        official: {
+          enabled: false,
+          serverUrl: ""
+        },
+        thirdParty: {
+          enabled: false,
+          environment: "netlify"
+        }
+      },
+      puppeteer: {
+        headless: "new",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      },
+      thresholds: {
+        colorDifference: 10,
+        sizeDifference: 5,
+        spacingDifference: 3,
+        fontSizeDifference: 2
+      }
+    }
+  });
+});
+
+app.post('/api/settings/save', (req, res) => {
+  // In Netlify, we can't actually save settings, but we can pretend
+  res.json({
+    success: true,
+    message: "Settings saved (note: in Netlify environment, settings are read-only)",
+    data: req.body
+  });
+});
+
+app.post('/api/settings/test-connection', (req, res) => {
+  const { type, config } = req.body;
+  
+  if (type === 'figma') {
+    res.json({
+      success: true,
+      message: "Figma connection test successful (simulated in Netlify environment)",
+      data: {
+        connected: true,
+        details: "This is a simulated response in the Netlify environment"
+      }
+    });
+  } else {
+    res.json({
+      success: false,
+      message: `Connection type '${type}' not supported in this environment`,
+      data: {
+        connected: false
+      }
+    });
+  }
+});
+
+// Reports endpoint
+app.get('/api/reports', (req, res) => {
+  // Return empty reports list for Netlify
+  res.json({
+    success: true,
+    data: []
+  });
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 
@@ -303,6 +377,10 @@ app.use('*', (req, res) => {
     availableEndpoints: [
       'GET /api/health',
       'GET /api/info', 
+      'GET /api/settings/current',
+      'POST /api/settings/save',
+      'POST /api/settings/test-connection',
+      'GET /api/reports',
       'POST /api/figma/extract',
       'POST /api/figma/images'
     ]
