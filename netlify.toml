@@ -6,6 +6,17 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Function settings for better performance
+[functions]
+  directory = "functions"
+  node_bundler = "esbuild"
+  included_files = ["node_modules/**"]
+  external_node_modules = ["express", "serverless-http"]
+  
+# Increase function timeout for Figma API calls
+[functions.figma-only]
+  timeout = 30
+
 # Redirect all frontend routes to index.html for SPA routing
 [[redirects]]
   from = "/modern/*"
@@ -17,7 +28,7 @@
   to = "/index.html"
   status = 200
 
-# API routes for serverless functions (using ultra-lightweight figma-only version)
+# API routes for serverless functions (using production-ready figma-only version)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/figma-only/:splat"
