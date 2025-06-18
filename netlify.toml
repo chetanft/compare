@@ -34,6 +34,12 @@
   to = "/.netlify/functions/figma-only/:splat"
   status = 200
 
+# Direct API routes for compatibility with designuat.netlify.app
+[[redirects]]
+  from = "/.netlify/functions/figma-only/api/*"
+  to = "/.netlify/functions/figma-only/:splat"
+  status = 200
+
 # WebSocket support (will return 200 but at least won't break the app)
 [[redirects]]
   from = "/socket.io/*"

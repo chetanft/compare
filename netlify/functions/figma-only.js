@@ -636,10 +636,16 @@ app.use((req, res, next) => {
   if (host.includes('designuat.netlify.app')) {
     console.log(`Request from designuat.netlify.app: ${req.originalUrl}`);
     
-    // Handle /api/compare directly (without the api prefix)
+    // Handle direct endpoints without the api prefix
     if (req.path === '/api/compare' && req.method === 'POST') {
       console.log('Redirecting to /compare endpoint');
       req.url = '/compare';
+    } else if (req.path === '/api/figma/extract' && req.method === 'POST') {
+      console.log('Redirecting to /figma/extract endpoint');
+      req.url = '/figma/extract';
+    } else if (req.path === '/api/web/extract' && req.method === 'POST') {
+      console.log('Redirecting to /web/extract endpoint');
+      req.url = '/web/extract';
     }
   }
   
@@ -747,6 +753,99 @@ app.post('/compare', async (req, res) => {
     console.error('❌ Comparison failed:', error);
     res.status(500).json({ 
       error: 'Comparison failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Add direct Figma extraction endpoint
+app.post('/figma/extract', async (req, res) => {
+  try {
+    console.log('Received direct Figma extraction request:', JSON.stringify(req.body).substring(0, 200) + '...');
+    const { figmaUrl, fileId, nodeId } = req.body;
+    
+    let extractFileId = fileId;
+    let extractNodeId = nodeId;
+    
+    // Parse Figma URL if provided
+    if (figmaUrl && !fileId) {
+      const figmaData = parseFigmaUrl(figmaUrl);
+      extractFileId = figmaData.fileId;
+      extractNodeId = figmaData.nodeId;
+    }
+    
+    if (!extractFileId) {
+      return res.status(400).json({ 
+        error: 'Missing fileId or valid Figma URL' 
+      });
+    }
+
+    // Extract Figma data
+    console.log(`Extracting Figma data for file: ${extractFileId}, node: ${extractNodeId || 'root'}`);
+    const figmaExtractor = new EnhancedFigmaExtractor(process.env.FIGMA_API_KEY);
+    const figmaData = await figmaExtractor.getFigmaData(extractFileId, extractNodeId);
+    
+    // Return only the extracted data without comparison
+    res.json({
+      success: true,
+      data: figmaData,
+      metadata: {
+        fileId: extractFileId,
+        nodeId: extractNodeId,
+        url: figmaUrl,
+        extractedAt: new Date().toISOString(),
+        componentCount: figmaData.components?.length || 0
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Figma extraction failed:', error);
+    res.status(500).json({ 
+      error: 'Figma extraction failed', 
+      details: error.message 
+    });
+  }
+});
+
+// Add direct web extraction endpoint (simplified for Netlify)
+app.post('/web/extract', async (req, res) => {
+  try {
+    console.log('Received direct web extraction request:', JSON.stringify(req.body).substring(0, 200) + '...');
+    const { webUrl, authentication } = req.body;
+    
+    if (!webUrl) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter: webUrl' 
+      });
+    }
+
+    // In serverless environment, we can't use Puppeteer
+    // Return a simplified response
+    const webData = {
+      url: webUrl,
+      components: [],
+      metadata: {
+        extractedAt: new Date().toISOString(),
+        extractionMethod: 'Serverless Web Extractor (limited)',
+        note: 'Web extraction is limited in serverless environment. Only URL information is available.'
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: webData,
+      metadata: {
+        url: webUrl,
+        extractedAt: new Date().toISOString(),
+        componentCount: 0,
+        environment: 'netlify-serverless'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Web extraction failed:', error);
+    res.status(500).json({ 
+      error: 'Web extraction failed', 
       details: error.message 
     });
   }

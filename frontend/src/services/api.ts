@@ -377,32 +377,72 @@ export interface ComparisonRequest {
 
 export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => {
   try {
-    const response = await api.get('/figma/extract', {
-      params: { figmaUrl }
-    })
-    return response.data.data
+    // In production, use the direct Netlify function path
+    const endpoint = isProduction 
+      ? '/.netlify/functions/figma-only/api/figma/extract' 
+      : '/api/figma/extract';
+      
+    console.log(`Using Figma extraction endpoint: ${endpoint}`);
+    
+    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
+    const currentDomain = window.location.hostname;
+    const isDesignUat = currentDomain.includes('designuat.netlify.app');
+    
+    let url = endpoint;
+    if (isDesignUat) {
+      url = `https://designuat.netlify.app/.netlify/functions/figma-only/api/figma/extract`;
+      console.log(`Using absolute URL for designuat: ${url}`);
+    }
+    
+    const response = await api.post(url, { figmaUrl });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to extract Figma data');
+    }
+    
+    return response.data.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
       if (error.response?.status === 422) {
-        throw new Error('The specified Figma frame is detached. Please select a valid frame.')
+        throw new Error('The specified Figma frame is detached. Please select a valid frame.');
       }
-      throw new Error(error.response?.data?.message || 'Failed to extract Figma data')
+      throw new Error(error.response?.data?.message || 'Failed to extract Figma data');
     }
-    throw error
+    throw error;
   }
 }
 
 export const extractWebData = async (url: string): Promise<WebData> => {
   try {
-    const response = await api.get('/web/extract', {
-      params: { url }
-    })
-    return response.data.data
+    // In production, use the direct Netlify function path
+    const endpoint = isProduction 
+      ? '/.netlify/functions/figma-only/api/web/extract' 
+      : '/api/web/extract';
+      
+    console.log(`Using Web extraction endpoint: ${endpoint}`);
+    
+    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
+    const currentDomain = window.location.hostname;
+    const isDesignUat = currentDomain.includes('designuat.netlify.app');
+    
+    let apiUrl = endpoint;
+    if (isDesignUat) {
+      apiUrl = `https://designuat.netlify.app/.netlify/functions/figma-only/api/web/extract`;
+      console.log(`Using absolute URL for designuat: ${apiUrl}`);
+    }
+    
+    const response = await api.post(apiUrl, { webUrl: url });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.error?.message || 'Failed to extract web data');
+    }
+    
+    return response.data.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || 'Failed to extract web data')
+      throw new Error(error.response?.data?.message || 'Failed to extract web data');
     }
-    throw error
+    throw error;
   }
 }
 
