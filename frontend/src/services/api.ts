@@ -331,17 +331,48 @@ const api = axios.create({
   timeout: 30000,
 })
 
+// Add request interceptor to handle production environment
+api.interceptors.request.use((config) => {
+  if (isProduction) {
+    // Handle absolute URLs (like https://designuat.netlify.app/api/compare)
+    const currentUrl = window.location.origin;
+    
+    // If the URL is already absolute, don't modify it
+    if (config.url?.startsWith('http')) {
+      return config;
+    }
+    
+    if (config.url?.startsWith('/api/')) {
+      // Rewrite URLs to use the Netlify functions path
+      config.url = `/.netlify/functions/figma-only${config.url}`;
+      console.log(`Rewriting API URL to: ${config.url}`);
+    } else if (config.url?.startsWith('/figma/') || config.url?.startsWith('/web/')) {
+      // Handle other API paths
+      config.url = `/.netlify/functions/figma-only/api${config.url}`;
+      console.log(`Rewriting API URL to: ${config.url}`);
+    }
+  }
+  return config;
+});
+
 export interface ComparisonRequest {
   figmaUrl: string
   webUrl: string
   includeVisual?: boolean
+  nodeId?: string | null
   authentication?: {
+    type?: 'credentials' | 'cookies' | 'headers'
     figmaToken?: string
+    loginUrl?: string
+    username?: string
+    password?: string
+    waitTime?: number
+    successIndicator?: string
     webAuth?: {
       username?: string
       password?: string
     }
-  }
+  } | null
 }
 
 export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => {
@@ -377,7 +408,24 @@ export const extractWebData = async (url: string): Promise<WebData> => {
 
 export const compareUrls = async (request: ComparisonRequest): Promise<ComparisonResult> => {
   try {
-    const response = await api.post('/api/compare', request);
+    // In production, use the direct Netlify function path
+    const endpoint = isProduction 
+      ? '/.netlify/functions/figma-only/api/compare' 
+      : '/api/compare';
+      
+    console.log(`Using API endpoint: ${endpoint}`);
+    
+    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
+    const currentDomain = window.location.hostname;
+    const isDesignUat = currentDomain.includes('designuat.netlify.app');
+    
+    let url = endpoint;
+    if (isDesignUat) {
+      url = `https://designuat.netlify.app/.netlify/functions/figma-only/api/compare`;
+      console.log(`Using absolute URL for designuat: ${url}`);
+    }
+    
+    const response = await api.post(url, request);
     
     if (!response.data.success) {
       throw new Error(response.data.error?.message || 'Comparison failed');

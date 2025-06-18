@@ -1,199 +1,116 @@
 # Netlify Deployment Guide
 
-This guide will help you deploy the Figma-Web Comparison Tool to Netlify.
+This guide provides detailed instructions for deploying the Figma Comparison Tool to Netlify and troubleshooting common issues.
 
-## Overview
+## Deployment Steps
 
-The project is configured to deploy as:
-- **Frontend**: React/Vite application served as static files
-- **Backend**: Node.js API converted to Netlify Functions (optimized, Puppeteer-free)
+### 1. Prepare Deployment Package
 
-## Prerequisites
+Use the included script to create a deployment package:
 
-1. **Netlify Account**: Sign up at [netlify.com](https://netlify.com)
-2. **Git Repository**: Your code should be in a Git repository (GitHub, GitLab, etc.)
-3. **Figma API Key**: Get your personal access token from Figma
+```bash
+./deploy-netlify.sh
+```
 
-## Step 1: Prepare Your Repository
+This script:
+- Builds the frontend application
+- Copies the necessary files to a deployment directory
+- Creates a zip file (`netlify-deploy.zip`) ready for upload
 
-Ensure these files are in your repository:
-- ✅ `netlify.toml` - Netlify configuration
-- ✅ `netlify/functions/api.js` - Main API function
-- ✅ `netlify/functions/package.json` - Functions dependencies
-- ✅ Updated `vite.config.ts` - Frontend build configuration
+### 2. Deploy to Netlify
 
-## Step 2: Deploy to Netlify
+#### Option A: Direct Upload (Recommended for testing)
+1. Log in to your [Netlify Dashboard](https://app.netlify.com/)
+2. Click "Add new site" → "Import an existing project"
+3. Drag and drop the `netlify-deploy.zip` file
+4. Wait for the deployment to complete
 
-### Option A: Deploy from Git (Recommended)
+#### Option B: Connect to GitHub Repository
+1. Push your code to GitHub
+2. Log in to your [Netlify Dashboard](https://app.netlify.com/)
+3. Click "Add new site" → "Import an existing project"
+4. Select GitHub and authorize Netlify
+5. Choose your repository
+6. Configure build settings:
+   - Build command: `cd frontend && npm install && npm run build`
+   - Publish directory: `frontend/dist`
 
-1. **Connect Repository**:
-   - Go to [Netlify Dashboard](https://app.netlify.com)
-   - Click "New site from Git"
-   - Connect your Git provider and select your repository
+### 3. Configure Environment Variables
 
-2. **Build Settings** (Auto-configured via `netlify.toml`):
-   - **Base directory**: `frontend`
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
+After deployment, set these required environment variables:
 
-3. **Environment Variables**:
-   Set these in Netlify Dashboard → Site Settings → Environment Variables:
-   ```
-   FIGMA_API_KEY=your_figma_personal_access_token
-   NODE_ENV=production
-   COLOR_DIFFERENCE_THRESHOLD=10
-   SIZE_DIFFERENCE_THRESHOLD=5
-   SPACING_DIFFERENCE_THRESHOLD=3
-   FONT_SIZE_DIFFERENCE_THRESHOLD=2
-   ```
-
-4. **Deploy**:
-   - Click "Deploy site"
-   - Netlify will automatically build and deploy your site
-
-### Option B: Manual Deploy
-
-1. **Build Frontend Locally**:
-   ```bash
-   cd frontend
-   npm install
-   npm run build
-   ```
-
-2. **Deploy to Netlify**:
-   - Drag and drop the `frontend/dist` folder to Netlify
-   - Note: This method won't include the backend functions
-
-## Step 3: Configure Environment Variables
-
-In your Netlify Dashboard:
-
-1. Go to **Site Settings** → **Environment Variables**
+1. Go to Site settings → Environment variables
 2. Add the following variables:
+   - `FIGMA_API_KEY`: Your Figma personal access token
+   - `NODE_VERSION`: `18`
 
-| Variable | Value | Description |
-|----------|-------|-------------|
-| `FIGMA_API_KEY` | `your_token_here` | Your Figma personal access token |
-| `NODE_ENV` | `production` | Environment setting |
-| `COLOR_DIFFERENCE_THRESHOLD` | `10` | Color comparison threshold |
-| `SIZE_DIFFERENCE_THRESHOLD` | `5` | Size comparison threshold |
-| `SPACING_DIFFERENCE_THRESHOLD` | `3` | Spacing comparison threshold |
-| `FONT_SIZE_DIFFERENCE_THRESHOLD` | `2` | Font size comparison threshold |
+## Troubleshooting Common Issues
 
-## Step 4: Get Your Figma API Key
+### 404 Not Found Errors for API Endpoints
 
-1. Go to [Figma Settings](https://www.figma.com/settings)
-2. Scroll to "Personal access tokens"
-3. Click "Create a new personal access token"
-4. Give it a name (e.g., "Netlify Comparison Tool")
-5. Copy the token and add it to Netlify environment variables
+If you're seeing 404 errors when making API requests:
 
-## Step 5: Test Your Deployment
+1. **Check Netlify Functions**: Verify that the functions deployed correctly in the Netlify dashboard under Functions.
+2. **Check API Routes**: Make sure the frontend is using the correct API routes:
+   - In production, API requests should go to `/.netlify/functions/figma-only/api/*`
+   - The `netlify.toml` file should have the correct redirects configured
 
-1. **Check Health Endpoint**:
+### JSON Parsing Errors
+
+If you see "Unexpected token '<', '<!DOCTYPE '... is not valid JSON":
+
+1. **Check API Response**: The server is returning HTML instead of JSON, indicating a routing issue
+2. **Verify Function Permissions**: Make sure your Netlify functions have the correct permissions
+3. **Check Environment Variables**: Ensure all required environment variables are set
+
+### Function Timeouts
+
+If your functions are timing out:
+
+1. **Increase Timeout**: Update the `netlify.toml` file to increase the function timeout:
+   ```toml
+   [functions.figma-only]
+     timeout = 30
    ```
-   GET https://your-site-name.netlify.app/api/health
+2. **Optimize API Calls**: Implement caching for Figma API calls
+
+### CORS Issues
+
+If you're seeing CORS errors:
+
+1. **Check CORS Headers**: Ensure your Netlify functions include proper CORS headers
+2. **Update netlify.toml**: Add appropriate headers in the `netlify.toml` file:
+   ```toml
+   [[headers]]
+     for = "/api/*"
+     [headers.values]
+       Access-Control-Allow-Origin = "*"
+       Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+       Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
    ```
 
-2. **Test Figma Extraction**:
-   ```bash
-   curl -X POST https://your-site-name.netlify.app/api/figma/extract \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://www.figma.com/design/your-file-id"}'
-   ```
+## Figma API Integration
 
-3. **Test Full Comparison**:
-   ```bash
-   curl -X POST https://your-site-name.netlify.app/api/compare \
-     -H "Content-Type: application/json" \
-     -d '{
-       "figmaUrl": "https://www.figma.com/design/your-file-id",
-       "webUrl": "https://example.com"
-     }'
-   ```
+### Getting a Figma API Token
 
-## Available API Endpoints
+1. Log in to [Figma](https://www.figma.com/)
+2. Go to Account Settings → Personal Access Tokens
+3. Create a new personal access token
+4. Copy the token and set it as the `FIGMA_API_KEY` environment variable in Netlify
 
-Once deployed, your API will be available at:
+### Testing Figma API Connection
 
-- `GET /api/health` - Check service status
-- `POST /api/compare` - Full comparison between Figma and web
-- `POST /api/figma/extract` - Extract data from Figma only
-- `POST /api/web/extract` - Extract data from web page only
+1. Open the deployed application
+2. Go to Settings → Figma API
+3. The status indicator should show "Connected" if your API key is working correctly
 
-## Troubleshooting
+## Limitations of Netlify Deployment
 
-### Common Issues
+The Netlify deployment has some limitations compared to the full server version:
 
-1. **Build Fails**:
-   - Check build logs in Netlify dashboard
-   - Ensure all dependencies are in `package.json`
-   - Verify Node.js version compatibility
+1. **No Web Extraction**: The serverless functions can't run a headless browser for web scraping
+2. **No WebSockets**: Real-time updates are not available
+3. **Limited File Storage**: Files are stored in Netlify's ephemeral filesystem
+4. **Function Timeout Limits**: Functions have a maximum execution time (default 10s, can be increased to 26s)
 
-2. **API Functions Don't Work**:
-   - Check function logs in Netlify dashboard
-   - Verify environment variables are set
-   - Ensure Figma API key is valid
-
-3. **Frontend Can't Connect to API**:
-   - Check network tab in browser dev tools
-   - Verify API endpoints in frontend code
-   - Check CORS configuration
-
-4. **Puppeteer Issues in Functions** (SOLVED):
-   - ✅ Now using Puppeteer-free functions by default
-   - ✅ Ultra-lightweight figma-only function for maximum compatibility
-   - ✅ No more Puppeteer deprecation warnings
-
-### Performance Optimization
-
-1. **Function Timeout**:
-   - Netlify functions have a 10-second timeout on free plan
-   - Consider upgrading to Pro plan for 26-second timeout
-   - Optimize extraction logic for faster execution
-
-2. **Memory Limits**:
-   - Functions have 1GB memory limit
-   - Monitor function logs for memory usage
-   - Consider breaking large operations into smaller chunks
-
-3. **Cold Starts**:
-   - Functions may have cold start delays
-   - Consider keeping functions warm with scheduled pings
-   - Optimize initialization code
-
-## Alternative Deployment Options
-
-If Netlify Functions have limitations for your use case:
-
-1. **Vercel**: Similar serverless platform with different limits
-2. **Railway**: Full-stack deployment with persistent servers
-3. **Heroku**: Traditional PaaS with always-on dynos
-4. **DigitalOcean App Platform**: Container-based deployment
-
-## Security Considerations
-
-1. **Environment Variables**: Never commit API keys to Git
-2. **CORS**: Configured for all origins in demo - restrict in production
-3. **Rate Limiting**: Consider adding rate limiting for production use
-4. **Input Validation**: Validate all user inputs on server-side
-
-## Next Steps
-
-1. **Custom Domain**: Add your custom domain in Netlify settings
-2. **SSL Certificate**: Netlify provides automatic HTTPS
-3. **Analytics**: Set up Netlify Analytics or Google Analytics
-4. **Monitoring**: Set up uptime monitoring and error tracking
-5. **CI/CD**: Configure automatic deployments on Git push
-
-## Support
-
-For deployment issues:
-- Check [Netlify Documentation](https://docs.netlify.com)
-- Review function logs in Netlify dashboard
-- Test locally with `netlify dev` command
-
-For application issues:
-- Check the application logs
-- Verify Figma API connectivity
-- Test individual components locally 
+For full functionality, consider deploying the complete application with a dedicated server. 

@@ -17,14 +17,15 @@ A powerful tool to compare UI designs in Figma with live web implementations, au
 
 - Node.js 18+ 
 - **For Official Figma MCP Integration**: Figma Desktop App with Dev Mode (Professional/Organization/Enterprise plan)
+- **For Netlify Deployment**: Figma API Token
 
-### Installation
+### Local Installation
 
 ```bash
 npm install
 ```
 
-### Setup
+### Local Setup
 
 1. **Configure Figma MCP Integration**:
    
@@ -52,6 +53,38 @@ npm install
    ```
    http://localhost:3003
    ```
+
+### Netlify Deployment
+
+For serverless deployment on Netlify:
+
+1. **Build the Frontend**:
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   ```
+
+2. **Create Deployment Package**:
+   ```bash
+   mkdir -p netlify-deploy
+   cp -r frontend/dist netlify-deploy/
+   cp -r netlify/functions netlify-deploy/
+   cp netlify.toml netlify-deploy/
+   cd netlify-deploy
+   zip -r ../netlify-deploy.zip .
+   ```
+
+3. **Deploy to Netlify**:
+   - Upload `netlify-deploy.zip` to Netlify or connect your GitHub repository
+   - Set the following environment variables in the Netlify dashboard:
+     - `FIGMA_API_KEY`: Your Figma API key (required)
+     - `NODE_VERSION`: 18 (recommended)
+
+4. **Limitations of Netlify Deployment**:
+   - Web scraping is not available (Figma-only mode)
+   - WebSockets are not supported
+   - File storage is limited to Netlify's ephemeral filesystem
 
 ## 📖 Using Official Figma Dev Mode MCP Server
 

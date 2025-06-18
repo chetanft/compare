@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import apiService from '../../services/api'
-import { getApiBaseUrl } from '../../utils/environment'
+import apiService, { compareUrls } from '../../services/api'
+import { getApiBaseUrl, isProduction } from '../../utils/environment'
 import ProgressIndicator, { ProgressStage } from '../ui/ProgressIndicator'
 import {
   DocumentTextIcon,
@@ -36,6 +36,21 @@ const FORM_PLACEHOLDERS = {
   username: 'your-username',
   password: 'your-password',
   successIndicator: '.dashboard, .profile-menu, .user-menu'
+}
+
+// Add this interface definition at the top of the file
+interface AuthenticationConfig {
+  type?: 'credentials' | 'cookies' | 'headers'
+  loginUrl?: string
+  username?: string
+  password?: string
+  waitTime?: number
+  successIndicator?: string
+  figmaToken?: string
+  webAuth?: {
+    username?: string
+    password?: string
+  }
 }
 
 interface ComparisonFormProps {
@@ -91,49 +106,28 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             password: data.authentication?.password,
             waitTime: data.authentication?.waitTime || 3000,
             successIndicator: data.authentication?.successIndicator,
+            figmaToken: data.authentication?.figmaToken,
+            webAuth: {
+              username: data.authentication?.username,
+              password: data.authentication?.password
+            }
           }
         };
         
         console.log('🚀 Sending comparison request:', payload);
-
-        // Get the API base URL from environment utility
-        const apiBaseUrl = getApiBaseUrl();
         
-        // Send the request with retry configuration
-        const response = await fetch(`${apiBaseUrl}/api/compare`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          // Handle different error response types
-          let errorMessage = `Server error: ${response.status}`;
-          try {
-          const errorData = await response.json();
-            errorMessage = errorData.error || errorData.message || errorMessage;
-          } catch (parseError) {
-            // If the response is not valid JSON, use the status text
-            errorMessage = `Server error: ${response.statusText || response.status}`;
-          }
-          throw new Error(errorMessage);
-        }
-
-        // Safely parse the JSON response
-        let result;
-        try {
-          result = await response.json();
-        } catch (parseError) {
-          console.error('Failed to parse response as JSON:', parseError);
-          throw new Error('Invalid response from server');
-        }
-
+        // Use the compareUrls function from the API service
+        const result = await compareUrls(payload);
+        
+        // Handle Netlify function response format
+        const comparisonResult = result.data || result;
+        
         // If the result contains a comparisonId, notify the parent component
-        if (result.comparisonId && onComparisonStart) {
-          onComparisonStart(result.comparisonId);
+        if ((comparisonResult.comparisonId || result.comparisonId) && onComparisonStart) {
+          onComparisonStart(comparisonResult.comparisonId || result.comparisonId);
         }
         
-        return result;
+        return comparisonResult;
       } catch (error) {
         console.error('❌ Request failed:', error);
         throw error;

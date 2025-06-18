@@ -25,43 +25,41 @@ export interface AuthenticationConfig {
 }
 
 export interface ComparisonResult {
-  success: boolean
+  success?: boolean
+  data?: any
   comparisonId?: string
-  message?: string
-  stages?: string[]
-  summary?: {
-    figma: {
-      fileId: string
-      fileName: string
-      componentsExtracted: number
-    }
-    web: {
-      url: string
-      elementsExtracted: number
-      authenticationUsed: string
-    }
-    comparison: {
-      componentsAnalyzed: number
-      totalDeviations: number
-      totalMatches: number
-      severity: {
-        high: number
-        medium: number
-        low: number
-      }
-    }
+  id?: string
+  timestamp?: string
+  figmaData?: {
+    fileId?: string
+    nodeId?: string
+    url?: string
+    components?: any[]
   }
-  reports?: {
-    html: string
-    json: string
-    categorized?: string
+  webData?: {
+    url?: string
+    components?: any[]
+  }
+  comparison?: {
+    matches?: any[]
+    mismatches?: any[]
+    missing?: any[]
+    extra?: any[]
   }
   metadata?: {
-    comparisonId?: string
-    timestamp?: string
-    toolVersion?: string
+    extractedAt?: string
+    figmaComponentCount?: number
+    webComponentCount?: number
+    matchCount?: number
+    mismatchCount?: number
+    missingCount?: number
+    extraCount?: number
   }
-  error?: string
+  reports?: {
+    directUrl?: string
+    downloadUrl?: string
+    hasError?: boolean
+  }
 }
 
 export interface Report {

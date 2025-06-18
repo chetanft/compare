@@ -435,20 +435,65 @@ app.get('/api/figma/file/:fileId', async (req, res) => {
 
 app.post('/api/compare', async (req, res) => {
   try {
-    const { figmaData, webData } = req.body;
+    console.log('Received comparison request:', JSON.stringify(req.body).substring(0, 200) + '...');
+    const { figmaUrl, webUrl, includeVisual, authentication } = req.body;
     
-    if (!figmaData || !figmaData.components) {
+    if (!figmaUrl) {
       return res.status(400).json({ 
-        error: 'Missing figmaData with components' 
+        error: 'Missing required parameter: figmaUrl' 
       });
     }
     
-    // Web data is optional in this implementation
-    const result = comparisonEngine.compareComponents(figmaData.components, webData?.components);
+    // Parse Figma URL to get fileId and nodeId
+    const figmaData = parseFigmaUrl(figmaUrl);
+    if (!figmaData.fileId) {
+      return res.status(400).json({ 
+        error: 'Invalid Figma URL format' 
+      });
+    }
+    
+    // Extract Figma data
+    console.log(`Extracting Figma data for file: ${figmaData.fileId}, node: ${figmaData.nodeId || 'root'}`);
+    // Use the EnhancedFigmaExtractor instance
+    const figmaExtractor = new EnhancedFigmaExtractor(process.env.FIGMA_API_KEY);
+    const figmaComponents = await figmaExtractor.getFigmaData(figmaData.fileId, figmaData.nodeId);
+    
+    // We don't have web extraction in the serverless function, so we'll just use the Figma data
+    // In a real implementation, you would integrate with a headless browser service
+    const comparisonResult = {
+      id: `comparison-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      figmaData: {
+        fileId: figmaData.fileId,
+        nodeId: figmaData.nodeId,
+        url: figmaUrl,
+        components: figmaComponents.components || []
+      },
+      webData: {
+        url: webUrl,
+        components: []
+      },
+      comparison: {
+        matches: [],
+        mismatches: [],
+        missing: figmaComponents.components || [],
+        extra: []
+      },
+      metadata: {
+        extractedAt: new Date().toISOString(),
+        figmaComponentCount: figmaComponents.components?.length || 0,
+        webComponentCount: 0,
+        matchCount: 0,
+        mismatchCount: 0,
+        missingCount: figmaComponents.components?.length || 0,
+        extraCount: 0
+      }
+    };
     
     res.json({
       success: true,
-      data: result
+      data: comparisonResult,
+      comparisonId: comparisonResult.id
     });
     
   } catch (error) {
@@ -582,11 +627,32 @@ app.get('/api/reports', (req, res) => {
   });
 });
 
+// Debug middleware to log request paths
+app.use((req, res, next) => {
+  console.log(`Received request: ${req.method} ${req.path}`);
+  
+  // Special handling for designuat.netlify.app domain
+  const host = req.headers.host || '';
+  if (host.includes('designuat.netlify.app')) {
+    console.log(`Request from designuat.netlify.app: ${req.originalUrl}`);
+    
+    // Handle /api/compare directly (without the api prefix)
+    if (req.path === '/api/compare' && req.method === 'POST') {
+      console.log('Redirecting to /compare endpoint');
+      req.url = '/compare';
+    }
+  }
+  
+  next();
+});
+
 // 404 handler
 app.use('*', (req, res) => {
+  console.log('404 Not Found:', req.originalUrl);
   res.status(404).json({ 
     error: 'API endpoint not found',
     path: req.originalUrl,
+    method: req.method,
     availableEndpoints: [
       'GET /api/health',
       'GET /api/info', 
@@ -609,6 +675,81 @@ app.use((error, req, res, next) => {
     error: 'Internal server error',
     details: error.message
   });
+});
+
+// Add a direct /compare endpoint for compatibility with designuat.netlify.app
+app.post('/compare', async (req, res) => {
+  try {
+    console.log('Received direct comparison request:', JSON.stringify(req.body).substring(0, 200) + '...');
+    const { figmaUrl, webUrl, includeVisual, authentication } = req.body;
+    
+    if (!figmaUrl) {
+      return res.status(400).json({ 
+        error: 'Missing required parameter: figmaUrl' 
+      });
+    }
+    
+    // Parse Figma URL to get fileId and nodeId
+    const figmaData = parseFigmaUrl(figmaUrl);
+    if (!figmaData.fileId) {
+      return res.status(400).json({ 
+        error: 'Invalid Figma URL format' 
+      });
+    }
+    
+    // Extract Figma data
+    console.log(`Extracting Figma data for file: ${figmaData.fileId}, node: ${figmaData.nodeId || 'root'}`);
+    // Use the EnhancedFigmaExtractor instance
+    const figmaExtractor = new EnhancedFigmaExtractor(process.env.FIGMA_API_KEY);
+    const figmaComponents = await figmaExtractor.getFigmaData(figmaData.fileId, figmaData.nodeId);
+    
+    // We don't have web extraction in the serverless function, so we'll just use the Figma data
+    // In a real implementation, you would integrate with a headless browser service
+    const comparisonResult = {
+      id: `comparison-${Date.now()}`,
+      comparisonId: `comparison-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      figmaData: {
+        fileId: figmaData.fileId,
+        nodeId: figmaData.nodeId,
+        url: figmaUrl,
+        components: figmaComponents.components || []
+      },
+      webData: {
+        url: webUrl,
+        components: []
+      },
+      comparison: {
+        matches: [],
+        mismatches: [],
+        missing: figmaComponents.components || [],
+        extra: []
+      },
+      metadata: {
+        extractedAt: new Date().toISOString(),
+        figmaComponentCount: figmaComponents.components?.length || 0,
+        webComponentCount: 0,
+        matchCount: 0,
+        mismatchCount: 0,
+        missingCount: figmaComponents.components?.length || 0,
+        extraCount: 0
+      },
+      success: true
+    };
+    
+    res.json({
+      success: true,
+      data: comparisonResult,
+      comparisonId: comparisonResult.id
+    });
+    
+  } catch (error) {
+    console.error('❌ Comparison failed:', error);
+    res.status(500).json({ 
+      error: 'Comparison failed', 
+      details: error.message 
+    });
+  }
 });
 
 // Export handler for Netlify Functions

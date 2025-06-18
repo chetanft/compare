@@ -1,102 +1,52 @@
 #!/bin/bash
 
-# Netlify Deployment Script for Figma-Web Comparison Tool
-# This script prepares and deploys the project to Netlify
+# Figma Comparison Tool - Netlify Deployment Script
+# This script builds the frontend and packages everything for Netlify deployment
 
+# Exit on error
 set -e
 
-echo "🚀 Starting Netlify Deployment Process..."
+echo "🚀 Starting Netlify deployment preparation..."
 
 # Check if we're in the right directory
-if [ ! -f "package.json" ]; then
-    echo "❌ Error: package.json not found. Please run this script from the project root."
-    exit 1
+if [ ! -d "frontend" ] || [ ! -d "netlify" ]; then
+  echo "❌ Error: Please run this script from the project root directory"
+  exit 1
 fi
 
-# Check if netlify CLI is installed
-if ! command -v netlify &> /dev/null; then
-    echo "📦 Installing Netlify CLI..."
-    npm install -g netlify-cli
-fi
-
-# Check if user is logged in to Netlify
-echo "🔐 Checking Netlify authentication..."
-if ! netlify status &> /dev/null; then
-    echo "Please log in to Netlify:"
-    netlify login
-fi
-
-# Install dependencies
-echo "📦 Installing root dependencies..."
-npm install
+# Clean up any previous deployment files
+echo "🧹 Cleaning up previous deployment files..."
+rm -rf netlify-deploy netlify-deploy.zip
 
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
 cd frontend
 npm install
-cd ..
 
 # Build the frontend
-echo "🏗️ Building frontend..."
-cd frontend
+echo "🔨 Building frontend..."
 npm run build
 cd ..
 
-# Check if netlify.toml exists
-if [ ! -f "netlify.toml" ]; then
-    echo "❌ Error: netlify.toml not found. Please ensure configuration files are present."
-    exit 1
-fi
+# Create deployment package
+echo "📁 Creating deployment package..."
+mkdir -p netlify-deploy
+cp -r frontend/dist netlify-deploy/
+cp -r netlify/functions netlify-deploy/
+cp netlify.toml netlify-deploy/
+cp netlify-deploy/README.md netlify-deploy/ 2>/dev/null || cp README.md netlify-deploy/
 
-# Check for environment variables
-echo "🔧 Environment Variables Required:"
-echo "   - FIGMA_API_KEY: Your Figma personal access token"
-echo "   - NODE_ENV: production"
-echo ""
-echo "Set these in Netlify Dashboard → Site Settings → Environment Variables"
-echo ""
+# Create zip file
+echo "🗜️ Creating zip archive..."
+cd netlify-deploy
+zip -r ../netlify-deploy.zip .
+cd ..
 
-# Deploy to Netlify
-echo "🚀 Deploying to Netlify..."
-echo "Choose deployment option:"
-echo "1) Deploy to production"
-echo "2) Deploy preview"
-echo "3) Initialize new site"
+echo "✅ Deployment package created: netlify-deploy.zip"
+echo "📋 Next steps:"
+echo "1. Upload netlify-deploy.zip to Netlify or connect your GitHub repository"
+echo "2. Set the FIGMA_API_KEY environment variable in the Netlify dashboard"
+echo "3. Set NODE_VERSION to 18 in the Netlify dashboard"
 
-read -p "Enter choice (1-3): " choice
-
-case $choice in
-    1)
-        echo "🌟 Deploying to production..."
-        netlify deploy --prod --dir=frontend/dist
-        ;;
-    2)
-        echo "👀 Creating preview deployment..."
-        netlify deploy --dir=frontend/dist
-        ;;
-    3)
-        echo "🆕 Initializing new site..."
-        netlify init
-        netlify deploy --dir=frontend/dist
-        ;;
-    *)
-        echo "❌ Invalid choice. Exiting."
-        exit 1
-        ;;
-esac
-
-echo ""
-echo "✅ Deployment complete!"
-echo ""
-echo "🔗 Next steps:"
-echo "1. Set environment variables in Netlify Dashboard"
-echo "2. Test your deployment endpoints"
-echo "3. Configure custom domain (optional)"
-echo ""
-echo "📋 API Endpoints:"
-echo "   GET  /api/health"
-echo "   POST /api/compare"
-echo "   POST /api/figma/extract"
-echo "   POST /api/web/extract"
-echo ""
-echo "📖 See NETLIFY_DEPLOYMENT_GUIDE.md for detailed instructions" 
+# Make the file executable
+chmod +x deploy-netlify.sh 

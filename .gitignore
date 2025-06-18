@@ -130,3 +130,5 @@ Thumbs.db
 # Git cleanup files
 .git/gc.log .env
 .env
+netlify-deploy/
+netlify-deploy.zip
