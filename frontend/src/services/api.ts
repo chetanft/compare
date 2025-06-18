@@ -5,7 +5,7 @@ import { ComparisonResult } from '../../../src/services/comparison/ComparisonEng
 
 // API Configuration and Service Layer
 const API_CONFIG = {
-  baseURL: getApiBaseUrl() || 'http://localhost:3007',
+  baseURL: getApiBaseUrl(),
   timeout: 120000,
   retries: 3
 }
@@ -29,7 +29,7 @@ class ApiService {
   private retries: number
 
   constructor() {
-    this.baseURL = API_CONFIG.baseURL || 'http://localhost:3007'
+    this.baseURL = API_CONFIG.baseURL
     this.timeout = API_CONFIG.timeout
     this.retries = API_CONFIG.retries
   }
@@ -195,7 +195,7 @@ export const apiService = new ApiService()
 export default apiService
 
 // Use the same API base URL from environment
-const API_BASE_URL = getApiBaseUrl() || 'http://localhost:3007'
+const API_BASE_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_BASE_URL,

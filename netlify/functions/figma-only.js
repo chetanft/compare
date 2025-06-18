@@ -287,6 +287,14 @@ app.get('/api/info', (req, res) => {
   });
 });
 
+// Add a socket-fallback route
+app.get('/socket-fallback', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'WebSockets are not supported in this deployment environment' 
+  });
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 

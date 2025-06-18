@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { getWebSocketUrl } from '../utils/environment'
+import { isProduction } from '../utils/environment'
 
 interface UseWebSocketOptions {
   url?: string
@@ -31,7 +32,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [connectionError, setConnectionError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!autoConnect) return
+    // Don't attempt to connect if we're in production (Netlify) or URL is empty
+    if (!autoConnect || isProduction || !url) {
+      if (isProduction) {
+        console.log('🔌 WebSocket disabled in production environment')
+      }
+      return;
+    }
 
     // Initialize socket connection
     socketRef.current = io(url, {

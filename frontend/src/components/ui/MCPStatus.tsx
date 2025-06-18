@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { isProduction } from '../../utils/environment';
 
 interface MCPStatusProps {
   showDetails?: boolean;
+  className?: string;
 }
 
 interface MCPStatusData {
@@ -14,7 +17,7 @@ interface MCPStatusData {
   activeMethod: string;
 }
 
-const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false }) => {
+const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = '' }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const { data, isLoading, error } = useQuery<MCPStatusData>({
@@ -36,6 +39,8 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false }) => {
     refetchInterval: 60000, // Refetch every minute
     staleTime: 30000,
   });
+  
+  const { isConnected } = useWebSocket();
   
   const getStatusIcon = (isActive: boolean) => {
     return isActive ? (
@@ -104,21 +109,21 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false }) => {
   const isAnyMCPAvailable = data.officialMCP || data.thirdPartyMCP;
   const isAnyFigmaAvailable = isAnyMCPAvailable || data.figmaAPI;
   
+  // In production on Netlify, WebSockets are not available
+  if (isProduction) {
+    return (
+      <div className={`flex items-center ${className}`}>
+        <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></div>
+        <span className="text-xs text-gray-500">Static Mode</span>
+      </div>
+    );
+  }
+  
   if (!showDetails) {
     return (
-      <div className="flex items-center">
-        {isAnyFigmaAvailable ? (
-          <div className="flex items-center text-sm">
-            <CheckCircleIcon className="w-5 h-5 text-green-500 mr-1" />
-            <span className="mr-2">Figma Connected</span>
-            {getActiveMethodBadge(data.activeMethod)}
-          </div>
-        ) : (
-          <div className="flex items-center text-sm text-red-500">
-            <XCircleIcon className="w-5 h-5 mr-1" />
-            Figma Disconnected
-          </div>
-        )}
+      <div className={`flex items-center ${className}`}>
+        <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`}></div>
+        <span className="text-xs text-gray-500">{isConnected ? 'Connected' : 'Disconnected'}</span>
       </div>
     );
   }
