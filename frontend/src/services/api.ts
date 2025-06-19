@@ -2,13 +2,14 @@ import { getApiBaseUrl } from '../utils/environment'
 import axios from 'axios'
 import { FigmaData, WebData } from '../../../src/types/extractor'
 import { ComparisonResult } from '../../../src/services/comparison/ComparisonEngine'
-import { isProduction } from '../utils/environment'
+import { isProduction, isNetlify } from '../utils/environment'
 
 // API Configuration and Service Layer
 const API_CONFIG = {
   baseURL: getApiBaseUrl(),
   timeout: 120000,
-  retries: 3
+  retries: 3,
+  netlifyFunctionsPath: '/.netlify/functions/figma-only'
 }
 
 export interface ApiResponse<T = any> {
@@ -22,6 +23,7 @@ export interface ApiError {
   message: string
   status?: number
   code?: string
+  details?: string
 }
 
 // Default mock responses for production when endpoints are missing
@@ -95,7 +97,46 @@ class ApiService {
     this.retries = API_CONFIG.retries
   }
 
+  /**
+   * Get the correct API URL based on environment and endpoint
+   * @param url The API endpoint path
+   * @returns The complete URL to use
+   */
+  private getApiUrl(url: string): string {
+    // In Netlify environment, we need to use the functions path
+    if (isNetlify) {
+      // Remove leading slash if present
+      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+      
+      // If the URL already includes the functions path, don't add it again
+      if (cleanUrl.startsWith('.netlify/functions/')) {
+        return `${this.baseURL}/${cleanUrl}`;
+      }
+      
+      // For API endpoints, use the figma-only function
+      if (cleanUrl.startsWith('api/')) {
+        return `${this.baseURL}${API_CONFIG.netlifyFunctionsPath}/${cleanUrl}`;
+      }
+      
+      // For static files, use the static function
+      if (cleanUrl.startsWith('reports/') || 
+          cleanUrl.startsWith('images/') || 
+          cleanUrl.startsWith('screenshots/')) {
+        return `${this.baseURL}/.netlify/functions/static/${cleanUrl}`;
+      }
+      
+      // Default to the figma-only function
+      return `${this.baseURL}${API_CONFIG.netlifyFunctionsPath}/${cleanUrl}`;
+    }
+    
+    // In local development, use the URL as is
+    return `${this.baseURL}${url}`;
+  }
+
   private async fetchWithRetry(url: string, options: RequestInit = {}, retryCount = 0): Promise<Response> {
+    // Get the correct API URL
+    const apiUrl = this.getApiUrl(url);
+    
     // In production, check for fallbacks first
     if (isProduction && PRODUCTION_FALLBACKS[url]) {
       console.log(`Using fallback response for ${url} in production environment`);
@@ -111,7 +152,8 @@ class ApiService {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
     try {
-      const response = await fetch(`${this.baseURL}${url}`, {
+      console.log(`🌐 API Request: ${apiUrl}`);
+      const response = await fetch(apiUrl, {
         ...options,
         signal: controller.signal,
         headers: {
@@ -170,10 +212,12 @@ class ApiService {
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`
+      let errorDetails = '';
       
       try {
         const errorData = await response.json()
         errorMessage = errorData.error || errorData.message || errorMessage
+        errorDetails = errorData.details || errorData.stack || '';
       } catch {
         // If response is not JSON, use status text
       }
@@ -181,7 +225,8 @@ class ApiService {
       const error: ApiError = {
         message: errorMessage,
         status: response.status,
-        code: response.status.toString()
+        code: response.status.toString(),
+        details: errorDetails
       }
       
       throw error
@@ -250,111 +295,108 @@ class ApiService {
     return this.get('/api/health')
   }
 
-  // Reports method
+  // Get all reports
   async getReports(): Promise<any> {
     return this.get('/api/reports')
   }
 
-  // Settings methods
+  // Get current settings
   async getCurrentSettings(): Promise<any> {
     return this.get('/api/settings/current')
   }
 
+  // Save settings
   async saveSettings(settings: any): Promise<any> {
     return this.post('/api/settings/save', settings)
   }
 
+  // Test connection
   async testConnection(data: any): Promise<any> {
     return this.post('/api/settings/test-connection', data)
   }
 
-  // Figma data method
+  // Get Figma data for a comparison
   async getFigmaData(comparisonId: string): Promise<any> {
-    return this.get(`/api/comparison/${comparisonId}/figma-data`)
+    return this.get(`/api/figma/data/${comparisonId}`)
   }
 
-  // Web data method
+  // Get web data for a comparison
   async getWebData(comparisonId: string): Promise<any> {
-    return this.get(`/api/comparison/${comparisonId}/web-data`)
+    return this.get(`/api/web/data/${comparisonId}`)
   }
 
-  // Get current API configuration
+  // Get API config
   getConfig() {
     return {
       baseURL: this.baseURL,
       timeout: this.timeout,
-      retries: this.retries
+      retries: this.retries,
+      isNetlify: isNetlify,
+      isProduction: isProduction
     }
   }
 
+  // Use Axios for larger requests
   async postAxios(url: string, data: any) {
     try {
-      const response = await axios.post(url, data, {
+      const apiUrl = this.getApiUrl(url);
+      const response = await axios.post(apiUrl, data, {
+        timeout: this.timeout,
         headers: {
           'Content-Type': 'application/json'
         }
-      })
-      return response.data
-    } catch (error: any) {
-      if (error.response) {
-        throw new Error(error.response.data.details || error.response.data.error || 'Request failed')
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        };
       }
-      throw error
+      throw error;
     }
   }
 
+  // Use Axios for GET requests
   async getAxios(url: string) {
     try {
-      const response = await axios.get(url)
-      return response.data
-    } catch (error: any) {
-      if (error.response) {
-        throw new Error(error.response.data.details || error.response.data.error || 'Request failed')
+      const apiUrl = this.getApiUrl(url);
+      const response = await axios.get(apiUrl, {
+        timeout: this.timeout
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data
+        };
       }
-      throw error
+      throw error;
     }
   }
 
+  // Create event source for server-sent events
   createEventSource(url: string) {
-    return new EventSource(url)
+    // In Netlify environment, SSE is not supported
+    if (isNetlify) {
+      console.warn('Server-sent events are not supported in Netlify environment');
+      return null;
+    }
+    
+    const apiUrl = this.getApiUrl(url);
+    return new EventSource(apiUrl);
   }
 }
 
-export const apiService = new ApiService()
+// Create a singleton instance
+const apiService = new ApiService()
 export default apiService
 
-// Use the same API base URL from environment
-const API_BASE_URL = getApiBaseUrl()
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-})
-
-// Add request interceptor to handle production environment
-api.interceptors.request.use((config) => {
-  if (isProduction) {
-    // Handle absolute URLs (like https://designuat.netlify.app/api/compare)
-    const currentUrl = window.location.origin;
-    
-    // If the URL is already absolute, don't modify it
-    if (config.url?.startsWith('http')) {
-      return config;
-    }
-    
-    if (config.url?.startsWith('/api/')) {
-      // Rewrite URLs to use the Netlify functions path
-      config.url = `/.netlify/functions/figma-only${config.url}`;
-      console.log(`Rewriting API URL to: ${config.url}`);
-    } else if (config.url?.startsWith('/figma/') || config.url?.startsWith('/web/')) {
-      // Handle other API paths
-      config.url = `/.netlify/functions/figma-only/api${config.url}`;
-      console.log(`Rewriting API URL to: ${config.url}`);
-    }
-  }
-  return config;
-});
-
+// Export comparison request interface
 export interface ComparisonRequest {
   figmaUrl: string
   webUrl: string
@@ -375,123 +417,114 @@ export interface ComparisonRequest {
   } | null
 }
 
+// Extract Figma data
 export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => {
   try {
-    // In production, use the direct Netlify function path
-    const endpoint = isProduction 
-      ? '/.netlify/functions/figma-only/api/figma/extract' 
-      : '/api/figma/extract';
-      
-    console.log(`Using Figma extraction endpoint: ${endpoint}`);
+    console.log('Extracting Figma data from URL:', figmaUrl);
     
-    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
-    const currentDomain = window.location.hostname;
-    const isDesignUat = currentDomain.includes('designuat.netlify.app');
+    // Use the appropriate API endpoint based on environment
+    const endpoint = '/api/figma/extract';
     
-    let url = endpoint;
-    if (isDesignUat) {
-      url = `https://designuat.netlify.app/.netlify/functions/figma-only/api/figma/extract`;
-      console.log(`Using absolute URL for designuat: ${url}`);
+    const response = await apiService.post(endpoint, { figmaUrl });
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to extract Figma data');
     }
     
-    const response = await api.post(url, { figmaUrl });
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to extract Figma data');
-    }
-    
-    return response.data.data;
+    return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 422) {
-        throw new Error('The specified Figma frame is detached. Please select a valid frame.');
-      }
-      throw new Error(error.response?.data?.message || 'Failed to extract Figma data');
+    console.error('Error extracting Figma data:', error);
+    
+    // Provide more helpful error messages
+    if ((error as ApiError).status === 403) {
+      throw new Error('Access denied to Figma file. Please check your API token permissions.');
+    } else if ((error as ApiError).status === 404) {
+      throw new Error('Figma file not found. Please check the URL.');
     }
+    
     throw error;
   }
-}
+};
 
+// Extract web data
 export const extractWebData = async (url: string): Promise<WebData> => {
   try {
-    // In production, use the direct Netlify function path
-    const endpoint = isProduction 
-      ? '/.netlify/functions/figma-only/api/web/extract' 
-      : '/api/web/extract';
-      
-    console.log(`Using Web extraction endpoint: ${endpoint}`);
+    console.log('Extracting web data from URL:', url);
     
-    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
-    const currentDomain = window.location.hostname;
-    const isDesignUat = currentDomain.includes('designuat.netlify.app');
-    
-    let apiUrl = endpoint;
-    if (isDesignUat) {
-      apiUrl = `https://designuat.netlify.app/.netlify/functions/figma-only/api/web/extract`;
-      console.log(`Using absolute URL for designuat: ${apiUrl}`);
+    // In Netlify environment, web extraction is limited
+    if (isNetlify) {
+      return {
+        url,
+        components: [],
+        metadata: {
+          extractedAt: new Date().toISOString(),
+          extractionMethod: 'Netlify Static',
+          note: 'Web extraction is not available in Netlify environment.'
+        }
+      };
     }
     
-    const response = await api.post(apiUrl, { webUrl: url });
+    const response = await apiService.post('/api/web/extract', { url });
     
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Failed to extract web data');
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to extract web data');
     }
     
-    return response.data.data;
+    return response.data;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || 'Failed to extract web data');
-    }
+    console.error('Error extracting web data:', error);
     throw error;
   }
-}
+};
 
+// Compare URLs
 export const compareUrls = async (request: ComparisonRequest): Promise<ComparisonResult> => {
   try {
-    // In production, use the direct Netlify function path
-    const endpoint = isProduction 
-      ? '/.netlify/functions/figma-only/api/compare' 
-      : '/api/compare';
-      
-    console.log(`Using API endpoint: ${endpoint}`);
+    console.log('Comparing URLs:', request);
     
-    // For the specific domain designuat.netlify.app, use the full URL with Netlify functions path
-    const currentDomain = window.location.hostname;
-    const isDesignUat = currentDomain.includes('designuat.netlify.app');
+    // Use the appropriate API endpoint
+    const endpoint = '/api/compare';
     
-    let url = endpoint;
-    if (isDesignUat) {
-      url = `https://designuat.netlify.app/.netlify/functions/figma-only/api/compare`;
-      console.log(`Using absolute URL for designuat: ${url}`);
+    // For large requests, use Axios instead of fetch
+    const response = await apiService.postAxios(endpoint, request);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Comparison failed');
     }
     
-    const response = await api.post(url, request);
-    
-    if (!response.data.success) {
-      throw new Error(response.data.error?.message || 'Comparison failed');
-    }
-    
-    return response.data.data;
+    return response.data || response;
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const errorMessage = error.response?.data?.error?.message || 
-                         error.response?.data?.message || 
-                         error.message || 
-                         'Failed to compare URLs';
-      throw new Error(errorMessage);
-    }
+    console.error('Error comparing URLs:', error);
     throw error;
   }
-}
+};
 
+// Get extractor status
 export const getExtractorStatus = async (type: 'figma' | 'web') => {
   try {
-    const response = await api.get(`/status/${type}`)
-    return response.data.status
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      throw new Error(error.response?.data?.message || 'Failed to get status')
+    const response = await apiService.get('/api/health');
+    
+    if (type === 'figma') {
+      return {
+        available: response.services?.figmaExtractor === 'initialized' || 
+                  response.services?.figmaExtractor === 'available',
+        status: response.services?.figmaExtractor || 'unavailable'
+      };
+    } else {
+      return {
+        available: !isNetlify && (
+          response.services?.webExtractor === 'initialized' || 
+          response.services?.webExtractor === 'available'
+        ),
+        status: isNetlify ? 'unavailable in Netlify' : (response.services?.webExtractor || 'unavailable')
+      };
     }
-    throw error
+  } catch (error) {
+    console.error(`Error getting ${type} extractor status:`, error);
+    return {
+      available: false,
+      status: 'error',
+      error: (error as Error).message
+    };
   }
-} 
+}; 

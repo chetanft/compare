@@ -17,6 +17,10 @@
 [functions.figma-only]
   timeout = 30
 
+# Static file handler function
+[functions.static]
+  timeout = 10
+
 # Redirect all frontend routes to index.html for SPA routing
 [[redirects]]
   from = "/modern/*"
@@ -27,40 +31,57 @@
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
+  conditions = {Path = ["/", "/new-comparison", "/reports", "/settings", "/figma-data/*", "/web-data/*", "/html-report/*"]}
 
 # API routes for serverless functions (using production-ready figma-only version)
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/figma-only/:splat"
+  to = "/.netlify/functions/figma-only/api/:splat"
   status = 200
+  force = true
 
-# Direct API routes for compatibility with designuat.netlify.app
+# Direct API routes for compatibility
 [[redirects]]
   from = "/.netlify/functions/figma-only/api/*"
   to = "/.netlify/functions/figma-only/:splat"
   status = 200
+  force = true
 
 # WebSocket support (will return 200 but at least won't break the app)
 [[redirects]]
   from = "/socket.io/*"
   to = "/.netlify/functions/figma-only/socket-fallback"
   status = 200
+  force = true
 
-# Static assets
+# Static assets - reports
 [[redirects]]
   from = "/reports/*"
-  to = "/.netlify/functions/static/:splat"
+  to = "/.netlify/functions/static/reports/:splat"
   status = 200
+  force = true
 
+# Static assets - screenshots
 [[redirects]]
   from = "/screenshots/*"
-  to = "/.netlify/functions/static/:splat"
+  to = "/.netlify/functions/static/screenshots/:splat"
   status = 200
+  force = true
 
+# Static assets - images
 [[redirects]]
   from = "/images/*"
-  to = "/.netlify/functions/static/:splat"
+  to = "/.netlify/functions/static/images/:splat"
   status = 200
+  force = true
+
+# Health check endpoint
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/figma-only/health"
+  status = 200
+  force = true
 
 # Environment variables for build (you'll need to set these in Netlify dashboard)
 [build.processing]
@@ -85,9 +106,19 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.figma.com; font-src 'self' data:;"
 
+# CORS headers for API endpoints
 [[headers]]
   for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+
+# CORS headers for Netlify functions
+[[headers]]
+  for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"

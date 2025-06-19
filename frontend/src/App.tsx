@@ -13,12 +13,45 @@ import HtmlReport from './pages/HtmlReport'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { Page } from './types'
 import { InformationCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { isNetlify, FEATURES } from './utils/environment'
+
+// Banner configuration
+interface BannerConfig {
+  show: boolean;
+  message: string;
+  type: 'info' | 'warning' | 'error';
+}
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showBanner, setShowBanner] = useState(true)
   const location = useLocation()
   const navigate = useNavigate()
+
+  // Configure banner based on environment and features
+  const [bannerConfig, setBannerConfig] = useState<BannerConfig>({
+    show: false,
+    message: '',
+    type: 'info'
+  })
+
+  // Set up environment-specific banner
+  useEffect(() => {
+    // Determine which banner to show based on environment and features
+    if (isNetlify && !FEATURES.ENABLE_WEB_EXTRACTION) {
+      setBannerConfig({
+        show: true,
+        message: 'Web extraction is not available in this environment. Only Figma data extraction is supported.',
+        type: 'info'
+      })
+    } else if (isNetlify && !FEATURES.ENABLE_REAL_TIME) {
+      setBannerConfig({
+        show: true,
+        message: 'Real-time updates are not available in this environment. Progress updates will be limited.',
+        type: 'info'
+      })
+    }
+  }, [])
 
   // Map URL paths to page types
   const getPageFromPath = (pathname: string): Page => {
@@ -53,6 +86,36 @@ function AppContent() {
     }
   }
 
+  // Get banner background color based on type
+  const getBannerStyles = () => {
+    switch (bannerConfig.type) {
+      case 'warning':
+        return {
+          bg: 'bg-yellow-50',
+          border: 'border-yellow-200',
+          icon: 'bg-yellow-100 text-yellow-700',
+          text: 'text-yellow-700'
+        }
+      case 'error':
+        return {
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          icon: 'bg-red-100 text-red-700',
+          text: 'text-red-700'
+        }
+      case 'info':
+      default:
+        return {
+          bg: 'bg-blue-50',
+          border: 'border-blue-200',
+          icon: 'bg-blue-100 text-blue-700',
+          text: 'text-blue-700'
+        }
+    }
+  }
+
+  const styles = getBannerStyles()
+
   return (
     <div className="flex h-screen bg-gray-50">
       <ErrorBoundary fallback={
@@ -71,31 +134,31 @@ function AppContent() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Notification Banner */}
         <AnimatePresence>
-          {showBanner && (
+          {showBanner && bannerConfig.show && (
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="bg-yellow-50 border-b border-yellow-200"
+              className={`${styles.bg} border-b ${styles.border}`}
             >
               <div className="max-w-7xl mx-auto py-3 px-3 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between flex-wrap">
                   <div className="flex-1 flex items-center">
-                    <span className="flex p-2 rounded-lg bg-yellow-100">
-                      <InformationCircleIcon className="h-5 w-5 text-yellow-700" aria-hidden="true" />
+                    <span className={`flex p-2 rounded-lg ${styles.icon}`}>
+                      <InformationCircleIcon className="h-5 w-5" aria-hidden="true" />
                     </span>
-                    <p className="ml-3 font-medium text-yellow-700 truncate">
-                      <span>Comparison feature is temporarily disabled. Only extraction data will be shown in reports.</span>
+                    <p className={`ml-3 font-medium ${styles.text} truncate`}>
+                      <span>{bannerConfig.message}</span>
                     </p>
                   </div>
                   <div className="order-2 flex-shrink-0 sm:order-3 sm:ml-3">
                     <button
                       type="button"
-                      className="-mr-1 flex p-2 rounded-md hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-600"
+                      className={`-mr-1 flex p-2 rounded-md hover:${styles.icon} focus:outline-none focus:ring-2 focus:ring-${styles.text}`}
                       onClick={() => setShowBanner(false)}
                     >
                       <span className="sr-only">Dismiss</span>
-                      <XMarkIcon className="h-5 w-5 text-yellow-700" aria-hidden="true" />
+                      <XMarkIcon className={`h-5 w-5 ${styles.text}`} aria-hidden="true" />
                     </button>
                   </div>
                 </div>

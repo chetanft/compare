@@ -1,0 +1,12 @@
+{
+  "name": "figma-comparison-netlify-functions-static",
+  "version": "1.0.0",
+  "description": "Static file handler for Figma Comparison Tool",
+  "type": "module",
+  "dependencies": {
+    "mime-types": "^2.1.35"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
