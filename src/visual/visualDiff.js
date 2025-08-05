@@ -23,7 +23,6 @@ class VisualDiff {
    */
   async compareImages(image1Path, image2Path, options = {}) {
     try {
-      console.log(`Comparing images: ${image1Path} vs ${image2Path}`);
 
       // Read and prepare images
       const img1Buffer = await fs.readFile(image1Path);
@@ -79,7 +78,6 @@ class VisualDiff {
         comparedAt: new Date().toISOString()
       };
 
-      console.log(`Visual diff complete: ${diffPercentage.toFixed(2)}% difference`);
       return result;
 
     } catch (error) {
@@ -103,7 +101,6 @@ class VisualDiff {
     const width = Math.max(img1Meta.width, img2Meta.width);
     const height = Math.max(img1Meta.height, img2Meta.height);
 
-    console.log(`Resizing images to ${width}x${height}`);
 
     // Resize both images to same dimensions
     const img1Resized = await sharp(img1Buffer)
@@ -155,7 +152,6 @@ class VisualDiff {
       const buffer = PNG.sync.write(diffPng);
       await fs.writeFile(diffImagePath, buffer);
 
-      console.log(`Diff image saved: ${diffImagePath}`);
       return diffImagePath;
 
     } catch (error) {
@@ -175,7 +171,6 @@ class VisualDiff {
 
     for (let i = 0; i < imagePairs.length; i++) {
       const pair = imagePairs[i];
-      console.log(`Comparing image pair ${i + 1}/${imagePairs.length}: ${pair.name || 'Unnamed'}`);
 
       try {
         const pairOptions = {
@@ -304,7 +299,6 @@ class VisualDiff {
       .png()
       .toFile(outputPath);
 
-      console.log(`Side-by-side comparison saved: ${outputPath}`);
       return outputPath;
 
     } catch (error) {
@@ -375,7 +369,6 @@ class VisualDiff {
     };
 
     await fs.writeFile(outputPath, JSON.stringify(report, null, 2));
-    console.log(`Visual diff report saved: ${outputPath}`);
     return report;
   }
 }

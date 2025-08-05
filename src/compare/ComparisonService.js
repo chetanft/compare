@@ -60,9 +60,6 @@ export class ComparisonService {
    */
   async extractFigmaData(fileKey, nodeId, options = {}) {
     try {
-      console.log('🎨 Extracting Figma data...');
-      console.log('📄 File key:', fileKey);
-      console.log('🔍 Node ID:', nodeId || 'Not specified');
 
       // Extract Figma data with progress updates
       const figmaData = await this.figmaExtractor.getFigmaData(fileKey, nodeId);
@@ -77,7 +74,6 @@ export class ComparisonService {
         });
       }
 
-      console.log('✅ Figma extraction complete:', figmaData.components.length, 'components');
       return figmaData;
 
     } catch (error) {
@@ -108,11 +104,9 @@ export class ComparisonService {
    */
   async extractWebData(webUrl, authentication, options = {}) {
     try {
-      console.log('🌐 Extracting web data...');
       
       // Initialize web extractor if needed
       if (!this.webExtractor.isReady()) {
-        console.log('🔄 Web extractor not ready, initializing...');
         await this.webExtractor.initialize();
       }
 
@@ -129,7 +123,6 @@ export class ComparisonService {
         });
       }
 
-      console.log('✅ Web extraction:', webData.elements.length, 'elements');
       return webData;
 
     } catch (error) {
@@ -163,7 +156,6 @@ export class ComparisonService {
    */
   async compareDesigns(figmaData, webData, options = {}) {
     try {
-      console.log('🔍 Performing comparison...');
       return await this.comparisonEngine.compareDesigns(figmaData, webData, {
         chunkSize: options.chunkSize || 10,
         maxComponents: options.maxComponents || 1000,
@@ -180,7 +172,6 @@ export class ComparisonService {
    */
   async generateReports(comparisonResults, options = {}) {
     try {
-      console.log('📊 Generating reports...');
       
       // Generate reports with streaming
       const reports = await this.reportGenerator.generateReports(comparisonResults, {
@@ -204,9 +195,6 @@ export class ComparisonService {
    */
   async compare(figmaUrl, webUrl, options = {}) {
     try {
-      console.log('🔄 Starting comparison...');
-      console.log('🎨 Figma URL:', figmaUrl);
-      console.log('🌐 Web URL:', webUrl);
 
       // Validate URLs first
       const { nodeId, fileKey } = this.validateFigmaUrl(figmaUrl);
@@ -219,7 +207,6 @@ export class ComparisonService {
       const timeout = options.timeout || 60000; // 60 seconds default
       
       // Extract data from both sources with timeout
-      console.log('📥 Extracting data from both sources...');
       
       const extractionPromises = [
         Promise.race([
@@ -243,7 +230,6 @@ export class ComparisonService {
         });
 
       // Compare the designs with timeout
-      console.log('🔍 Comparing designs...');
       const comparisonResults = await Promise.race([
         this.comparisonEngine.compareDesigns(figmaData, webData, {
           ...options,
@@ -255,7 +241,6 @@ export class ComparisonService {
       ]);
 
       // Generate reports with streaming and timeout
-      console.log('📊 Generating reports...');
       const reports = await Promise.race([
         this.generateReports(comparisonResults, {
           onProgress: options.onProgress,

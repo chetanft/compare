@@ -18,7 +18,6 @@ class FigmaExtractor {
   async initialize() {
     try {
       await this.mcpIntegration.initialize();
-      console.log('✅ Figma Extractor initialized successfully');
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize Figma Extractor:', error);
@@ -34,7 +33,6 @@ class FigmaExtractor {
       this.config = newConfig;
       this.mcpIntegration = FigmaMCPIntegration.createIntegration(newConfig);
       await this.mcpIntegration.initialize();
-      console.log('✅ Figma Extractor reinitialized successfully');
       return true;
     } catch (error) {
       console.error('❌ Failed to reinitialize Figma Extractor:', error);
@@ -51,24 +49,19 @@ class FigmaExtractor {
    */
   async extractDesignData(fileKey, nodeId = null, depth = 5) {
     try {
-      console.log(`🎨 Extracting design data from Figma file: ${fileKey}`);
       if (nodeId) {
-        console.log(`🎯 Targeting specific node: ${nodeId} with depth: ${depth}`);
         
         // For specific nodes, we need to fetch the entire file first to find which canvas contains the node
         // This is because Figma API doesn't return detailed children when requesting specific nodes
-        console.log(`🔍 Fetching entire file to locate target node and its canvas...`);
         const figmaData = await this.mcpIntegration.getFigmaData(fileKey, null, depth);
         
         // Process with the target nodeId for filtering
         const processedData = await this.processDesignData(figmaData, fileKey, nodeId);
-        console.log(`✅ Successfully extracted ${processedData.components.length} components`);
         return processedData;
       } else {
         // For full file extraction, proceed normally
         const figmaData = await this.mcpIntegration.getFigmaData(fileKey, nodeId, depth);
         const processedData = await this.processDesignData(figmaData, fileKey, nodeId);
-        console.log(`✅ Successfully extracted ${processedData.components.length} components`);
         return processedData;
              }
       
@@ -88,45 +81,31 @@ class FigmaExtractor {
   async processDesignData(figmaData, fileKey = null, nodeId = null) {
     const components = [];
     
-    console.log(`🔍 Processing design data. NodeId: ${nodeId}`);
-    console.log(`📋 Figma data keys:`, Object.keys(figmaData));
     
     // If a specific nodeId was requested, find the canvas containing it and extract that canvas
     if (nodeId) {
-      console.log(`🎯 Looking for specific node ${nodeId} in the entire file...`);
-      console.log(`🔍 Document has ${figmaData.document?.children?.length || 0} top-level children`);
       
       let foundComponents = false;
       
       // Strategy 1: Find the canvas that contains the target node
       const canvasWithNode = this.findCanvasContainingNode(figmaData.document, nodeId);
-      console.log(`🔍 Canvas search result:`, canvasWithNode ? `Found "${canvasWithNode.name}"` : 'Not found');
       
       if (canvasWithNode) {
-        console.log(`📦 Found canvas containing target node: ${canvasWithNode.name}`);
-        console.log(`🎯 Canvas has ${canvasWithNode.children?.length || 0} children`);
-        console.log(`🎯 Extracting all components from canvas: ${canvasWithNode.name}`);
         
         // Extract all components from this canvas (this will include the target node and all its siblings and children)
         await this.processCanvasComponents(canvasWithNode, components);
         foundComponents = components.length > 0;
         
-        console.log(`✅ Extracted ${components.length} components from canvas`);
       } else {
-        console.log(`❌ Could not find canvas containing node ${nodeId}`);
-        console.log(`🔍 Available top-level children:`, figmaData.document?.children?.map(c => `${c.name} (${c.type})`) || []);
       }
       
       // Strategy 2: Fallback to checking figmaData.nodes
       if (!foundComponents && figmaData.nodes && figmaData.nodes[nodeId]) {
         const specificNode = figmaData.nodes[nodeId];
-        console.log(`📦 Raw specific node keys:`, Object.keys(specificNode));
         
         // The node structure might be different - check both document and direct access
         const targetNode = specificNode.document || specificNode;
         
-        console.log(`📦 Found specific node: ${targetNode.name} (${targetNode.type})`);
-        console.log(`👶 Node has ${targetNode.children ? targetNode.children.length : 0} children`);
         
         // Process the target node and ALL its children (entire frame)
         const component = await this.processNode(targetNode);
@@ -134,12 +113,9 @@ class FigmaExtractor {
           // Add componentName for easier identification
           component.componentName = component.name || `${component.type}_${component.id}`;
           components.push(component);
-          console.log(`✅ Added main component: ${component.componentName}`);
           
           // Also add all child components as separate components for comparison
-          console.log(`🔄 Starting to flatten components...`);
           await this.flattenComponents(targetNode, components);
-          console.log(`📊 Total components after flattening: ${components.length}`);
           foundComponents = true;
         } else {
           console.warn(`⚠️ processNode returned null for ${targetNode.name}`);
@@ -149,13 +125,10 @@ class FigmaExtractor {
       // Strategy 3: Search through document tree if not found yet  
       if (!foundComponents && (!figmaData.nodes || !figmaData.nodes[nodeId])) {
         console.warn(`⚠️ Node ${nodeId} not found in figmaData.nodes`);
-        console.log(`Available nodes:`, figmaData.nodes ? Object.keys(figmaData.nodes) : 'none');
         
         // Search through the document tree to find the target node
         const targetNode = this.findNodeById(figmaData.document, nodeId);
         if (targetNode) {
-          console.log(`📦 Found node via search: ${targetNode.name} (${targetNode.type})`);
-          console.log(`👶 Node has ${targetNode.children ? targetNode.children.length : 0} children`);
           
           const component = await this.processNode(targetNode);
           if (component) {
@@ -168,23 +141,19 @@ class FigmaExtractor {
             foundComponents = true;
           }
         } else {
-          console.log(`❌ Node ${nodeId} not found in document tree either`);
         }
       }
       
       // Strategy 4: If specific node still not found, extract from the first meaningful canvas
       if (!foundComponents) {
-        console.log(`🔍 Specific node ${nodeId} not found anywhere, falling back to first meaningful canvas...`);
         
         if (figmaData.document && figmaData.document.children) {
           // Find the first canvas that has meaningful content
           for (const canvas of figmaData.document.children) {
             if (canvas.type === 'CANVAS' && canvas.children && canvas.children.length > 0) {
-              console.log(`📦 Using fallback canvas: ${canvas.name} with ${canvas.children.length} children`);
               await this.processCanvasComponents(canvas, components);
               
               if (components.length > 0) {
-                console.log(`✅ Extracted ${components.length} components from fallback canvas`);
                 foundComponents = true;
                 break;
               }
@@ -195,7 +164,6 @@ class FigmaExtractor {
       
       // Strategy 5: Last resort - extract everything from the document
       if (!foundComponents) {
-        console.log(`🔍 No components found with specific strategies, extracting entire document...`);
         if (figmaData.document && figmaData.document.children) {
           for (const node of figmaData.document.children) {
             const component = await this.processNode(node);
@@ -223,7 +191,6 @@ class FigmaExtractor {
       }
     }
 
-    console.log(`🎯 Final component count: ${components.length}`);
     return {
       fileId: fileKey || figmaData.fileKey || 'unknown',
       fileName: figmaData.name || figmaData.document?.name,
@@ -247,13 +214,10 @@ class FigmaExtractor {
    */
   async flattenComponents(component, components) {
     if (component.children && component.children.length > 0) {
-      console.log(`🔍 Flattening ${component.name} with ${component.children.length} children`);
       
       for (const child of component.children) {
         // Check if this child is meaningful before processing
         const isMeaningful = this.isMeaningfulComponent(child);
-        console.log(`  📝 Child: ${child.name} (${child.type}) - Meaningful: ${isMeaningful}`);
-        console.log(`    🔍 Child properties: fills=${child.fills?.length || 0}, strokes=${child.strokes?.length || 0}, children=${child.children?.length || 0}`);
         
         if (isMeaningful) {
           // Process the child component
@@ -263,9 +227,7 @@ class FigmaExtractor {
             // Add componentName for easier identification
             processedChild.componentName = processedChild.name || `${processedChild.type}_${processedChild.id}`;
             components.push(processedChild);
-            console.log(`    ✅ Added: ${processedChild.componentName}`);
           } else {
-            console.log(`    ⚠️ processNode returned null for ${child.name}`);
           }
         }
         
@@ -273,7 +235,6 @@ class FigmaExtractor {
         await this.flattenComponents(child, components);
       }
     } else {
-      console.log(`🔍 ${component.name} has no children to flatten`);
     }
   }
 
@@ -412,14 +373,12 @@ class FigmaExtractor {
   async processCanvasComponents(canvas, components) {
     if (!canvas || !canvas.children) return;
     
-    console.log(`🎨 Processing canvas: ${canvas.name} with ${canvas.children.length} children`);
     
     for (const child of canvas.children) {
       const component = await this.processNode(child);
       if (component) {
         component.componentName = component.name || `${component.type}_${component.id}`;
         components.push(component);
-        console.log(`✅ Added canvas component: ${component.componentName}`);
         
         // Also flatten this component to get all its children
         await this.flattenComponents(child, components);
@@ -649,7 +608,6 @@ class FigmaExtractor {
     const dir = path.dirname(outputPath);
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(outputPath, JSON.stringify(data, null, 2));
-    console.log(`💾 Design data saved to: ${outputPath}`);
   }
 
   /**
@@ -663,12 +621,10 @@ class FigmaExtractor {
       // Ensure directory exists
       await fs.mkdir(localPath, { recursive: true });
       
-      console.log(`🖼️ Downloading ${nodes.length} images from Figma...`);
       
       // Use MCP integration to download images
       const result = await this.mcpIntegration.downloadFigmaImages(fileKey, nodes, localPath);
       
-      console.log(`✅ Successfully downloaded ${result.downloaded || nodes.length} images`);
       return result;
       
     } catch (error) {
@@ -749,7 +705,6 @@ class FigmaExtractor {
    */
   async getNodeData(fileKey, nodeId) {
     try {
-      console.log(`🎯 Extracting specific node: ${nodeId} from file: ${fileKey}`);
       
       const designData = await this.extractDesignData(fileKey, nodeId, 1);
       

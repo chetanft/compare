@@ -1,0 +1,795 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Extraction Report - 2025-06-19T10-01-27</title>
+      <style>
+        :root {
+          --primary-color: #6366f1;
+          --primary-dark: #4f46e5;
+          --primary-light: #e0e7ff;
+          --success-color: #10b981;
+          --warning-color: #f59e0b;
+          --danger-color: #ef4444;
+          --gray-50: #f9fafb;
+          --gray-100: #f3f4f6;
+          --gray-200: #e5e7eb;
+          --gray-300: #d1d5db;
+          --gray-400: #9ca3af;
+          --gray-500: #6b7280;
+          --gray-600: #4b5563;
+          --gray-700: #374151;
+          --gray-800: #1f2937;
+          --gray-900: #111827;
+        }
+        
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        
+        body { 
+          font-family: system-ui, -apple-system, sans-serif; 
+          line-height: 1.5; 
+          color: var(--gray-800); 
+          background-color: var(--gray-50);
+        }
+        
+        .container { 
+          max-width: 1200px; 
+          margin: 0 auto; 
+          padding: 2rem; 
+        }
+        
+        .header { 
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+          color: white; 
+          padding: 2rem; 
+          border-radius: 0.5rem; 
+          margin-bottom: 2rem; 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: center;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .header-content { 
+          flex: 1; 
+        }
+        
+        .header-actions { 
+          display: flex; 
+          gap: 1rem; 
+        }
+        
+        .btn { 
+          display: inline-flex; 
+          align-items: center; 
+          justify-content: center; 
+          padding: 0.5rem 1rem; 
+          border-radius: 0.375rem; 
+          font-weight: 500; 
+          cursor: pointer; 
+          transition: all 0.2s; 
+          text-decoration: none;
+          border: none;
+          font-size: 0.875rem;
+        }
+        
+        .btn-primary { 
+          background-color: white; 
+          color: var(--primary-color);
+        }
+        
+        .btn-primary:hover { 
+          background-color: var(--gray-50);
+          transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+          background-color: transparent;
+          color: white;
+          border: 1px solid white;
+        }
+        
+        .btn-secondary:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .section { 
+          background: white; 
+          border-radius: 0.5rem; 
+          padding: 1.5rem; 
+          margin-bottom: 1.5rem; 
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2, h3 { 
+          margin-top: 0;
+          color: var(--gray-900);
+        }
+        
+        h1 {
+          font-size: 1.875rem;
+          line-height: 2.25rem;
+        }
+        
+        h2 {
+          font-size: 1.5rem;
+          line-height: 2rem;
+          margin-bottom: 1rem;
+        }
+        
+        h3 {
+          font-size: 1.25rem;
+          line-height: 1.75rem;
+          margin-bottom: 0.75rem;
+        }
+        
+        .grid { 
+          display: grid; 
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+          gap: 1rem; 
+        }
+        
+        .card { 
+          border: 1px solid var(--gray-200); 
+          border-radius: 0.5rem; 
+          padding: 1rem;
+          transition: all 0.2s;
+        }
+        
+        .card:hover {
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border-color: var(--gray-300);
+        }
+        
+        pre { 
+          background: var(--gray-100); 
+          padding: 1rem; 
+          border-radius: 0.25rem; 
+          overflow: auto;
+          font-size: 0.875rem;
+        }
+        
+        .tabs { 
+          display: flex; 
+          border-bottom: 1px solid var(--gray-200); 
+          margin-bottom: 1rem; 
+        }
+        
+        .tab { 
+          padding: 0.75rem 1.25rem; 
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        
+        .tab:hover {
+          color: var(--primary-color);
+        }
+        
+        .tab.active { 
+          border-bottom: 2px solid var(--primary-color); 
+          color: var(--primary-color);
+        }
+        
+        .tab-content { 
+          display: none; 
+        }
+        
+        .tab-content.active { 
+          display: block; 
+        }
+        
+        .search-container {
+          margin-bottom: 1.5rem;
+          display: flex;
+          gap: 1rem;
+        }
+        
+        .search-input {
+          flex: 1;
+          padding: 0.75rem;
+          border: 1px solid var(--gray-300);
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+        }
+        
+        .search-input:focus {
+          outline: none;
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+        
+        .filter-container {
+          margin-bottom: 1.5rem;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        
+        .filter-tag {
+          padding: 0.25rem 0.75rem;
+          background-color: var(--gray-100);
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .filter-tag:hover {
+          background-color: var(--gray-200);
+        }
+        
+        .filter-tag.active {
+          background-color: var(--primary-light);
+          color: var(--primary-dark);
+        }
+        
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+          background-color: white;
+          border-radius: 0.5rem;
+          padding: 1.25rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          text-align: center;
+        }
+        
+        .stat-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: var(--primary-color);
+          margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+          font-size: 0.875rem;
+          color: var(--gray-500);
+        }
+        
+        .color-swatch {
+          width: 24px;
+          height: 24px;
+          border-radius: 4px;
+          display: inline-block;
+          margin-right: 8px;
+          vertical-align: middle;
+          border: 1px solid var(--gray-200);
+        }
+        
+        .hidden {
+          display: none !important;
+        }
+        
+        .pagination {
+          display: flex;
+          justify-content: center;
+          gap: 0.5rem;
+          margin-top: 1.5rem;
+        }
+        
+        .page-btn {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid var(--gray-300);
+          border-radius: 0.375rem;
+          background-color: white;
+          cursor: pointer;
+        }
+        
+        .page-btn.active {
+          background-color: var(--primary-color);
+          color: white;
+          border-color: var(--primary-color);
+        }
+        
+        .page-btn:hover:not(.active) {
+          background-color: var(--gray-100);
+        }
+        
+        .component-list {
+          margin-top: 1rem;
+        }
+        
+        .element-type-tag {
+          font-size: 0.75rem;
+          padding: 0.125rem 0.375rem;
+          border-radius: 0.25rem;
+          background-color: var(--gray-100);
+          color: var(--gray-700);
+          margin-left: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+          .header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          
+          .header-actions {
+            margin-top: 1rem;
+          }
+          
+          .grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .stats-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="header-content">
+          <h1>Extraction Report</h1>
+          <p>Generated: Invalid Date</p>
+          </div>
+          <div class="header-actions">
+            <button id="downloadBtn" class="btn btn-primary" onclick="downloadReport()">
+              Download Report
+            </button>
+            <button id="printBtn" class="btn btn-secondary" onclick="window.print()">
+              Print Report
+            </button>
+          </div>
+        </div>
+        
+        <!-- Stats Overview -->
+        <div class="section">
+          <h2>Overview</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">100</div>
+              <div class="stat-label">Figma Components</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">6</div>
+              <div class="stat-label">Web Elements</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">0</div>
+              <div class="stat-label">Design Colors</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">0</div>
+              <div class="stat-label">Typography Styles</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Main Content Tabs -->
+        <div class="section">
+          <div class="tabs">
+            <div class="tab active" onclick="showTab('figma')">Figma Data</div>
+            <div class="tab" onclick="showTab('web')">Web Data</div>
+            <div class="tab" onclick="showTab('tokens')">Design Tokens</div>
+          </div>
+          
+          <!-- Figma Data Tab -->
+          <div id="figma-content" class="tab-content active">
+            <div class="search-container">
+              <input type="text" id="figma-search" class="search-input" placeholder="Search components..." onkeyup="searchComponents('figma')">
+            </div>
+            
+            <div class="filter-container">
+              <span class="filter-tag active" data-filter="all" onclick="filterComponents('figma', 'all')">All</span>
+              <span class="filter-tag" data-filter="FRAME" onclick="filterComponents('figma', 'FRAME')">FRAME</span><span class="filter-tag" data-filter="RECTANGLE" onclick="filterComponents('figma', 'RECTANGLE')">RECTANGLE</span><span class="filter-tag" data-filter="TEXT" onclick="filterComponents('figma', 'TEXT')">TEXT</span><span class="filter-tag" data-filter="INSTANCE" onclick="filterComponents('figma', 'INSTANCE')">INSTANCE</span><span class="filter-tag" data-filter="VECTOR" onclick="filterComponents('figma', 'VECTOR')">VECTOR</span><span class="filter-tag" data-filter="ELLIPSE" onclick="filterComponents('figma', 'ELLIPSE')">ELLIPSE</span>
+            </div>
+            
+            <h3>Components (100)</h3>
+            <div class="component-list">
+              <div id="figma-components" class="grid">
+                
+                  <div class="card figma-component" data-type="FRAME" data-name="In Transit">
+                  <h4>In Transit</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13843</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="RECTANGLE" data-name="Divider">
+                  <h4>Divider</h4>
+                    <p>Type: <span class="element-type-tag">RECTANGLE</span></p>
+                  <p>ID: 502:13844</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Container">
+                  <h4>Container</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13845</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Header">
+                  <h4>Header</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13846</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Logo">
+                  <h4>Logo</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13847</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Notification Icons">
+                  <h4>Notification Icons</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13853</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Main Content">
+                  <h4>Main Content</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13866</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Title Bar">
+                  <h4>Title Bar</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13867</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Table">
+                  <h4>Table</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:13887</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="In Transit">
+                  <h4>In Transit</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14424</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="RECTANGLE" data-name="Divider">
+                  <h4>Divider</h4>
+                    <p>Type: <span class="element-type-tag">RECTANGLE</span></p>
+                  <p>ID: 564:14425</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Container">
+                  <h4>Container</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14426</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Header">
+                  <h4>Header</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14427</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Logo">
+                  <h4>Logo</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14428</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Notification Icons">
+                  <h4>Notification Icons</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14434</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Main Content">
+                  <h4>Main Content</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14447</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Title Bar">
+                  <h4>Title Bar</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14448</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="Table">
+                  <h4>Table</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 564:14468</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="FRAME" data-name="In Transit">
+                  <h4>In Transit</h4>
+                    <p>Type: <span class="element-type-tag">FRAME</span></p>
+                  <p>ID: 502:14535</p>
+                </div>
+              
+                  <div class="card figma-component" data-type="RECTANGLE" data-name="Divider">
+                  <h4>Divider</h4>
+                    <p>Type: <span class="element-type-tag">RECTANGLE</span></p>
+                  <p>ID: 502:14536</p>
+                </div>
+              
+            </div>
+              
+              <div class="pagination" id="figma-pagination">
+                <button class="page-btn active" onclick="changePage('figma', 1)">1</button><button class="page-btn " onclick="changePage('figma', 2)">2</button><button class="page-btn " onclick="changePage('figma', 3)">3</button><button class="page-btn " onclick="changePage('figma', 4)">4</button><button class="page-btn " onclick="changePage('figma', 5)">5</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Web Data Tab -->
+          <div id="web-content" class="tab-content">
+            <div class="search-container">
+              <input type="text" id="web-search" class="search-input" placeholder="Search elements..." onkeyup="searchComponents('web')">
+            </div>
+            
+            <div class="filter-container">
+              <span class="filter-tag active" data-filter="all" onclick="filterComponents('web', 'all')">All</span>
+              <span class="filter-tag" data-filter="undefined" onclick="filterComponents('web', 'undefined')">undefined</span>
+            </div>
+            
+            <h3>Elements (6)</h3>
+            <div class="component-list">
+              <div id="web-components" class="grid">
+                
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(0, 0, 0)"></span>rgb(0, 0, 0)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgb(240, 240, 242)"></span>rgb(240, 240, 242)</p>
+                        <p>Font Size: 16px</p>
+                      </div>
+                    
+                </div>
+              
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(0, 0, 0)"></span>rgb(0, 0, 0)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgb(253, 253, 255)"></span>rgb(253, 253, 255)</p>
+                        <p>Font Size: 16px</p>
+                      </div>
+                    
+                </div>
+              
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(0, 0, 0)"></span>rgb(0, 0, 0)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgba(0, 0, 0, 0)"></span>rgba(0, 0, 0, 0)</p>
+                        <p>Font Size: 32px</p>
+                      </div>
+                    
+                </div>
+              
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(0, 0, 0)"></span>rgb(0, 0, 0)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgba(0, 0, 0, 0)"></span>rgba(0, 0, 0, 0)</p>
+                        <p>Font Size: 16px</p>
+                      </div>
+                    
+                </div>
+              
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(0, 0, 0)"></span>rgb(0, 0, 0)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgba(0, 0, 0, 0)"></span>rgba(0, 0, 0, 0)</p>
+                        <p>Font Size: 16px</p>
+                      </div>
+                    
+                </div>
+              
+                  <div class="card web-component" data-type="unknown" data-name="">
+                  <h4>Element</h4>
+                    <p>Type: <span class="element-type-tag">Unknown</span></p>
+                  
+                    
+                      <div class="element-styles">
+                        <p>Color: <span class="color-swatch" style="background-color: rgb(56, 72, 143)"></span>rgb(56, 72, 143)</p>
+                        <p>Background: <span class="color-swatch" style="background-color: rgba(0, 0, 0, 0)"></span>rgba(0, 0, 0, 0)</p>
+                        <p>Font Size: 16px</p>
+                      </div>
+                    
+                </div>
+              
+            </div>
+              
+              <div class="pagination" id="web-pagination">
+                
+              </div>
+            </div>
+          </div>
+          
+          <!-- Design Tokens Tab -->
+          <div id="tokens-content" class="tab-content">
+            <div class="tabs">
+              <div class="tab active" onclick="showTokenTab('colors')">Colors</div>
+              <div class="tab" onclick="showTokenTab('typography')">Typography</div>
+              <div class="tab" onclick="showTokenTab('spacing')">Spacing</div>
+              <div class="tab" onclick="showTokenTab('borderRadius')">Border Radius</div>
+            </div>
+            
+            <div id="colors-content" class="token-tab-content active">
+              <h3>Colors (0)</h3>
+              <div class="grid">
+                No colors defined
+              </div>
+            </div>
+            
+            <div id="typography-content" class="token-tab-content" style="display: none;">
+              <h3>Typography (0)</h3>
+              <div class="grid">
+                No typography styles defined
+              </div>
+            </div>
+            
+            <div id="spacing-content" class="token-tab-content" style="display: none;">
+              <h3>Spacing (0)</h3>
+              <div class="grid">
+                No spacing tokens defined
+              </div>
+            </div>
+            
+            <div id="borderRadius-content" class="token-tab-content" style="display: none;">
+              <h3>Border Radius (0)</h3>
+              <div class="grid">
+                No border radius tokens defined
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        // Tab switching
+        function showTab(tabName) {
+          // Hide all tab contents
+          const tabContents = document.querySelectorAll('.tab-content');
+          tabContents.forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // Remove active class from all tabs
+          const tabs = document.querySelectorAll('.tabs > .tab');
+          tabs.forEach(tab => {
+            tab.classList.remove('active');
+          });
+          
+          // Show selected tab content
+          document.getElementById(tabName + '-content').classList.add('active');
+          
+          // Activate the clicked tab
+          document.querySelector('.tab[onclick="showTab(\'' + tabName + '\')"]').classList.add('active');
+        }
+        
+        // Token tab switching
+        function showTokenTab(tabName) {
+          // Hide all token tab contents
+          const tabContents = document.querySelectorAll('.token-tab-content');
+          tabContents.forEach(content => {
+            content.style.display = 'none';
+          });
+          
+          // Remove active class from all token tabs
+          const tabs = document.querySelectorAll('#tokens-content .tabs > .tab');
+          tabs.forEach(tab => {
+            tab.classList.remove('active');
+          });
+          
+          // Show selected token tab content
+          document.getElementById(tabName + '-content').style.display = 'block';
+          
+          // Activate the clicked tab
+          document.querySelector('.tab[onclick="showTokenTab(\'' + tabName + '\')"]').classList.add('active');
+        }
+        
+        // Search functionality
+        function searchComponents(type) {
+          const searchInput = document.getElementById(type + '-search').value.toLowerCase();
+          const components = document.querySelectorAll('.' + type + '-component');
+          
+          components.forEach(component => {
+            const name = component.dataset.name.toLowerCase();
+            const componentType = component.dataset.type.toLowerCase();
+            
+            if (name.includes(searchInput) || componentType.includes(searchInput)) {
+              component.classList.remove('hidden');
+            } else {
+              component.classList.add('hidden');
+            }
+          });
+        }
+        
+        // Filter functionality
+        function filterComponents(type, filter) {
+          // Update active filter
+          const filterTags = document.querySelectorAll('#' + type + '-content .filter-tag');
+          filterTags.forEach(tag => {
+            if (tag.dataset.filter === filter) {
+              tag.classList.add('active');
+            } else {
+              tag.classList.remove('active');
+            }
+          });
+          
+          // Apply filter
+          const components = document.querySelectorAll('.' + type + '-component');
+          components.forEach(component => {
+            if (filter === 'all' || component.dataset.type === filter) {
+              component.classList.remove('hidden');
+            } else {
+              component.classList.add('hidden');
+            }
+          });
+        }
+        
+        // Pagination
+        function changePage(prefix, pageNum) {
+          const itemsPerPage = 20;
+          const components = document.querySelectorAll('.' + prefix + '-component');
+          
+          // Hide all components
+          components.forEach(component => {
+            component.classList.add('hidden');
+          });
+          
+          // Show only components for the current page
+          const startIdx = (pageNum - 1) * itemsPerPage;
+          const endIdx = startIdx + itemsPerPage;
+          
+          let visibleCount = 0;
+          components.forEach((component, idx) => {
+            if (idx >= startIdx && idx < endIdx) {
+              component.classList.remove('hidden');
+              visibleCount++;
+            }
+          });
+          
+          // Update pagination buttons
+          const paginationContainer = document.getElementById(prefix + '-pagination');
+          paginationContainer.innerHTML = generatePaginationButtons(components.length, itemsPerPage, pageNum, prefix);
+        }
+        
+        // Download report
+        function downloadReport() {
+          // Create a blob from the HTML content
+          const htmlContent = document.documentElement.outerHTML;
+          const blob = new Blob([htmlContent], { type: 'text/html' });
+          
+          // Create a download link
+          const downloadLink = document.createElement('a');
+          downloadLink.href = URL.createObjectURL(blob);
+          downloadLink.download = 'comparison-report-2025-06-19T10-01-27.html';
+          
+          // Trigger the download
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+        }
+      </script>
+    </body>
+    </html>
+  

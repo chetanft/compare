@@ -3,40 +3,21 @@
  */
 
 /**
- * Attempts to load a report from localStorage if it exists
+ * No longer uses localStorage for caching reports
  * @param reportId The ID of the report to load
- * @returns The report content as HTML or null if not found
+ * @returns Always returns null as caching is disabled
  */
 export const getReportFromLocalStorage = (reportId: string): string | null => {
-  try {
-    // Check if we have a cached version of this report
-    const cachedReport = localStorage.getItem(`report_${reportId}`);
-    if (cachedReport) {
-      return cachedReport;
-    }
-    return null;
-  } catch (error) {
-    console.error('Error accessing localStorage:', error);
-    return null;
-  }
+  return null;
 };
 
 /**
- * Saves a report to localStorage for offline access
+ * No longer saves reports to localStorage
  * @param reportId The ID of the report
  * @param content The HTML content of the report
  */
 export const saveReportToLocalStorage = (reportId: string, content: string): void => {
-  try {
-    // Save the report to localStorage for offline access
-    // We trim the content if it's too large to fit in localStorage
-    const maxSize = 5 * 1024 * 1024; // 5MB (typical localStorage limit)
-    const contentToSave = content.length > maxSize ? content.substring(0, maxSize) : content;
-    
-    localStorage.setItem(`report_${reportId}`, contentToSave);
-  } catch (error) {
-    console.error('Error saving to localStorage:', error);
-  }
+  // No caching
 };
 
 /**

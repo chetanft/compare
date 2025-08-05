@@ -25,7 +25,6 @@ class EnhancedVisualComparison {
    */
   async performVisualComparison(figmaData, webData, webExtractor, figmaExtractor) {
     try {
-      console.log('🎨 Starting enhanced visual comparison...');
 
       // Step 1: Extract Figma images
       const figmaImages = await this.extractFigmaImages(figmaData, figmaExtractor);
@@ -70,7 +69,6 @@ class EnhancedVisualComparison {
       // Step 6: Generate visual summary
       const visualSummary = this.generateVisualSummary(visualComparisons);
 
-      console.log(`✅ Visual comparison complete: ${visualComparisons.length} comparisons`);
 
       return {
         summary: visualSummary,
@@ -99,7 +97,6 @@ class EnhancedVisualComparison {
    */
   async extractFigmaImages(figmaData, figmaExtractor) {
     try {
-      console.log('📐 Extracting images from Figma...');
       
       // Create images directory
       const figmaImagesDir = path.join(this.imagesDir, 'figma', figmaData.fileId);
@@ -109,7 +106,6 @@ class EnhancedVisualComparison {
       const imageNodes = this.collectImageNodes(figmaData.components);
       
       if (imageNodes.length === 0) {
-        console.log('⚠️ No image nodes found in Figma data');
         return [];
       }
 
@@ -121,7 +117,6 @@ class EnhancedVisualComparison {
           figmaImagesDir
         );
 
-        console.log(`✅ Extracted ${imageNodes.length} images from Figma`);
         
         // Map results to include proper file paths
         return imageNodes.map(node => {
@@ -150,7 +145,6 @@ class EnhancedVisualComparison {
    */
   async takeWebScreenshots(webData, webExtractor) {
     try {
-      console.log('📸 Taking web screenshots...');
       
       // Create screenshots directory
       const webScreenshotsDir = path.join(this.imagesDir, 'web', this.sanitizeUrl(webData.url));
@@ -159,7 +153,6 @@ class EnhancedVisualComparison {
       const screenshots = [];
 
       // Add extra wait time for page to fully load
-      console.log('⏳ Waiting for page to fully load...');
       await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
       
       // Wait for loading indicators to disappear (common loading patterns)
@@ -184,10 +177,8 @@ class EnhancedVisualComparison {
           return true; // No loading indicators found
         }, { timeout: 5000 }).catch(() => {
           // Timeout is OK, continue anyway
-          console.log('⏳ Loading indicator check timed out, continuing...');
         });
       } catch (error) {
-        console.log('⏳ Loading check failed, continuing anyway...');
       }
 
       // Take full page screenshot
@@ -224,7 +215,6 @@ class EnhancedVisualComparison {
         }
       }
 
-      console.log(`✅ Captured ${screenshots.length} web screenshots`);
       return screenshots;
 
     } catch (error) {
@@ -263,7 +253,6 @@ class EnhancedVisualComparison {
       });
     }
 
-    console.log(`📋 Created ${pairs.length} image pairs for comparison`);
     return pairs;
   }
 
@@ -275,7 +264,6 @@ class EnhancedVisualComparison {
 
     for (const pair of imagePairs) {
       try {
-        console.log(`🔍 Comparing: ${pair.name}`);
         
         const comparison = await this.visualDiff.compareImages(
           pair.figma.path,
@@ -395,7 +383,6 @@ class EnhancedVisualComparison {
       .png()
       .toFile(outputPath);
 
-      console.log(`✅ Enhanced side-by-side created: ${filename}`);
       return outputPath;
 
     } catch (error) {

@@ -1,0 +1,316 @@
+/* Component Styles for HTML Reports */
+
+/* Summary Cards */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.summary-card {
+  background-color: var(--theme-bg-primary, white);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 1px 3px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+  border: 1px solid var(--theme-border-primary, transparent);
+  transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--theme-shadow, rgba(0, 0, 0, 0.1));
+}
+
+.summary-card h3 {
+  margin-top: 0;
+  color: var(--color-gray-700);
+  font-size: 1.25rem;
+}
+
+.summary-value {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: var(--spacing-sm) 0;
+}
+
+/* Severity Indicators */
+.severity-counts {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-lg);
+}
+
+.severity-count {
+  text-align: center;
+  flex: 1;
+}
+
+.severity-count-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.severity-count-label {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.severity-high .severity-count-value {
+  color: var(--color-danger);
+}
+
+.severity-medium .severity-count-value {
+  color: var(--color-warning);
+}
+
+.severity-low .severity-count-value {
+  color: var(--color-success);
+}
+
+/* Severity Groups */
+.severity-group {
+  margin-bottom: var(--spacing-2xl);
+}
+
+.severity-group h3 {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: var(--radius-md);
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-xl);
+}
+
+.severity-high h3 {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+}
+
+.severity-medium h3 {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning);
+}
+
+.severity-low h3 {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+/* Comparison Items */
+.comparison-item {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-xl);
+  overflow: hidden;
+}
+
+.comparison-header {
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.comparison-meta {
+  display: flex;
+  gap: var(--spacing-xl);
+  font-size: 0.875rem;
+}
+
+.match-score, .match-percentage {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-gray-700);
+}
+
+.comparison-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  background-color: var(--color-gray-50);
+}
+
+/* Component and Element Info */
+.component-info, .element-info {
+  background-color: white;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-gray-200);
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.875rem;
+}
+
+.info-row span {
+  font-weight: 600;
+  min-width: 80px;
+  color: var(--color-gray-600);
+}
+
+/* Tables */
+.property-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.property-table th {
+  background-color: var(--color-gray-100);
+  text-align: left;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-bottom: 2px solid var(--color-gray-300);
+  color: var(--color-gray-700);
+}
+
+.property-table td {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  vertical-align: top;
+}
+
+.property-table tr:last-child td {
+  border-bottom: none;
+}
+
+.property-table tr.match {
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.property-table tr.mismatch {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.status-cell {
+  font-weight: 600;
+}
+
+.status-cell.match {
+  color: var(--color-success);
+}
+
+.status-cell.mismatch {
+  color: var(--color-danger);
+}
+
+/* Sections */
+.section {
+  background-color: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-2xl);
+  overflow: hidden;
+}
+
+.section-header {
+  padding: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-gray-200);
+  background-color: var(--color-gray-50);
+}
+
+.section-header h3 {
+  margin: 0;
+  color: var(--color-gray-800);
+  font-size: 1.25rem;
+}
+
+.section-content {
+  padding: var(--spacing-xl);
+}
+
+/* Color Components */
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.color-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-gray-300);
+}
+
+.color-value {
+  font-family: var(--font-family-mono);
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+/* Typography Components */
+.typography-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.typography-item {
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background-color: var(--color-gray-50);
+}
+
+.typography-item h4 {
+  margin: 0 0 var(--spacing-sm) 0;
+  color: var(--color-gray-700);
+  font-size: 1rem;
+}
+
+.typography-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.typography-tag {
+  background-color: var(--color-primary);
+  color: white;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+/* Element Breakdown */
+.element-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.element-type {
+  text-align: center;
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+}
+
+.element-count {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.element-label {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  text-transform: uppercase;
+  margin-top: var(--spacing-xs);
+} 

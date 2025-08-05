@@ -1,11 +1,40 @@
 {
   "chat.mcp.discovery.enabled": true,
   "mcp": {
+    "version": "1.0.0",
     "servers": {
-      "Figma Dev Mode MCP": {
-        "type": "http",
-        "url": "http://127.0.0.1:3845/sse"
+      "figma-dev-mode": {
+        "url": "http://127.0.0.1:3845/sse",
+        "enabled": true,
+        "timeout": 30000,
+        "retryAttempts": 3,
+        "retryDelay": 2000,
+        "endpoints": {
+          "designTokens": "/api/get_variable_defs",
+          "components": "/api/get_code",
+          "images": "/api/get_image"
+        }
       }
+    },
+    "settings": {
+      "debug": false,
+      "logLevel": "info",
+      "connectionTimeout": 30000,
+      "operationTimeout": 60000
+    },
+    "figma": {
+      "useDevMode": true,
+      "fallbackToAPI": true,
+      "accessToken": "",
+      "fileCache": true,
+      "cacheTTL": 3600000
+    },
+    "extraction": {
+      "defaultDepth": 5,
+      "includeStyles": true,
+      "includeComponents": true,
+      "includeTokens": true,
+      "maxRetries": 3
     }
   },
   "chat.agent.enabled": true

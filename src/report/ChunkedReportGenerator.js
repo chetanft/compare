@@ -36,7 +36,6 @@ export class ChunkedReportGenerator {
 
       // Process data in chunks
       const chunks = this.chunkifyData(data);
-      console.log(`\n📊 Processing ${chunks.length} chunks...`);
 
       let processedChunks = 0;
       const processedData = {
@@ -51,7 +50,6 @@ export class ChunkedReportGenerator {
 
       // Process each chunk
       for (const [index, chunk] of chunks.entries()) {
-        console.log(`\n🔄 Processing chunk ${index + 1}/${chunks.length}`);
         
         // Process chunk data
         const processedChunk = await this.processChunk(chunk, {

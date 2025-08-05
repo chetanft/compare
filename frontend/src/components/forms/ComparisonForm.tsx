@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import apiService, { compareUrls } from '../../services/api'
-import { getApiBaseUrl, isProduction } from '../../utils/environment'
+import { getApiBaseUrl, isProduction, getEnvVar } from '../../utils/environment'
 import ProgressIndicator, { ProgressStage } from '../ui/ProgressIndicator'
 import {
   DocumentTextIcon,
@@ -17,9 +17,10 @@ import {
   EyeSlashIcon,
   InformationCircleIcon,
   LockClosedIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
-import { ComparisonRequest, ComparisonResult } from '../../types'
+import { ComparisonRequest, ComparisonResult, AuthenticationConfig } from '../../types'
 
 // Add error type definition
 interface ComparisonError {
@@ -27,31 +28,11 @@ interface ComparisonError {
   code?: string;
 }
 
-// Define form input placeholders
-const FORM_PLACEHOLDERS = {
-  figmaUrl: 'https://www.figma.com/design/...',
-  webUrl: 'https://example.com',
-  cssSelector: '.main-content, #header, [data-testid="component"]',
-  loginUrl: 'https://example.com/login',
-  username: 'your-username',
-  password: 'your-password',
-  successIndicator: '.dashboard, .profile-menu, .user-menu'
-}
+// No hardcoded placeholders
 
-// Add this interface definition at the top of the file
-interface AuthenticationConfig {
-  type?: 'credentials' | 'cookies' | 'headers'
-  loginUrl?: string
-  username?: string
-  password?: string
-  waitTime?: number
-  successIndicator?: string
-  figmaToken?: string
-  webAuth?: {
-    username?: string
-    password?: string
-  }
-}
+// Using the updated AuthenticationConfig interface from types
+
+// Using the updated ComparisonResult interface from types
 
 interface ComparisonFormProps {
   onSuccess?: (result: ComparisonResult) => void
@@ -65,14 +46,16 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const [currentStage, setCurrentStage] = useState<string>('')
   const [reportUrls, setReportUrls] = useState<{ directUrl?: string; downloadUrl?: string; hasError?: boolean }>({})
   const [reportOpenAttempts, setReportOpenAttempts] = useState<number>(0)
+  const [figmaUrlError, setFigmaUrlError] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ComparisonRequest>({
+  const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }>({
     defaultValues: {
       figmaUrl: '',
       webUrl: '',
       webSelector: '',
       includeVisual: true,
+      extractionMode: 'both',
       authentication: {
         type: 'credentials',
         loginUrl: '',
@@ -85,12 +68,35 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   })
 
   const comparisonMutation = useMutation({
-    mutationFn: async (data: ComparisonRequest) => {
+    mutationFn: async (data: ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
       try {
-        // Convert design URLs to file URLs for the Figma API
+        // Parse and validate Figma URL
         let figmaUrl = data.figmaUrl;
-        if (figmaUrl.includes('/design/')) {
-          figmaUrl = figmaUrl.replace('/design/', '/file/');
+        let nodeId: string | null = null;
+        
+        try {
+          // Validate Figma URL format
+          if (!figmaUrl.match(/^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//)) {
+            throw new Error('Invalid Figma URL format. Expected format: https://www.figma.com/file/... or https://www.figma.com/design/...');
+          }
+          
+          // Extract nodeId from URL if present
+          const nodeIdMatch = figmaUrl.match(/[?&]node-id=([^&]+)/);
+          if (nodeIdMatch) {
+            nodeId = nodeIdMatch[1].replace('-', ':');
+          }
+          
+          // Ensure URL is in file format for API compatibility
+          if (figmaUrl.includes('/design/')) {
+            figmaUrl = figmaUrl.replace('/design/', '/file/');
+          } else if (figmaUrl.includes('/proto/')) {
+            figmaUrl = figmaUrl.replace('/proto/', '/file/');
+          }
+          
+          setFigmaUrlError(null);
+        } catch (urlError: any) {
+          setFigmaUrlError(urlError.message);
+          throw urlError;
         }
 
         // Create the request payload with the expected format
@@ -98,7 +104,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           figmaUrl: figmaUrl,
           webUrl: data.webUrl,
           includeVisual: data.includeVisual,
-          nodeId: null, // Let the server extract the nodeId from the URL
+          nodeId: nodeId, // Use extracted nodeId
+          extractionMode: data.extractionMode, // Add extraction mode
           authentication: authType === 'none' ? null : {
             type: authType,
             loginUrl: data.authentication?.loginUrl,
@@ -120,11 +127,11 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         const result = await compareUrls(payload);
         
         // Handle Netlify function response format
-        const comparisonResult = result.data || result;
+        const comparisonResult = (result.data || result) as ComparisonResult;
         
         // If the result contains a comparisonId, notify the parent component
-        if ((comparisonResult.comparisonId || result.comparisonId) && onComparisonStart) {
-          onComparisonStart(comparisonResult.comparisonId || result.comparisonId);
+        if ((comparisonResult.comparisonId) && onComparisonStart) {
+          onComparisonStart(comparisonResult.comparisonId);
         }
         
         return comparisonResult;
@@ -134,20 +141,24 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       }
     },
     onSuccess: (result) => {
+      console.log('🔥 COMPARISON FORM onSuccess CALLED!');
       console.log('✅ Comparison mutation successful:', result);
       queryClient.invalidateQueries({ queryKey: ['reports'] });
       
       // Store report URLs for UI access
-      if (result.data?.reports?.directUrl) {
+      const resultData = result as any;
+      const reports = resultData.reports;
+      
+      if (reports?.directUrl) {
         setReportUrls({
-          directUrl: result.data.reports.directUrl,
-          downloadUrl: result.data.reports.downloadUrl,
-          hasError: result.data.reports.hasError || false
+          directUrl: reports.directUrl,
+          downloadUrl: reports.downloadUrl,
+          hasError: reports.hasError || false
         });
         
         // Open the report in a new tab
         const apiBaseUrl = getApiBaseUrl();
-        const fullDirectUrl = `${apiBaseUrl}${result.data.reports.directUrl}`;
+        const fullDirectUrl = `${apiBaseUrl}${reports.directUrl}`;
         
         // Reset report open attempts counter
         setReportOpenAttempts(0);
@@ -218,7 +229,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10000)
   });
 
-  const onSubmit = (data: ComparisonRequest) => {
+  const onSubmit = (data: ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
     comparisonMutation.mutate(data);
   }
 
@@ -310,42 +321,122 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
               </div>
             </div>
 
-            <Controller
-              name="figmaUrl"
-              control={control}
-              rules={{
-                required: 'Figma URL is required',
-                pattern: {
-                  value: /^https:\/\/www\.figma\.com\/(file|design)\/[a-zA-Z0-9-]+\//,
-                  message: 'Please enter a valid Figma URL (e.g., https://www.figma.com/file/abc123/MyDesign or https://www.figma.com/design/abc123/MyDesign)'
-                }
-              }}
-              render={({ field }) => (
-                <div>
+            {/* Figma URL Input */}
+            <div className="mb-4">
+              <label htmlFor="figmaUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                Figma URL
+              </label>
+              <Controller
+                name="figmaUrl"
+                control={control}
+                rules={{ 
+                  required: 'Figma URL is required',
+                  pattern: {
+                    value: /^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//,
+                    message: 'Please enter a valid Figma URL'
+                  }
+                }}
+                render={({ field }) => (
                   <input
                     {...field}
                     type="url"
-                    placeholder={FORM_PLACEHOLDERS.figmaUrl}
-                    className={`input-field ${errors.figmaUrl ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                    id="figmaUrl"
+                    placeholder="https://www.figma.com/file/..."
+                    className={`input-field ${errors.figmaUrl ? 'border-red-300' : ''}`}
+                    disabled={comparisonMutation.isPending}
                   />
-                  {errors.figmaUrl && (
-                    <p className="mt-1 text-sm text-red-600">{errors.figmaUrl.message}</p>
-                  )}
-                </div>
+                )}
+              />
+              {errors.figmaUrl && (
+                <p className="mt-1 text-xs text-red-600">{errors.figmaUrl.message}</p>
               )}
-            />
+              {figmaUrlError && (
+                <p className="mt-1 text-xs text-red-600">{figmaUrlError}</p>
+              )}
+            </div>
 
-            {figmaUrl && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mt-3 p-3 bg-purple-50 rounded-lg"
-              >
-                <p className="text-sm text-purple-700">
-                  ✓ Valid Figma URL detected
-                </p>
-              </motion.div>
-            )}
+            {/* Figma Extraction Mode */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <AdjustmentsHorizontalIcon className="w-5 h-5 mr-1" />
+                Extraction Mode
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Controller
+                  name="extractionMode"
+                  control={control}
+                  render={({ field }) => (
+                    <>
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'frame-only' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        onClick={() => field.onChange('frame-only')}
+                      >
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id="frame-only"
+                            checked={field.value === 'frame-only'}
+                            onChange={() => field.onChange('frame-only')}
+                            className="h-4 w-4 text-purple-600 border-gray-300"
+                            disabled={comparisonMutation.isPending}
+                          />
+                          <label htmlFor="frame-only" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
+                            Frame Only
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Extract only elements from the selected frame
+                        </p>
+                      </div>
+                      
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'global-styles' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        onClick={() => field.onChange('global-styles')}
+                      >
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id="global-styles"
+                            checked={field.value === 'global-styles'}
+                            onChange={() => field.onChange('global-styles')}
+                            className="h-4 w-4 text-purple-600 border-gray-300"
+                            disabled={comparisonMutation.isPending}
+                          />
+                          <label htmlFor="global-styles" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
+                            Global Styles
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Extract all global styles from the file
+                        </p>
+                      </div>
+                      
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'both' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        onClick={() => field.onChange('both')}
+                      >
+                        <div className="flex items-center">
+                          <input
+                            type="radio"
+                            id="both"
+                            checked={field.value === 'both'}
+                            onChange={() => field.onChange('both')}
+                            className="h-4 w-4 text-purple-600 border-gray-300"
+                            disabled={comparisonMutation.isPending}
+                          />
+                          <label htmlFor="both" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
+                            Both
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Extract both frame elements and global styles
+                        </p>
+                      </div>
+                    </>
+                  )}
+                />
+              </div>
+            </div>
           </motion.div>
 
           {/* Web Section */}
@@ -380,7 +471,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <input
                     {...field}
                     type="url"
-                    placeholder={FORM_PLACEHOLDERS.webUrl}
+                    placeholder=""
                     className={`input-field ${errors.webUrl ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
                   {errors.webUrl && (
@@ -401,7 +492,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <input
                     {...field}
                     type="text"
-                    placeholder={FORM_PLACEHOLDERS.cssSelector}
+                    placeholder=""
                     className="input-field"
                   />
                 )}
@@ -512,7 +603,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                           <input
                             {...field}
                             type="url"
-                            placeholder={FORM_PLACEHOLDERS.loginUrl}
+                            placeholder=""
                             className="input-field"
                           />
                         )}
@@ -529,7 +620,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                           <input
                             {...field}
                             type="text"
-                            placeholder={FORM_PLACEHOLDERS.successIndicator}
+                            placeholder=""
                             className="input-field"
                           />
                         )}
@@ -546,7 +637,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                           <input
                             {...field}
                             type="text"
-                            placeholder={FORM_PLACEHOLDERS.username}
+                            placeholder=""
                             className="input-field"
                           />
                         )}
@@ -563,7 +654,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                           <input
                             {...field}
                             type="password"
-                            placeholder={FORM_PLACEHOLDERS.password}
+                            placeholder=""
                             className="input-field"
                           />
                         )}

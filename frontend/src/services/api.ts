@@ -1,17 +1,16 @@
-import { getApiBaseUrl } from '../utils/environment'
-import axios from 'axios'
-import { FigmaData, WebData } from '../../../src/types/extractor'
-import { ComparisonResult } from '../../../src/services/comparison/ComparisonEngine'
-import { isProduction, isNetlify } from '../utils/environment'
+import { getApiBaseUrl } from '../utils/environment';
+import axios from 'axios';
+import { AuthenticationConfig, ComparisonResult } from '../types';
+import { FigmaData, WebData } from '../../../src/types/extractor';
 
-// API Configuration and Service Layer
+// API Configuration
 const API_CONFIG = {
   baseURL: getApiBaseUrl(),
   timeout: 120000,
-  retries: 3,
-  netlifyFunctionsPath: '/.netlify/functions/figma-only'
-}
+  retries: 3
+};
 
+// API response interface
 export interface ApiResponse<T = any> {
   success: boolean
   data?: T
@@ -24,66 +23,6 @@ export interface ApiError {
   status?: number
   code?: string
   details?: string
-}
-
-// Default mock responses for production when endpoints are missing
-const PRODUCTION_FALLBACKS = {
-  '/api/health': {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: 'netlify-static',
-    services: {
-      figmaExtractor: true,
-      webExtractor: false,
-      puppeteer: false
-    }
-  },
-  '/api/settings/current': {
-    success: true,
-    data: {
-      figma: {
-        accessToken: "",
-        enabled: false
-      },
-      mcp: {
-        official: {
-          enabled: false,
-          serverUrl: ""
-        },
-        thirdParty: {
-          enabled: false,
-          environment: "netlify"
-        }
-      },
-      puppeteer: {
-        headless: "new",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"]
-      },
-      thresholds: {
-        colorDifference: 10,
-        sizeDifference: 5,
-        spacingDifference: 3,
-        fontSizeDifference: 2
-      }
-    }
-  },
-  '/api/settings/save': {
-    success: true,
-    message: "Settings saved (static response in production)",
-    data: {}
-  },
-  '/api/settings/test-connection': {
-    success: true,
-    message: "Connection test successful (static response in production)",
-    data: {
-      connected: true,
-      details: "This is a simulated response in the Netlify environment"
-    }
-  },
-  '/api/reports': {
-    success: true,
-    data: []
-  }
 }
 
 class ApiService {
@@ -103,50 +42,18 @@ class ApiService {
    * @returns The complete URL to use
    */
   private getApiUrl(url: string): string {
-    // In Netlify environment, we need to use the functions path
-    if (isNetlify) {
-      // Remove leading slash if present
-      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
-      
-      // If the URL already includes the functions path, don't add it again
-      if (cleanUrl.startsWith('.netlify/functions/')) {
-        return `${this.baseURL}/${cleanUrl}`;
-      }
-      
-      // For API endpoints, use the figma-only function
-      if (cleanUrl.startsWith('api/')) {
-        return `${this.baseURL}${API_CONFIG.netlifyFunctionsPath}/${cleanUrl}`;
-      }
-      
-      // For static files, use the static function
-      if (cleanUrl.startsWith('reports/') || 
-          cleanUrl.startsWith('images/') || 
-          cleanUrl.startsWith('screenshots/')) {
-        return `${this.baseURL}/.netlify/functions/static/${cleanUrl}`;
-      }
-      
-      // Default to the figma-only function
-      return `${this.baseURL}${API_CONFIG.netlifyFunctionsPath}/${cleanUrl}`;
+    // Prevent duplication if the URL already contains the base URL
+    if (url.startsWith(this.baseURL)) {
+      return url;
     }
     
-    // In local development, use the URL as is
+    // Always use local server - no Netlify Functions
     return `${this.baseURL}${url}`;
   }
 
   private async fetchWithRetry(url: string, options: RequestInit = {}, retryCount = 0): Promise<Response> {
     // Get the correct API URL
     const apiUrl = this.getApiUrl(url);
-    
-    // In production, check for fallbacks first
-    if (isProduction && PRODUCTION_FALLBACKS[url]) {
-      console.log(`Using fallback response for ${url} in production environment`);
-      // Create a mock response
-      const mockResponse = new Response(JSON.stringify(PRODUCTION_FALLBACKS[url]), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return mockResponse;
-    }
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.timeout)
@@ -163,23 +70,6 @@ class ApiService {
       })
 
       clearTimeout(timeoutId)
-      
-      // In production, if we get a 404, use fallbacks
-      if (isProduction && response.status === 404) {
-        // Check if we have a fallback for a similar endpoint
-        const fallbackKey = Object.keys(PRODUCTION_FALLBACKS).find(key => 
-          url.startsWith(key) || key.startsWith(url)
-        );
-        
-        if (fallbackKey) {
-          console.log(`Using fallback response for ${url} (matched ${fallbackKey}) in production environment`);
-          return new Response(JSON.stringify(PRODUCTION_FALLBACKS[fallbackKey]), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      }
-      
       return response
     } catch (error) {
       clearTimeout(timeoutId)
@@ -188,21 +78,6 @@ class ApiService {
         console.warn(`API request failed, retrying... (${retryCount + 1}/${this.retries})`)
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
         return this.fetchWithRetry(url, options, retryCount + 1)
-      }
-      
-      // In production, use fallbacks for failed requests
-      if (isProduction) {
-        const fallbackKey = Object.keys(PRODUCTION_FALLBACKS).find(key => 
-          url.startsWith(key) || key.startsWith(url)
-        );
-        
-        if (fallbackKey) {
-          console.log(`Using fallback response for ${url} after error in production environment`);
-          return new Response(JSON.stringify(PRODUCTION_FALLBACKS[fallbackKey]), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
       }
       
       throw error
@@ -245,36 +120,19 @@ class ApiService {
   }
 
   async post<T>(endpoint: string, data?: any): Promise<T> {
-    // In production, check for fallbacks first for POST requests
-    if (isProduction && PRODUCTION_FALLBACKS[endpoint]) {
-      console.log(`Using fallback response for POST ${endpoint} in production environment`);
-      // For settings/save, merge the submitted data with the response
-      if (endpoint === '/api/settings/save' && data) {
-        const fallbackResponse = { 
-          ...PRODUCTION_FALLBACKS[endpoint],
-          data: data // Include the submitted data in the response
-        };
-        return fallbackResponse as T;
-      }
-      // For test-connection, customize based on the type
-      if (endpoint === '/api/settings/test-connection' && data) {
-        const fallbackResponse = { 
-          ...PRODUCTION_FALLBACKS[endpoint],
-          data: {
-            ...PRODUCTION_FALLBACKS[endpoint].data,
-            type: data.type || 'unknown'
-          }
-        };
-        return fallbackResponse as T;
-      }
-      return PRODUCTION_FALLBACKS[endpoint] as T;
-    }
-
-    const response = await this.fetchWithRetry(endpoint, {
+      // No cache busting
+  const dataWithCacheBuster = data || {};
+    
+    const options: RequestInit = {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    })
-    return this.handleResponse<T>(response)
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(dataWithCacheBuster)
+    };
+    
+    const response = await this.fetchWithRetry(endpoint, options);
+    return this.handleResponse<T>(response);
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
@@ -290,118 +148,107 @@ class ApiService {
     return this.handleResponse<T>(response)
   }
 
-  // Health check method
   async healthCheck(): Promise<any> {
     return this.get('/api/health')
   }
 
-  // Get all reports
   async getReports(): Promise<any> {
     return this.get('/api/reports')
   }
 
-  // Get current settings
   async getCurrentSettings(): Promise<any> {
     return this.get('/api/settings/current')
   }
 
-  // Save settings
   async saveSettings(settings: any): Promise<any> {
     return this.post('/api/settings/save', settings)
   }
 
-  // Test connection
   async testConnection(data: any): Promise<any> {
     return this.post('/api/settings/test-connection', data)
   }
 
-  // Get Figma data for a comparison
   async getFigmaData(comparisonId: string): Promise<any> {
-    return this.get(`/api/figma/data/${comparisonId}`)
+    return this.get(`/api/figma-data/${comparisonId}`)
   }
 
-  // Get web data for a comparison
   async getWebData(comparisonId: string): Promise<any> {
-    return this.get(`/api/web/data/${comparisonId}`)
+    return this.get(`/api/web-data/${comparisonId}`)
   }
 
-  // Get API config
   getConfig() {
     return {
       baseURL: this.baseURL,
       timeout: this.timeout,
-      retries: this.retries,
-      isNetlify: isNetlify,
-      isProduction: isProduction
+      retries: this.retries
     }
   }
 
-  // Use Axios for larger requests
-  async postAxios(url: string, data: any) {
+  // Use axios for specific cases where fetch doesn't work well
+  async postAxios<T = any>(url: string, data: any): Promise<T> {
     try {
       const apiUrl = this.getApiUrl(url);
+      console.log(`🌐 Axios Request: ${apiUrl}`);
+      
       const response = await axios.post(apiUrl, data, {
-        timeout: this.timeout,
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        timeout: this.timeout
       });
+      
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw {
+        const apiError: ApiError = {
           message: error.message,
           status: error.response?.status,
-          data: error.response?.data
+          code: error.code,
+          details: error.response?.data?.error || error.response?.data?.message
         };
+        throw apiError;
       }
       throw error;
     }
   }
 
-  // Use Axios for GET requests
   async getAxios(url: string) {
     try {
       const apiUrl = this.getApiUrl(url);
+      console.log(`🌐 Axios Request: ${apiUrl}`);
+      
       const response = await axios.get(apiUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
         timeout: this.timeout
       });
+      
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        throw {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data
-        };
+        throw new Error(error.message);
       }
       throw error;
     }
   }
 
-  // Create event source for server-sent events
   createEventSource(url: string) {
-    // In Netlify environment, SSE is not supported
-    if (isNetlify) {
-      console.warn('Server-sent events are not supported in Netlify environment');
-      return null;
-    }
-    
     const apiUrl = this.getApiUrl(url);
     return new EventSource(apiUrl);
   }
 }
 
-// Create a singleton instance
 const apiService = new ApiService()
+
 export default apiService
 
-// Export comparison request interface
 export interface ComparisonRequest {
   figmaUrl: string
   webUrl: string
   includeVisual?: boolean
   nodeId?: string | null
+  extractionMode?: 'frame-only' | 'global-styles' | 'both'
   authentication?: {
     type?: 'credentials' | 'cookies' | 'headers'
     figmaToken?: string
@@ -425,13 +272,13 @@ export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => 
     // Use the appropriate API endpoint based on environment
     const endpoint = '/api/figma/extract';
     
-    const response = await apiService.post(endpoint, { figmaUrl });
+    const response = await apiService.post<ApiResponse<FigmaData>>(endpoint, { figmaUrl });
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to extract Figma data');
     }
     
-    return response.data;
+    return response.data as FigmaData;
   } catch (error) {
     console.error('Error extracting Figma data:', error);
     
@@ -446,33 +293,20 @@ export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => 
   }
 };
 
-// Extract web data
+// Extract Web data
 export const extractWebData = async (url: string): Promise<WebData> => {
   try {
-    console.log('Extracting web data from URL:', url);
+    console.log('Extracting Web data from URL:', url);
     
-    // In Netlify environment, web extraction is limited
-    if (isNetlify) {
-      return {
-        url,
-        components: [],
-        metadata: {
-          extractedAt: new Date().toISOString(),
-          extractionMethod: 'Netlify Static',
-          note: 'Web extraction is not available in Netlify environment.'
-        }
-      };
-    }
-    
-    const response = await apiService.post('/api/web/extract', { url });
+    const response = await apiService.post<ApiResponse<WebData>>('/api/web/extract', { url });
     
     if (!response.success) {
-      throw new Error(response.error || 'Failed to extract web data');
+      throw new Error(response.error || 'Failed to extract Web data');
     }
     
-    return response.data;
+    return response.data as WebData;
   } catch (error) {
-    console.error('Error extracting web data:', error);
+    console.error('Error extracting Web data:', error);
     throw error;
   }
 };
@@ -482,17 +316,19 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
   try {
     console.log('Comparing URLs:', request);
     
-    // Use the appropriate API endpoint
-    const endpoint = '/api/compare';
+    // Ensure extractionMode is set with a default value if not provided
+    const requestWithDefaults = {
+      ...request,
+      extractionMode: request.extractionMode || 'both'
+    };
     
-    // For large requests, use Axios instead of fetch
-    const response = await apiService.postAxios(endpoint, request);
+    const response = await apiService.postAxios<ApiResponse<ComparisonResult>>('/api/compare', requestWithDefaults);
     
     if (!response.success) {
       throw new Error(response.error || 'Comparison failed');
     }
     
-    return response.data || response;
+    return response.data as ComparisonResult;
   } catch (error) {
     console.error('Error comparing URLs:', error);
     throw error;
@@ -502,29 +338,168 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
 // Get extractor status
 export const getExtractorStatus = async (type: 'figma' | 'web') => {
   try {
-    const response = await apiService.get('/api/health');
+    const response = await apiService.get<any>(`/api/status/${type}`);
     
-    if (type === 'figma') {
-      return {
-        available: response.services?.figmaExtractor === 'initialized' || 
-                  response.services?.figmaExtractor === 'available',
-        status: response.services?.figmaExtractor || 'unavailable'
-      };
-    } else {
-      return {
-        available: !isNetlify && (
-          response.services?.webExtractor === 'initialized' || 
-          response.services?.webExtractor === 'available'
-        ),
-        status: isNetlify ? 'unavailable in Netlify' : (response.services?.webExtractor || 'unavailable')
-      };
-    }
+    return {
+      available: response.available || false,
+      status: response.status || 'unknown',
+      message: response.message || 'Status unknown',
+      timestamp: response.timestamp || new Date().toISOString()
+    };
   } catch (error) {
     console.error(`Error getting ${type} extractor status:`, error);
+    
     return {
       available: false,
       status: 'error',
-      error: (error as Error).message
+      message: `Could not connect to ${type} extractor service`,
+      timestamp: new Date().toISOString()
     };
   }
+};
+
+// Define types for the extraction responses
+export interface FigmaOnlyResponse {
+  success: boolean;
+  data: {
+    components: any[];
+    colors: any[];
+    typography: any[];
+    styles: any;
+    tokens: {
+      colors: any[];
+      typography: any[];
+      spacing: any[];
+      borderRadius: any[];
+    };
+    metadata: {
+      fileName: string;
+      extractedAt: string;
+      extractionMethod: string;
+      componentCount: number;
+      colorCount: number;
+      typographyCount: number;
+      version: string;
+    };
+    reportPath?: string; // Added reportPath
+  };
+  error?: string;
+}
+
+export interface WebOnlyResponse {
+  success: boolean;
+  data: {
+    elements: any[];
+    colorPalette: string[];
+    typography: {
+      fontFamilies: string[];
+      fontSizes: string[];
+      fontWeights: string[];
+    };
+    metadata: {
+      url: string;
+      timestamp: string;
+      elementsExtracted: number;
+    };
+    screenshot?: string;
+    reportPath?: string;
+  };
+  error?: string;
+}
+
+export interface FigmaExtractionOptions {
+  figmaUrl: string;
+  extractionMode?: 'frame-only' | 'global-styles' | 'both';
+}
+
+export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise<FigmaOnlyResponse['data']> => {
+  try {
+    const apiService = new ApiService();
+    
+    // Add a timestamp to prevent caching
+    const timestamp = new Date().getTime();
+    const url = `${options.figmaUrl}${options.figmaUrl.includes('?') ? '&' : '?'}_t=${timestamp}`;
+    
+    const response = await apiService.post<any>('/api/figma-only/extract', {
+      figmaUrl: url,
+      extractionMode: options.extractionMode || 'both'
+    });
+    
+    console.log('Raw API response:', response);
+    
+    // Check if the response is in the expected format (with success field)
+    if (response && typeof response === 'object') {
+      if ('success' in response) {
+        // Old format with success field
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to extract Figma data');
+        }
+        console.log('Returning response.data:', response.data);
+        return response.data;
+      } else {
+        // New format from minimal-server (direct response without success wrapper)
+        // Transform the response to match the expected format
+        return {
+          components: response.components || [],
+          colors: response.colors || [],
+          typography: response.typography || [],
+          styles: response.styles || {},
+          tokens: {
+            colors: response.colors || [],
+            typography: response.typography || [],
+            spacing: [],
+            borderRadius: []
+          },
+          metadata: response.metadata || {
+            fileName: 'Unknown',
+            extractedAt: new Date().toISOString(),
+            extractionMethod: 'figma-api',
+            componentCount: 0,
+            colorCount: 0,
+            typographyCount: 0,
+            version: '1.0.0'
+          }
+        };
+      }
+    }
+    
+    throw new Error('Invalid response format from server');
+  } catch (error) {
+    console.error('Error extracting Figma data:', error);
+    throw error;
+  }
+}
+
+// Extract Web data only
+export const extractWebOnly = async (
+  webUrl: string, 
+  webSelector?: string,
+  authentication?: AuthenticationConfig
+): Promise<WebOnlyResponse['data']> => {
+  try {
+    console.log('Extracting Web-only data from URL:', webUrl);
+    
+    // Use the dedicated endpoint for Web-only extraction
+    const endpoint = '/api/web-only/extract';
+    
+    const response = await apiService.post<WebOnlyResponse>(endpoint, { 
+      webUrl,
+      webSelector,
+      authentication
+    });
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to extract web data');
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error extracting Web-only data:', error);
+    throw error;
+  }
+}; 
+
+// Export convenience functions that use the singleton
+export const testConnection = async (data: { figmaPersonalAccessToken: string }) => {
+  return apiService.testConnection(data);
 }; 

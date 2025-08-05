@@ -1,0 +1,186 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci
+        
+    - name: Run linting
+      run: |
+        cd frontend && npm run lint --if-present
+        
+    - name: Run tests
+      run: |
+        node tests/run-tests.js
+        
+    - name: Check for console.log statements
+      run: |
+        if grep -r "console\.log" src/; then
+          echo "❌ Console.log statements found in production code!"
+          exit 1
+        else
+          echo "✅ No console.log statements found"
+        fi
+
+  build:
+    name: Build Application  
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci
+        
+    - name: Build frontend
+      run: |
+        cd frontend && npm run build
+        
+    - name: Check bundle size
+      run: |
+        cd frontend/dist/assets
+        MAIN_JS=$(ls index-*.js | head -1)
+        SIZE=$(stat -c%s "$MAIN_JS")
+        SIZE_KB=$((SIZE / 1024))
+        echo "Main bundle size: ${SIZE_KB}KB"
+        
+        if [ $SIZE_KB -gt 500 ]; then
+          echo "❌ Bundle size too large: ${SIZE_KB}KB (limit: 500KB)"
+          exit 1
+        else
+          echo "✅ Bundle size acceptable: ${SIZE_KB}KB"
+        fi
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          frontend/dist/
+          package.json
+          
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run security audit
+      run: |
+        npm audit --audit-level moderate
+        cd frontend && npm audit --audit-level moderate
+        
+    - name: Check for secrets
+      run: |
+        # Check for potential secrets
+        if grep -r "figd_" . --exclude-dir=node_modules --exclude-dir=.git; then
+          echo "❌ Potential Figma tokens found!"
+          exit 1
+        fi
+        
+        if grep -r "sk-" . --exclude-dir=node_modules --exclude-dir=.git; then
+          echo "❌ Potential API keys found!"
+          exit 1
+        fi
+        
+        echo "✅ No secrets detected"
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci
+        
+    - name: Build for staging
+      run: |
+        cd frontend && npm run build
+        
+    - name: Deploy to staging
+      run: |
+        echo "🚀 Deploying to staging environment"
+        # Add your staging deployment commands here
+        
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [test, build, security]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        
+    - name: Install dependencies
+      run: |
+        npm ci
+        cd frontend && npm ci
+        
+    - name: Clean production build
+      run: |
+        # Run console.log cleanup
+        node scripts/cleanup-console-logs.js
+        
+    - name: Build for production
+      run: |
+        cd frontend && npm run build
+        
+    - name: Deploy to production
+      run: |
+        echo "🚀 Deploying to production environment"
+        # Add your production deployment commands here 

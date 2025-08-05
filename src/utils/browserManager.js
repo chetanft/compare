@@ -6,7 +6,6 @@ const execAsync = promisify(exec);
 
 export class BrowserManager {
   static async cleanupOrphanedProcesses() {
-    console.log('🧹 Cleaning up orphaned browser processes...');
     
     try {
       // More aggressive cleanup - kill all Chrome processes that might be stuck
@@ -31,10 +30,8 @@ export class BrowserManager {
       // Wait longer for processes to terminate
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      console.log('✅ Orphaned processes cleaned up');
       return true;
     } catch (error) {
-      console.log('⚠️ Some processes may still be running:', error.message);
       return false;
     }
   }
@@ -45,7 +42,7 @@ export class BrowserManager {
     
     // macOS-specific browser configuration to fix socket hang up issues
     const defaultOptions = {
-      headless: true,
+      headless: 'new', // Use new headless mode to avoid deprecation warnings
       executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', // Use system Chrome
       args: [
         '--no-sandbox',
@@ -54,7 +51,6 @@ export class BrowserManager {
         '--disable-gpu',
         '--disable-web-security',
         '--disable-features=VizDisplayCompositor',
-        '--use-mock-keychain',
         '--no-first-run',
         '--disable-background-timer-throttling',
         '--disable-backgrounding-occluded-windows',
@@ -80,17 +76,14 @@ export class BrowserManager {
 
     while (retryCount < maxRetries) {
       try {
-        console.log(`🚀 Launching browser (attempt ${retryCount + 1}/${maxRetries})...`);
         
         browser = await puppeteer.launch(defaultOptions);
         
         // Test the browser connection
         const pages = await browser.pages();
-        console.log(`✅ Browser launched successfully with ${pages.length} pages`);
         
         return browser;
       } catch (error) {
-        console.log(`❌ Browser launch attempt ${retryCount + 1} failed:`, error.message);
         
         if (browser) {
           try {
@@ -103,7 +96,6 @@ export class BrowserManager {
         retryCount++;
         
         if (retryCount < maxRetries) {
-          console.log('🧹 Cleaning up and retrying...');
           await this.cleanupOrphanedProcesses();
           await new Promise(resolve => setTimeout(resolve, 3000));
         }
@@ -130,13 +122,11 @@ export class BrowserManager {
       // Handle console errors gracefully
       page.on('console', msg => {
         if (msg.type() === 'error') {
-          console.log(`🔍 Page console error: ${msg.text()}`);
         }
       });
       
       // Handle page errors gracefully
       page.on('pageerror', error => {
-        console.log(`🔍 Page error: ${error.message}`);
       });
       
       return page;
@@ -151,7 +141,6 @@ export class BrowserManager {
 
     while (retryCount < maxRetries) {
       try {
-        console.log(`🌐 Navigating to ${url} (attempt ${retryCount + 1}/${maxRetries})`);
         
         await page.goto(url, {
           waitUntil: 'networkidle0',
@@ -159,14 +148,11 @@ export class BrowserManager {
           ...options
         });
         
-        console.log('✅ Navigation successful');
         return true;
       } catch (error) {
-        console.log(`❌ Navigation attempt ${retryCount + 1} failed:`, error.message);
         retryCount++;
         
         if (retryCount < maxRetries) {
-          console.log('⏳ Waiting before retry...');
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
@@ -179,7 +165,6 @@ export class BrowserManager {
     if (!browser) return;
 
     try {
-      console.log('🔄 Closing browser safely...');
       
       const pages = await browser.pages();
       
@@ -195,9 +180,7 @@ export class BrowserManager {
       // Close the browser
       await browser.close();
       
-      console.log('✅ Browser closed successfully');
     } catch (error) {
-      console.log('⚠️ Error closing browser:', error.message);
       
       // Force cleanup
       await this.cleanupOrphanedProcesses();

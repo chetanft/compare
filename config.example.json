@@ -13,5 +13,19 @@
   "ports": {
     "server": 3006,
     "fallback": 3003
-  }
+  },
+  "figmaApi": {
+    "tokenLastUpdated": null
+  },
+  "mcpServer": {
+    "url": "http://127.0.0.1:3845",
+    "endpoint": "/sse"
+  },
+  "method": "api",
+  "defaultTimeout": 30000,
+  "maxConcurrentComparisons": 3,
+  "autoDeleteOldReports": false,
+  "reportRetentionDays": 30,
+  "defaultFigmaExportFormat": "svg",
+  "figmaExportScale": 2
 } 

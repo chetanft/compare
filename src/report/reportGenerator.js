@@ -56,7 +56,6 @@ class ReportGenerator {
       // Write HTML file
       await fs.writeFile(reportPath, htmlContent);
 
-      console.log(`HTML report generated: ${reportPath}`);
       return reportPath;
 
     } catch (error) {
@@ -795,7 +794,6 @@ class ReportGenerator {
         });
       });
 
-      console.log(`JSON report generated: ${reportPath}`);
       return reportPath;
 
     } catch (error) {

@@ -33,7 +33,6 @@ export class CategorizedReportGenerator {
    * @returns {Object} Structured report data
    */
   generateCategorizedReport(categorizedData, comparisonResults) {
-    console.log('📊 Generating categorized component report...');
 
     const report = {
       metadata: {
@@ -68,7 +67,6 @@ export class CategorizedReportGenerator {
       navigation: categorizedData.navigation || this.generateNavigationStructure(categorizedData)
     };
 
-    console.log('✅ Categorized report generated successfully');
     return report;
   }
 

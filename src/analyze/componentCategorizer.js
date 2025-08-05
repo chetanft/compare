@@ -34,7 +34,6 @@ export class ComponentCategorizer {
    * @returns {Object} Categorized components with fixed structure
    */
   categorizeComponents(figmaData, webData) {
-    console.log('🗂️ Starting fixed schema component categorization...');
     
     // Start with fresh fixed schema
     const categorizedData = getFixedCategorySchema();
@@ -48,7 +47,6 @@ export class ComponentCategorizer {
     // Generate summary statistics
     const summary = this.generateSummary(categorizedData);
     
-    console.log('✅ Fixed schema categorization complete');
     
     return {
       schema: categorizedData,
@@ -72,7 +70,6 @@ export class ComponentCategorizer {
    * @param {Object} designTokens - Extracted design tokens
    */
   populateFixedSchema(schema, figmaComponents, webElements, designTokens) {
-    console.log(`📐 Populating schema with ${figmaComponents.length} Figma and ${webElements.length} web components...`);
 
     // Populate design tokens
     this.populateDesignTokens(schema.designTokens, designTokens);
@@ -83,7 +80,6 @@ export class ComponentCategorizer {
     // Populate layout categories
     this.populateLayoutCategories(schema.layout, figmaComponents, webElements);
 
-    console.log('✅ Schema populated with component data');
   }
 
   /**
@@ -206,7 +202,6 @@ export class ComponentCategorizer {
    * Extract design tokens with source tracking
    */
   extractDesignTokens(figmaData, webData) {
-    console.log('🎨 Extracting design tokens with source tracking...');
     
     const tokens = {
       colors: new Map(),
@@ -235,7 +230,6 @@ export class ComponentCategorizer {
       borderRadius: this.sortTokensByUsage(tokens.borderRadius)
     };
 
-    console.log(`🎨 Design tokens extracted:`, {
       colors: sortedTokens.colors.length,
       typography: sortedTokens.typography.length,
       spacing: sortedTokens.spacing.length,

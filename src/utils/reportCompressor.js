@@ -282,14 +282,7 @@ export class ReportCompressor {
       const gzipped = zlib.gzipSync(JSON.stringify(compressed));
       await fs.writeFile(gzipPath, gzipped);
       
-      console.log(`📦 Compressed report saved:`);
-      console.log(`   JSON: ${jsonPath} (${(compressed.compressionInfo.compressedSize / 1024).toFixed(1)}KB)`);
-      console.log(`   GZIP: ${gzipPath} (${(gzipped.length / 1024).toFixed(1)}KB)`);
-      console.log(`   Compression: ${compressed.compressionInfo.compressionRatio}% reduction`);
     } else {
-      console.log(`📦 Compressed report saved: ${jsonPath}`);
-      console.log(`   Size: ${(compressed.compressionInfo.compressedSize / 1024).toFixed(1)}KB`);
-      console.log(`   Compression: ${compressed.compressionInfo.compressionRatio}% reduction`);
     }
     
     return {

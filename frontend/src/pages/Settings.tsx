@@ -16,6 +16,7 @@ import {
 import { checkServerHealth } from '../services/serverStatus'
 import ServerStatus from '../components/ui/ServerStatus'
 import MCPStatus from '../components/ui/MCPStatus'
+import FigmaApiSettings from '../components/forms/FigmaApiSettings'
 
 
 interface SettingsForm {
@@ -66,7 +67,7 @@ const SETTINGS_PLACEHOLDERS = {
 }
 
 // Local storage key for cached settings
-const SETTINGS_CACHE_KEY = 'figma_web_comparison_settings';
+// No settings cache key needed
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('general')
@@ -122,31 +123,15 @@ export default function Settings() {
     checkStatus();
   }, []);
 
-  // Save settings to localStorage whenever they change
+  // No caching of settings
   const saveSettingsToCache = (settings: Partial<SettingsForm>) => {
-    try {
-      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Failed to cache settings:', error);
-    }
+    // No caching
   };
 
-  // Load settings from localStorage
+  // No cached settings
   const loadCachedSettings = () => {
-    try {
-      setIsLoading(true);
-      const cachedSettings = localStorage.getItem(SETTINGS_CACHE_KEY);
-      
-      if (cachedSettings) {
-        const settings = JSON.parse(cachedSettings);
-        reset(current => ({ ...current, ...settings }));
-        setUsingCachedSettings(true);
-      }
-    } catch (error) {
-      console.error('Failed to load cached settings:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
+    setUsingCachedSettings(false);
   };
 
   const loadCurrentSettings = async () => {
@@ -471,78 +456,63 @@ export default function Settings() {
                   animate={{ opacity: 1, x: 0 }}
                   className="card"
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Figma Integration</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Figma API Settings</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Configure your Figma API integration for accessing design files.
+                  </p>
                   
                   <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Personal Access Token
-                      </label>
                       <Controller
                         name="figmaPersonalAccessToken"
                         control={control}
                         render={({ field }) => (
-                          <input
-                            {...field}
-                            type="password"
-                            placeholder={SETTINGS_PLACEHOLDERS.figmaToken}
-                            className="input-field"
+                        <FigmaApiSettings
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
                           />
                         )}
                       />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Get your token from Figma Settings → Account → Personal access tokens
-                      </p>
-                      <p className="mt-1 text-xs text-amber-600">
-                        Make sure your token starts with "figd_" and has the necessary permissions (file_read, file_content)
-                      </p>
-                      
-                      <div className="mt-3 bg-blue-50 p-3 rounded-md">
-                        <h4 className="text-sm font-medium text-blue-800">How to get a valid Figma API token:</h4>
-                        <ol className="mt-1 text-xs text-blue-700 list-decimal list-inside space-y-1">
-                          <li>Log in to your Figma account</li>
-                          <li>Go to Settings → Account → Personal access tokens</li>
-                          <li>Click "Generate new token"</li>
-                          <li>Give it a name like "Comparison Tool"</li>
-                          <li>Make sure to copy the token immediately (it starts with "figd_")</li>
-                          <li>Paste it here and test the connection</li>
-                        </ol>
-                        <p className="mt-2 text-xs text-blue-700">
-                          <strong>Note:</strong> You must have appropriate access to the Figma files you want to compare.
-                        </p>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {/* Other Figma settings */}
+                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                      <div className="sm:col-span-3">
+                        <label htmlFor="defaultFigmaExportFormat" className="block text-sm font-medium text-gray-700">
                           Default Export Format
                         </label>
                         <Controller
                           name="defaultFigmaExportFormat"
                           control={control}
                           render={({ field }) => (
-                            <select {...field} className="input-field">
-                              <option value="svg">SVG (Vector)</option>
-                              <option value="png">PNG (Raster)</option>
+                            <select
+                              id="defaultFigmaExportFormat"
+                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                              {...field}
+                            >
+                              <option value="svg">SVG</option>
+                              <option value="png">PNG</option>
                             </select>
                           )}
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Export Scale
+                      <div className="sm:col-span-3">
+                        <label htmlFor="figmaExportScale" className="block text-sm font-medium text-gray-700">
+                          PNG Export Scale
                         </label>
                         <Controller
                           name="figmaExportScale"
                           control={control}
                           render={({ field }) => (
-                            <select {...field} className="input-field">
-                              <option value={1}>1x</option>
-                              <option value={2}>2x</option>
-                              <option value={3}>3x</option>
-                              <option value={4}>4x</option>
+                            <select
+                              id="figmaExportScale"
+                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                              {...field}
+                            >
+                              <option value="1">1x</option>
+                              <option value="2">2x</option>
+                              <option value="3">3x</option>
+                              <option value="4">4x</option>
                             </select>
                           )}
                         />

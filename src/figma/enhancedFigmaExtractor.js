@@ -14,7 +14,6 @@ class EnhancedFigmaExtractor {
   async initialize() {
     try {
       await this.mcpIntegration.initialize();
-      console.log('✅ Enhanced Figma Extractor initialized successfully');
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize Enhanced Figma Extractor:', error);
@@ -30,7 +29,6 @@ class EnhancedFigmaExtractor {
    */
   async extractDesignData(fileId, nodeId = null) {
     try {
-      console.log(`🎨 Extracting Figma design data: ${fileId}${nodeId ? ` (node: ${nodeId})` : ''}`);
 
       // Get Figma data using available MCP tools
       const figmaData = await this.getFigmaDataViaMCP(fileId, nodeId);
@@ -42,7 +40,6 @@ class EnhancedFigmaExtractor {
       // Process and flatten all components
       const components = await this.processAndFlattenComponents(figmaData, fileId, nodeId);
 
-      console.log(`✅ Extracted ${components.length} individual components from Figma`);
 
       return {
         fileId,
@@ -69,7 +66,6 @@ class EnhancedFigmaExtractor {
    */
   async getFigmaDataViaMCP(fileId, nodeId = null) {
     try {
-      console.log('🔧 Using MCP integration to fetch Figma data');
       
       // Use the same approach as the original extractor with maximum depth
       const figmaData = await this.mcpIntegration.getFigmaData(fileId, nodeId, 10); // depth 10 for deep component extraction
@@ -97,12 +93,10 @@ class EnhancedFigmaExtractor {
       const targetNode = figmaData.nodes[nodeId];
       const rootNode = targetNode.document || targetNode;
       
-      console.log(`📋 Processing specific node: ${rootNode.name} (${rootNode.type})`);
       await this.recursivelyExtractComponents(rootNode, allComponents, 0, fileId);
       
     } else if (figmaData.document) {
       // Extract from entire document
-      console.log(`📋 Processing entire document: ${figmaData.document.name}`);
       await this.recursivelyExtractComponents(figmaData.document, allComponents, 0, fileId);
       
     } else {
@@ -114,7 +108,6 @@ class EnhancedFigmaExtractor {
       this.isMeaningfulUIComponent(component)
     );
 
-    console.log(`🔍 Filtered ${allComponents.length} total nodes → ${meaningfulComponents.length} meaningful UI components`);
     
     return meaningfulComponents;
   }

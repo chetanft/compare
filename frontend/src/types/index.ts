@@ -10,7 +10,7 @@ export interface ComparisonRequest {
 }
 
 export interface AuthenticationConfig {
-  type: 'credentials' | 'cookies' | 'headers' | 'manual'
+  type: 'form' | 'credentials' | 'cookies' | 'headers' | 'manual' | 'none'
   loginUrl?: string
   username?: string
   password?: string
@@ -22,23 +22,34 @@ export interface AuthenticationConfig {
   headers?: Record<string, string>
   waitTime?: number
   successIndicator?: string
+  figmaToken?: string
 }
 
 export interface ComparisonResult {
   success?: boolean
-  data?: any
+  data?: {
+    reports?: {
+      directUrl?: string
+      downloadUrl?: string
+      hasError?: boolean
+    }
+    reportPath?: string // Added reportPath for direct HTML report access
+    [key: string]: any
+  }
+  reportPath?: string // Added reportPath at root level
   comparisonId?: string
   id?: string
   timestamp?: string
   figmaData?: {
     fileId?: string
-    nodeId?: string
-    url?: string
+    fileName?: string
+    componentsCount?: number
     components?: any[]
   }
   webData?: {
     url?: string
-    components?: any[]
+    elementsCount?: number
+    elements?: any[]
   }
   comparison?: {
     matches?: any[]

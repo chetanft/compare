@@ -4,8 +4,6 @@
  * Provides realistic, consistent test data for all test scenarios
  */
 
-import { PLACEHOLDER_URLS, PLACEHOLDER_CREDENTIALS } from '../../src/constants/placeholders.js';
-
 // Base test configuration
 export const TEST_CONFIG = {
   figma: {
@@ -252,7 +250,7 @@ export const COMPARISON_TEST_RESULTS = {
 export const AUTH_TEST_DATA = {
   credentials: {
     loginUrl: TEST_CONFIG.web.loginUrl,
-    username: PLACEHOLDER_CREDENTIALS.email,
+    username: "test@example.com",
     password: process.env.TEST_PASSWORD || 'test-password',
     usernameSelector: 'input#username',
     passwordSelector: 'input#password',

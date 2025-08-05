@@ -1,4 +1,6 @@
 import { promises as fs } from 'fs';
+import { AdvancedAlgorithms } from './advancedAlgorithms.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Real Comparison Engine
@@ -19,6 +21,10 @@ class ComparisonEngine {
     this.maxComponentsPerChunk = 10;
     this.maxArrayLength = 1000;
     this.maxStringLength = 1000;
+    
+    // Initialize advanced algorithms
+    this.advancedAlgorithms = new AdvancedAlgorithms();
+    this.useAdvancedAlgorithms = config.useAdvancedAlgorithms !== false; // Default to true
   }
 
   /**
@@ -27,7 +33,6 @@ class ComparisonEngine {
    */
   async compareDesigns(figmaData, webData, options = {}) {
     try {
-      console.log('🔍 Starting design comparison...');
       
       // Initialize results
       const comparisons = [];
@@ -48,7 +53,6 @@ class ComparisonEngine {
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        console.log(`Processing chunk ${i + 1}/${totalChunks} (${chunk.length} components)`);
 
         // Process each component in the chunk
         const chunkResults = await Promise.all(
@@ -744,7 +748,6 @@ class ComparisonEngine {
 
   async saveReport(report, outputPath) {
     await fs.writeFile(outputPath, JSON.stringify(report, null, 2));
-    console.log(`Comparison report saved to: ${outputPath}`);
     return report;
   }
 
@@ -787,6 +790,160 @@ class ComparisonEngine {
       chunks.push(array.slice(i, i + size));
     }
     return chunks;
+  }
+
+  /**
+   * Enhanced color comparison using advanced algorithms
+   */
+  compareColorsAdvanced(figmaColors, webColors) {
+    if (this.useAdvancedAlgorithms && figmaColors.length > 0 && webColors.length > 0) {
+      logger.debug('Using advanced color matching algorithms');
+      return this.advancedAlgorithms.matchColors(figmaColors, webColors);
+    }
+    
+    // Fallback to basic comparison
+    return this.compareColorsBasic(figmaColors, webColors);
+  }
+
+  /**
+   * Enhanced typography comparison using advanced algorithms  
+   */
+  compareTypographyAdvanced(figmaTypography, webTypography) {
+    if (this.useAdvancedAlgorithms && figmaTypography.length > 0 && webTypography.length > 0) {
+      logger.debug('Using advanced typography matching algorithms');
+      return this.advancedAlgorithms.matchTypography(figmaTypography, webTypography);
+    }
+    
+    // Fallback to basic comparison
+    return this.compareTypographyBasic(figmaTypography, webTypography);
+  }
+
+  /**
+   * Enhanced component comparison using advanced algorithms
+   */
+  compareComponentsAdvanced(figmaComponents, webElements) {
+    if (this.useAdvancedAlgorithms && figmaComponents.length > 0 && webElements.length > 0) {
+      logger.debug('Using advanced component matching algorithms');
+      return this.advancedAlgorithms.matchComponents(figmaComponents, webElements);
+    }
+    
+    // Fallback to basic comparison
+    return this.compareComponentsBasic(figmaComponents, webElements);
+  }
+
+  /**
+   * Basic color comparison (original implementation)
+   */
+  compareColorsBasic(figmaColors, webColors) {
+    const matches = [];
+    const figmaOnly = [];
+    const webOnly = [];
+
+    // Simple hex-based matching
+    figmaColors.forEach(figmaColor => {
+      const match = webColors.find(webColor => 
+        (figmaColor.hex || figmaColor.value) === (webColor.hex || webColor.value)
+      );
+      
+      if (match) {
+        matches.push({
+          figma: figmaColor,
+          web: match,
+          type: 'color',
+          algorithm: 'basic'
+        });
+      } else {
+        figmaOnly.push(figmaColor);
+      }
+    });
+
+    webColors.forEach(webColor => {
+      if (!matches.find(match => match.web === webColor)) {
+        webOnly.push(webColor);
+      }
+    });
+
+    return {
+      matches,
+      figmaOnly,
+      webOnly,
+      algorithm: 'basic',
+      score: matches.length / (figmaColors.length || 1)
+    };
+  }
+
+  /**
+   * Basic typography comparison (original implementation)
+   */
+  compareTypographyBasic(figmaTypography, webTypography) {
+    const matches = [];
+    const figmaOnly = [...figmaTypography];
+    const webOnly = [...webTypography];
+
+    // Simple property-based matching
+    figmaTypography.forEach(figmaType => {
+      const match = webTypography.find(webType => 
+        figmaType.fontFamily === webType.fontFamily &&
+        Math.abs(parseFloat(figmaType.fontSize) - parseFloat(webType.fontSize)) <= 2
+      );
+      
+      if (match) {
+        matches.push({
+          figma: figmaType,
+          web: match,
+          type: 'typography',
+          algorithm: 'basic'
+        });
+        
+        figmaOnly.splice(figmaOnly.indexOf(figmaType), 1);
+        webOnly.splice(webOnly.indexOf(match), 1);
+      }
+    });
+
+    return {
+      matches,
+      figmaOnly,
+      webOnly,
+      algorithm: 'basic',
+      score: matches.length / (figmaTypography.length || 1)
+    };
+  }
+
+  /**
+   * Basic component comparison (original implementation)
+   */
+  compareComponentsBasic(figmaComponents, webElements) {
+    const matches = [];
+    const figmaOnly = [...figmaComponents];
+    const webOnly = [...webElements];
+
+    // Simple type-based matching
+    figmaComponents.forEach(figmaComp => {
+      const match = webElements.find(webElem => 
+        figmaComp.type && webElem.tagName &&
+        figmaComp.type.toLowerCase().includes(webElem.tagName.toLowerCase())
+      );
+      
+      if (match) {
+        matches.push({
+          figma: figmaComp,
+          web: match,
+          type: 'component',
+          algorithm: 'basic'
+        });
+        
+        figmaOnly.splice(figmaOnly.indexOf(figmaComp), 1);
+        webOnly.splice(webOnly.indexOf(match), 1);
+      }
+    });
+
+    return {
+      matches,
+      figmaOnly,
+      webOnly,
+      algorithm: 'basic',
+      score: matches.length / (figmaComponents.length || 1)
+    };
   }
 }
 

@@ -1,103 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { checkServerHealth } from '../../services/serverStatus';
-import { isNetlify } from '../../utils/environment';
+import React, { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { getApiBaseUrl } from '../../utils/environment';
 
 interface ServerStatusProps {
-  showRetryButton?: boolean;
   className?: string;
-  onStatusChange?: (status: 'online' | 'offline' | 'checking' | 'netlify') => void;
+  onStatusChange?: (status: 'online' | 'offline' | 'checking') => void;
 }
 
-const ServerStatus: React.FC<ServerStatusProps> = ({
-  showRetryButton = true,
-  className = '',
-  onStatusChange
-}) => {
-  const [status, setStatus] = useState<'online' | 'offline' | 'checking' | 'netlify'>('checking');
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+interface ServerStatusResponse {
+  status: string;
+  message?: string;
+  version?: string;
+  uptime?: number;
+  timestamp?: string;
+}
 
-  const checkStatus = async () => {
-    // If we're in Netlify environment, we don't need to check server health
-    if (isNetlify) {
-      const netlifyStatus = 'netlify';
-      setStatus(netlifyStatus);
-      setLastChecked(new Date());
-      
-      if (onStatusChange) {
-        onStatusChange(netlifyStatus);
+export default function ServerStatus({ className = '', onStatusChange }: ServerStatusProps) {
+  const apiBaseUrl = getApiBaseUrl();
+  
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['serverStatus'],
+    queryFn: async () => {
+      try {
+        const response = await axios.get<ServerStatusResponse>(`${apiBaseUrl}/api/health`);
+        return response.data;
+      } catch (err) {
+        console.error('Failed to fetch server status:', err);
+        throw err;
       }
-      return;
-    }
-    
-    setStatus('checking');
-    
-    try {
-      const isHealthy = await checkServerHealth();
-      const newStatus = isHealthy ? 'online' : 'offline';
-      setStatus(newStatus);
-      
-      if (onStatusChange) {
-        onStatusChange(newStatus);
-      }
-    } catch (error) {
-      console.error('Error checking server health:', error);
-      setStatus('offline');
-      
-      if (onStatusChange) {
-        onStatusChange('offline');
-      }
-    } finally {
-      setLastChecked(new Date());
-    }
-  };
-
+    },
+    retry: 2,
+    retryDelay: 1000,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchOnWindowFocus: false
+  });
+  
+  // Call onStatusChange when status changes
   useEffect(() => {
-    checkStatus();
-    
-    // Set up periodic checking (every 30 seconds)
-    const interval = setInterval(() => {
-      checkStatus();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
+    if (isLoading) {
+      onStatusChange?.('checking');
+    } else if (error || !data) {
+      onStatusChange?.('offline');
+    } else {
+      const isOnline = data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
+      onStatusChange?.(isOnline ? 'online' : 'offline');
+    }
+  }, [data, isLoading, error, onStatusChange]);
+  
+  if (isLoading) {
+    return (
+      <div className={`flex items-center ${className}`}>
+        <div className="animate-pulse w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
+        <span className="text-xs text-gray-500">Checking server...</span>
+      </div>
+    );
+  }
+  
+  if (error || !data) {
+    return (
+      <div className={`flex items-center ${className}`}>
+        <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
+        <span className="text-xs text-gray-500">Server unavailable</span>
+      </div>
+    );
+  }
+  
+  const isOnline = data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
+  
   return (
-    <div className={`flex items-center ${className}`} title={lastChecked ? `Last checked: ${lastChecked.toLocaleTimeString()}` : 'Checking server status...'}>
-      <span className="mr-2 text-sm text-gray-600">Server:</span>
-      {status === 'checking' && (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
-          Checking...
-        </span>
-      )}
-      {status === 'online' && (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-          Online
-        </span>
-      )}
-      {status === 'netlify' && (
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-          Netlify
-        </span>
-      )}
-      {status === 'offline' && (
-        <div className="flex items-center">
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 mr-2">
-            Offline
-          </span>
-          {showRetryButton && (
-            <button 
-              onClick={checkStatus}
-              className="text-xs text-indigo-600 hover:text-indigo-900"
-              aria-label="Retry server connection"
-            >
-              Retry
-            </button>
-          )}
-        </div>
-      )}
+    <div className={`flex items-center ${className}`}>
+      <div 
+        className={`w-2 h-2 rounded-full mr-2 ${
+          isOnline ? 'bg-green-500' : 'bg-red-500'
+        }`}
+      ></div>
+      <span className="text-xs text-gray-500">
+        {isOnline ? 'Server online' : 'Server offline'}
+      </span>
     </div>
   );
-};
-
-export default ServerStatus; 
+} 

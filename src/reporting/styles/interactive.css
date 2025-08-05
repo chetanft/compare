@@ -1,0 +1,386 @@
+/* Interactive Components - CSS Only */
+
+/* Progress Bars */
+.progress-bar {
+  background: var(--color-gray-200);
+  border-radius: 9999px;
+  overflow: hidden;
+  height: 8px;
+  position: relative;
+}
+
+.progress-bar.large {
+  height: 12px;
+}
+
+.progress-fill {
+  background: var(--gradient-primary);
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill.success {
+  background: var(--gradient-success);
+}
+
+.progress-fill.warning {
+  background: var(--gradient-warning);
+}
+
+.progress-fill.danger {
+  background: var(--gradient-danger);
+}
+
+/* Animated shine effect */
+.progress-fill:after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Circular Progress */
+.circular-progress {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-primary) calc(var(--progress) * 1%),
+    var(--color-gray-200) 0
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circular-progress:before {
+  content: '';
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  background: var(--theme-bg-primary);
+  border-radius: 50%;
+}
+
+.circular-progress .percentage {
+  position: relative;
+  z-index: 1;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* CSS-Only Charts */
+.bar-chart {
+  display: flex;
+  align-items: end;
+  gap: 0.5rem;
+  height: 100px;
+  padding: 1rem 0;
+}
+
+.bar {
+  background: var(--gradient-primary);
+  border-radius: 4px 4px 0 0;
+  min-width: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.bar:hover {
+  transform: scale(1.05);
+}
+
+.bar:after {
+  content: attr(data-value);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-text-primary);
+  color: var(--theme-bg-primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.bar:hover:after {
+  opacity: 1;
+}
+
+/* Donut Chart */
+.donut-chart {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--color-success) 0deg calc(var(--success) * 3.6deg),
+    var(--color-warning) calc(var(--success) * 3.6deg) calc((var(--success) + var(--warning)) * 3.6deg),
+    var(--color-danger) calc((var(--success) + var(--warning)) * 3.6deg) calc((var(--success) + var(--warning) + var(--danger)) * 3.6deg),
+    var(--color-gray-200) calc((var(--success) + var(--warning) + var(--danger)) * 3.6deg)
+  );
+}
+
+.donut-chart:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  background: var(--theme-bg-primary);
+  border-radius: 50%;
+}
+
+.donut-chart .center-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+}
+
+/* Collapsible Sections */
+.collapsible {
+  border: 1px solid var(--theme-border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.collapsible-header {
+  background: var(--theme-bg-tertiary);
+  padding: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background: var(--color-hover);
+}
+
+.collapsible-toggle {
+  transition: transform 0.3s ease;
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: var(--theme-bg-primary);
+}
+
+.collapsible-inner {
+  padding: 0 1rem;
+  transition: padding 0.3s ease;
+}
+
+/* Checkbox hack for pure CSS interaction */
+.collapsible-checkbox {
+  display: none;
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-content {
+  max-height: 1000px;
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-toggle {
+  transform: rotate(180deg);
+}
+
+.collapsible-checkbox:checked + .collapsible .collapsible-inner {
+  padding: 1rem;
+}
+
+/* Tabs */
+.tabs {
+  border-bottom: 1px solid var(--theme-border-primary);
+}
+
+.tab-list {
+  display: flex;
+  gap: 0;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 1rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  color: var(--theme-text-secondary);
+}
+
+.tab-button:hover {
+  background: var(--color-hover);
+  color: var(--theme-text-primary);
+}
+
+.tab-button.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background: var(--theme-bg-primary);
+}
+
+.tab-content {
+  display: none;
+  padding: 1.5rem 0;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tooltips */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.tooltip:before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--theme-text-primary);
+  color: var(--theme-bg-primary);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+}
+
+.tooltip:after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(1px);
+  border: 4px solid transparent;
+  border-top-color: var(--theme-text-primary);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+}
+
+.tooltip:hover:before,
+.tooltip:hover:after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+/* Loading Animations */
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-gray-200) 25%,
+    var(--color-gray-100) 50%,
+    var(--color-gray-200) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Sticky Elements */
+.sticky-header {
+  position: sticky;
+  top: 0;
+  background: var(--theme-bg-primary);
+  z-index: 100;
+  border-bottom: 1px solid var(--theme-border-primary);
+  box-shadow: 0 1px 3px var(--theme-shadow-light);
+}
+
+/* Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus Styles */
+*:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  :root {
+    --theme-shadow: rgba(0, 0, 0, 0.5);
+    --theme-border-primary: #000000;
+  }
+  
+  [data-theme="dark"] {
+    --theme-border-primary: #ffffff;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+} 

@@ -321,4 +321,48 @@ export const figmaUrlUtils = {
 };
 
 // Export default
-export default FigmaUrlParser; 
+export default FigmaUrlParser;
+
+/**
+ * Simple function to parse a Figma URL and extract fileId and nodeId
+ * @param {string} url - Figma URL to parse
+ * @returns {Object} - Object containing fileId and nodeId
+ */
+export function parseFigmaUrl(url) {
+  try {
+    if (!url || typeof url !== 'string') {
+      return { fileId: null, nodeId: null };
+    }
+
+    const patterns = [
+      /figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)/,
+      /figma\.com\/proto\/([a-zA-Z0-9]+)/
+    ];
+    
+    let fileId = null;
+    
+    // Extract file ID from URL
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        fileId = match[1];
+        break;
+      }
+    }
+    
+    // Extract node ID from URL
+    let nodeId = null;
+    const nodeIdMatch = url.match(/[?&]node-id=([^&]+)/);
+    if (nodeIdMatch) {
+      // Convert hyphen to colon for Figma API format if needed
+      nodeId = nodeIdMatch[1].includes('-') ? 
+        nodeIdMatch[1].replace('-', ':') : 
+        nodeIdMatch[1];
+    }
+    
+    return { fileId, nodeId };
+  } catch (error) {
+    console.error('Error parsing Figma URL:', error);
+    return { fileId: null, nodeId: null };
+  }
+} 

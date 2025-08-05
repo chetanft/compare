@@ -6,7 +6,6 @@
 class MCPDirectFigmaExtractor {
   constructor(config) {
     this.config = config;
-    console.log('🔧 MCP Direct Figma Extractor initialized');
   }
 
   /**
@@ -17,27 +16,21 @@ class MCPDirectFigmaExtractor {
    */
   async extractComponents(fileKey, nodeId = null) {
     try {
-      console.log(`🎨 Extracting Figma components using MCP Framelink tools...`);
-      console.log(`📋 File: ${fileKey}, Node: ${nodeId || 'entire file'}`);
 
       // Use MCP Framelink tools to get Figma data
       const params = { fileKey };
       if (nodeId) params.nodeId = nodeId;
 
-      console.log(`📤 Calling mcp_Framelink_Figma_MCP_get_figma_data...`);
       const figmaData = await mcp_Framelink_Figma_MCP_get_figma_data(params);
 
       if (!figmaData) {
         throw new Error('No data received from MCP Framelink tools');
       }
 
-      console.log(`✅ MCP Framelink data received: ${figmaData.metadata?.name || 'Unknown file'}`);
-      console.log(`📊 Raw data structure: ${Object.keys(figmaData).join(', ')}`);
 
       // Transform MCP data to our component format
       const components = this.transformMCPDataToComponents(figmaData, nodeId);
 
-      console.log(`🔄 Transformed ${components.length} components from MCP data`);
       
       return {
         components,
@@ -67,11 +60,9 @@ class MCPDirectFigmaExtractor {
     const components = [];
 
     try {
-      console.log('🔄 Transforming MCP data to component format...');
 
       // Handle different MCP data structures
       if (figmaData.nodes && Array.isArray(figmaData.nodes)) {
-        console.log(`📊 Processing ${figmaData.nodes.length} nodes from MCP data`);
         
         for (const node of figmaData.nodes) {
           const component = this.transformNodeToComponent(node, figmaData.globalVars);
@@ -85,7 +76,6 @@ class MCPDirectFigmaExtractor {
 
       // If we have components metadata, add that too
       if (figmaData.metadata?.components) {
-        console.log(`📊 Processing ${Object.keys(figmaData.metadata.components).length} component metadata entries`);
         
         for (const [componentId, componentMeta] of Object.entries(figmaData.metadata.components)) {
           // Find matching node or create component from metadata
@@ -106,7 +96,6 @@ class MCPDirectFigmaExtractor {
         }
       }
 
-      console.log(`✅ Successfully transformed ${components.length} components`);
       
       // Log component summary
       const componentTypes = components.reduce((acc, comp) => {
@@ -114,7 +103,6 @@ class MCPDirectFigmaExtractor {
         return acc;
       }, {});
       
-      console.log(`📊 Component types: ${Object.entries(componentTypes).map(([type, count]) => `${type}: ${count}`).join(', ')}`);
 
       return components;
 
@@ -237,7 +225,6 @@ class MCPDirectFigmaExtractor {
    */
   async testMCPConnection() {
     try {
-      console.log('🧪 Testing MCP Framelink connection...');
       
       // Test with a simple file
       const testResult = await mcp_Framelink_Figma_MCP_get_figma_data({
@@ -245,11 +232,10 @@ class MCPDirectFigmaExtractor {
         nodeId: '1516-36' // Test node
       });
 
-      console.log('✅ MCP connection test successful');
       return {
         success: true,
         testResult: {
-          fileName: testResult.metadata?.name || 'Unknown',
+          fileName: testResult.metadata?.name || null,
           hasNodes: !!(testResult.nodes && testResult.nodes.length > 0),
           nodeCount: testResult.nodes?.length || 0
         }
@@ -271,13 +257,11 @@ class MCPDirectFigmaExtractor {
   async testMCPConnection() {
     try {
       // Test with a simple file call (no actual extraction)
-      console.log('🧪 Testing MCP Framelink connection...');
       
       // We can't actually test without a real file, so we'll check if the functions exist
       if (typeof mcp_Framelink_Figma_MCP_get_figma_data === 'function' &&
           typeof mcp_Framelink_Figma_MCP_download_figma_images === 'function') {
         
-        console.log('✅ MCP Framelink tools are available');
         return {
           success: true,
           message: 'MCP Framelink tools are available and ready'

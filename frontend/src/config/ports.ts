@@ -47,9 +47,10 @@ export function getApiBaseUrl(): string {
     return env.VITE_API_URL;
   }
 
-  // In development with Vite dev server, use the proxy
+  // In development with Vite dev server, use the explicit URL to the backend server
   if (env.MODE === 'development') {
-    return ''; // Empty string will use the current origin with Vite's proxy
+    console.log(`Using API base URL: http://localhost:${getServerPort()}`);
+    return `http://localhost:${getServerPort()}`; // Use explicit URL to backend
   }
 
   // For production, use relative URL to work with Netlify functions
