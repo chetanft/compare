@@ -209,10 +209,13 @@ class ComparisonEngine {
       factors += 0.3;
     }
 
-    // Type similarity
-    const typeSimilarity = this.getTypeSimilarity(figmaComponent.type, webElement.tagName);
-    score += typeSimilarity * 0.2;
-    factors += 0.2;
+    // Type similarity - handle both tagName and type properties
+    const webElementType = webElement.tagName || webElement.type;
+    if (webElementType) {
+      const typeSimilarity = this.getTypeSimilarity(figmaComponent.type, webElementType);
+      score += typeSimilarity * 0.2;
+      factors += 0.2;
+    }
 
     // Dimension similarity - check both possible locations for dimensions
     const figmaDimensions = figmaComponent.dimensions || figmaComponent.properties?.dimensions;
@@ -518,42 +521,103 @@ class ComparisonEngine {
     const deviations = [];
     const matches = [];
 
-    // 1. Typography
-    if (figmaComponent.style && webElement.styles) {
+    // Enhanced property comparison with new data structures
+    
+    // 1. Enhanced Typography comparison
+    let figmaTypography = null;
+    if (figmaComponent.properties?.typography) {
+      figmaTypography = figmaComponent.properties.typography;
+    } else if (figmaComponent.style) {
+      figmaTypography = figmaComponent.style;
+    }
+    
+    if (figmaTypography && webElement.styles) {
       const { deviations: typoDev, matches: typoMatch } = this.compareTypography(
-        figmaComponent.style,
+        figmaTypography,
         webElement.styles
       );
       deviations.push(...typoDev);
       matches.push(...typoMatch);
     }
 
-    // 2. Background color (using first solid fill if available)
-    let figmaBg = null;
-    if (Array.isArray(figmaComponent.fills) && figmaComponent.fills.length > 0) {
-      const solidFill = figmaComponent.fills.find(f => f.type === 'SOLID' && f.color);
-      if (solidFill) {
-        const { r, g, b } = solidFill.color;
-        figmaBg = this.rgbToHex({ r, g, b });
+    // 2. Enhanced Color comparison
+    let figmaColors = {};
+    
+    // Extract colors from properties structure
+    if (figmaComponent.properties?.colors) {
+      figmaColors = figmaComponent.properties.colors;
+    } else {
+      // Fallback to old structure
+      if (figmaComponent.properties?.backgroundColor) {
+        figmaColors.backgroundColor = figmaComponent.properties.backgroundColor;
+      }
+      if (figmaComponent.properties?.color) {
+        figmaColors.color = figmaComponent.properties.color;
+      }
+      if (figmaComponent.properties?.borderColor) {
+        figmaColors.borderColor = figmaComponent.properties.borderColor;
       }
     }
-    if (figmaBg && webElement.styles?.backgroundColor) {
+    
+    // Background color comparison
+    if (figmaColors.backgroundColor && webElement.styles?.backgroundColor) {
       const { deviation, match } = this.compareColors(
-        figmaBg,
+        figmaColors.backgroundColor,
         webElement.styles.backgroundColor,
         'backgroundColor'
       );
       if (deviation) deviations.push(deviation);
       if (match) matches.push(match);
     }
+    
+    // Text color comparison
+    if (figmaColors.color && webElement.styles?.color) {
+      const { deviation, match } = this.compareColors(
+        figmaColors.color,
+        webElement.styles.color,
+        'color'
+      );
+      if (deviation) deviations.push(deviation);
+      if (match) matches.push(match);
+    }
+    
+    // Border color comparison
+    if (figmaColors.borderColor && webElement.styles?.borderColor) {
+      const { deviation, match } = this.compareColors(
+        figmaColors.borderColor,
+        webElement.styles.borderColor,
+        'borderColor'
+      );
+      if (deviation) deviations.push(deviation);
+      if (match) matches.push(match);
+    }
 
-    // 3. Spacing (padding) – build spacing object from figma component
-    const figmaSpacing = {
-      paddingTop: figmaComponent.paddingTop,
-      paddingRight: figmaComponent.paddingRight,
-      paddingBottom: figmaComponent.paddingBottom,
-      paddingLeft: figmaComponent.paddingLeft
-    };
+    // 3. Enhanced Spacing comparison
+    let figmaSpacing = {};
+    
+    if (figmaComponent.properties?.layout) {
+      const layout = figmaComponent.properties.layout;
+      figmaSpacing = {
+        paddingTop: layout.paddingTop,
+        paddingRight: layout.paddingRight,
+        paddingBottom: layout.paddingBottom,
+        paddingLeft: layout.paddingLeft,
+        marginTop: layout.marginTop,
+        marginRight: layout.marginRight,
+        marginBottom: layout.marginBottom,
+        marginLeft: layout.marginLeft,
+        itemSpacing: layout.itemSpacing
+      };
+    } else {
+      // Fallback to old structure
+      figmaSpacing = {
+        paddingTop: figmaComponent.paddingTop,
+        paddingRight: figmaComponent.paddingRight,
+        paddingBottom: figmaComponent.paddingBottom,
+        paddingLeft: figmaComponent.paddingLeft
+      };
+    }
+    
     if (Object.values(figmaSpacing).some(v => v !== undefined) && webElement.styles) {
       const { deviations: spacingDev, matches: spacingMatch } = this.compareSpacing(
         figmaSpacing,
@@ -563,23 +627,45 @@ class ComparisonEngine {
       matches.push(...spacingMatch);
     }
 
-    // 4. Borders (radius)
-    const figmaBorders = {
-      borderRadius: figmaComponent.cornerRadius
-    };
-    const webBorders = {
-      borderRadius: webElement.styles?.borderRadius
-    };
-    if (figmaBorders.borderRadius !== undefined && webBorders.borderRadius !== undefined) {
-      const { deviations: borderDev, matches: borderMatch } = this.compareBorders(
-        figmaBorders,
-        webBorders
+    // 4. Enhanced Border radius comparison
+    let figmaBorderRadius = null;
+    
+    if (figmaComponent.properties?.layout?.borderRadius !== undefined) {
+      figmaBorderRadius = figmaComponent.properties.layout.borderRadius;
+    } else if (figmaComponent.properties?.borderRadius !== undefined) {
+      figmaBorderRadius = figmaComponent.properties.borderRadius;
+    } else if (figmaComponent.cornerRadius !== undefined) {
+      figmaBorderRadius = figmaComponent.cornerRadius;
+    }
+    
+    if (figmaBorderRadius !== null && webElement.styles?.borderRadius) {
+      const { deviation, match } = this.compareBorderRadius(
+        figmaBorderRadius,
+        webElement.styles.borderRadius
       );
-      deviations.push(...borderDev);
-      matches.push(...borderMatch);
+      if (deviation) deviations.push(deviation);
+      if (match) matches.push(match);
     }
 
-    // 5. Dimensions
+    // 5. Individual border radius corners comparison
+    if (figmaComponent.properties?.layout?.borderRadii && webElement.styles) {
+      const figmaRadii = figmaComponent.properties.layout.borderRadii;
+      const webRadii = {
+        topLeft: webElement.styles.borderTopLeftRadius,
+        topRight: webElement.styles.borderTopRightRadius,
+        bottomLeft: webElement.styles.borderBottomLeftRadius,
+        bottomRight: webElement.styles.borderBottomRightRadius
+      };
+      
+      const { deviations: radiusDev, matches: radiusMatch } = this.compareBorderRadii(
+        figmaRadii,
+        webRadii
+      );
+      deviations.push(...radiusDev);
+      matches.push(...radiusMatch);
+    }
+
+    // 6. Dimensions
     if (figmaComponent.dimensions && webElement.boundingRect) {
       const { deviations: dimDev, matches: dimMatch } = this.compareDimensions(
         figmaComponent.dimensions,
@@ -589,6 +675,94 @@ class ComparisonEngine {
       matches.push(...dimMatch);
     }
 
+    return { deviations, matches };
+  }
+
+  /**
+   * Compare border radius values
+   * @param {number|string} figmaBorderRadius - Figma border radius
+   * @param {string} webBorderRadius - Web border radius (e.g., "8px")
+   * @returns {Object} Comparison result
+   */
+  compareBorderRadius(figmaBorderRadius, webBorderRadius) {
+    const figmaValue = typeof figmaBorderRadius === 'number' ? figmaBorderRadius : parseFloat(figmaBorderRadius);
+    const webValue = parseFloat(webBorderRadius);
+    
+    if (isNaN(figmaValue) || isNaN(webValue)) {
+      return {
+        deviation: {
+          property: 'borderRadius',
+          figmaValue: figmaBorderRadius,
+          webValue: webBorderRadius,
+          difference: 'unable to compare',
+          severity: 'low',
+          message: 'Border radius values could not be compared'
+        }
+      };
+    }
+    
+    const difference = Math.abs(figmaValue - webValue);
+    
+    if (difference > this.thresholds.spacingDifference) {
+      return {
+        deviation: {
+          property: 'borderRadius',
+          figmaValue: `${figmaValue}px`,
+          webValue: webBorderRadius,
+          difference: `${difference}px`,
+          severity: this.getSeverity('spacing', difference),
+          message: `Border radius differs by ${difference}px`
+        }
+      };
+    } else {
+      return {
+        match: {
+          property: 'borderRadius',
+          value: `${figmaValue}px`,
+          message: 'Border radius matches within tolerance'
+        }
+      };
+    }
+  }
+
+  /**
+   * Compare individual border radius corners
+   * @param {Object} figmaRadii - Figma corner radii
+   * @param {Object} webRadii - Web corner radii
+   * @returns {Object} Comparison result
+   */
+  compareBorderRadii(figmaRadii, webRadii) {
+    const deviations = [];
+    const matches = [];
+    
+    const corners = ['topLeft', 'topRight', 'bottomLeft', 'bottomRight'];
+    
+    corners.forEach(corner => {
+      const figmaValue = figmaRadii[corner];
+      const webValue = parseFloat(webRadii[corner] || '0');
+      
+      if (figmaValue !== undefined && !isNaN(webValue)) {
+        const difference = Math.abs(figmaValue - webValue);
+        
+        if (difference > this.thresholds.spacingDifference) {
+          deviations.push({
+            property: `borderRadius${corner.charAt(0).toUpperCase() + corner.slice(1)}`,
+            figmaValue: `${figmaValue}px`,
+            webValue: `${webValue}px`,
+            difference: `${difference}px`,
+            severity: this.getSeverity('spacing', difference),
+            message: `${corner} border radius differs by ${difference}px`
+          });
+        } else {
+          matches.push({
+            property: `borderRadius${corner.charAt(0).toUpperCase() + corner.slice(1)}`,
+            value: `${figmaValue}px`,
+            message: `${corner} border radius matches within tolerance`
+          });
+        }
+      }
+    });
+    
     return { deviations, matches };
   }
 

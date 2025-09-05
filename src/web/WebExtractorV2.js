@@ -137,10 +137,11 @@ export class WebExtractorV2 {
    */
   async navigateToPage(page, url, options) {
     const maxRetries = 3;
+    const baseTimeout = Math.max(this.config?.timeouts?.webExtraction || 30000, 45000);
     const strategies = [
-      { waitUntil: 'domcontentloaded', timeout: 15000 },
-      { waitUntil: 'load', timeout: 10000 },
-      { waitUntil: 'networkidle2', timeout: 10000 }
+      { waitUntil: 'domcontentloaded', timeout: baseTimeout },
+      { waitUntil: 'load', timeout: baseTimeout },
+      { waitUntil: 'networkidle2', timeout: baseTimeout }
     ];
 
     let lastError;
@@ -175,7 +176,7 @@ export class WebExtractorV2 {
     if (auth.type === 'form' && auth.username && auth.password) {
       // Wait for form elements
       await page.waitForSelector('input[type="password"], input[name*="password"]', {
-        timeout: 5000
+        timeout: Math.max(this.config?.nextVersion?.authentication?.selectorTimeout || 15000, 20000)
       });
 
       // Fill credentials
@@ -189,7 +190,7 @@ export class WebExtractorV2 {
 
       for (const selector of usernameSelectors) {
         try {
-          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.waitForSelector(selector, { timeout: 5000 });
           await page.type(selector, auth.username);
           break;
         } catch (e) {
@@ -210,7 +211,7 @@ export class WebExtractorV2 {
 
       for (const selector of submitSelectors) {
         try {
-          await page.waitForSelector(selector, { timeout: 1000 });
+          await page.waitForSelector(selector, { timeout: 3000 });
           await page.click(selector);
           break;
         } catch (e) {
@@ -222,7 +223,7 @@ export class WebExtractorV2 {
       try {
         await page.waitForNavigation({ 
           waitUntil: 'networkidle0', 
-          timeout: 10000 
+          timeout: Math.max(this.config?.timeouts?.webExtraction || 30000, 45000) 
         });
       } catch (e) {
         // Navigation might not happen if form is submitted via AJAX

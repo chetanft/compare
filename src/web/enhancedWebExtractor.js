@@ -4,15 +4,72 @@
  */
 
 import puppeteer from 'puppeteer';
+import { getConfig } from '../config/index.js';
 
 export class EnhancedWebExtractor {
   constructor() {
     this.browser = null;
     this.page = null;
+    this.config = null;
   }
 
   isReady() {
     return this.browser && this.browser.isConnected();
+  }
+
+  /**
+   * Safely execute operations on a page with session validation
+   */
+  async safePageOperation(page, operation, operationName = 'page operation') {
+    try {
+      // Check if page is still valid
+      if (!page || page.isClosed()) {
+        throw new Error('Page is closed or invalid');
+      }
+
+      // Execute the operation
+      return await operation(page);
+    } catch (error) {
+      console.warn(`⚠️ ${operationName} failed:`, error.message);
+      
+      // Check if it's a session-related error
+      if (error.message.includes('Session closed') || 
+          error.message.includes('Target closed') ||
+          error.message.includes('Protocol error')) {
+        console.log(`🔄 Session error detected in ${operationName}, attempting recovery...`);
+        
+        // Try to create a new page and retry
+        try {
+          // Check if browser is still connected
+          if (!this.browser || !this.browser.isConnected()) {
+            console.log('🔄 Browser disconnected, reinitializing...');
+            await this.initialize();
+          }
+          
+          const newPage = await this.browser.newPage();
+          this.page = newPage;
+          
+          // Retry the operation with the new page
+          return await operation(newPage);
+        } catch (retryError) {
+          console.error(`❌ Failed to recover from session error in ${operationName}:`, retryError.message);
+          
+          // Last resort: try to reinitialize the entire browser
+          try {
+            console.log('🔄 Attempting full browser reinitialization...');
+            await this.initialize();
+            const finalPage = await this.browser.newPage();
+            this.page = finalPage;
+            return await operation(finalPage);
+          } catch (finalError) {
+            throw new Error(`${operationName} failed after full recovery attempt: ${finalError.message}`);
+          }
+        }
+      }
+      
+      // Re-throw non-session errors
+      throw error;
+    }
   }
 
   async initialize() {
@@ -21,6 +78,8 @@ export class EnhancedWebExtractor {
     }
 
     try {
+      // Load unified configuration
+      this.config = await getConfig();
       console.log('🚀 Initializing enhanced browser...');
       
       // Production-ready browser configuration
@@ -31,21 +90,23 @@ export class EnhancedWebExtractor {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-blink-features=AutomationControlled',
-          '--disable-features=VizDisplayCompositor',
           '--disable-dev-shm-usage',
-          '--disable-gpu',
           '--no-first-run',
           '--disable-background-timer-throttling',
           '--disable-backgrounding-occluded-windows',
           '--disable-renderer-backgrounding',
+          '--enable-javascript',
+          '--allow-running-insecure-content',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
           '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ],
         ignoreDefaultArgs: ['--disable-extensions'],
         handleSIGINT: false,
         handleSIGTERM: false,
         handleSIGHUP: false,
-        timeout: 30000,
-        protocolTimeout: 60000
+        timeout: this.config?.puppeteer?.timeout || 30000,
+        protocolTimeout: this.config?.puppeteer?.protocolTimeout || 60000
       };
       
       this.browser = await puppeteer.launch(launchOptions);
@@ -69,6 +130,12 @@ export class EnhancedWebExtractor {
    * Comprehensive web data extraction using proper browser automation
    */
   async extractWebData(url, authentication = null) {
+    // Ensure browser is initialized before extraction
+    if (!this.isReady()) {
+      console.log('🔧 Browser not ready, initializing...');
+      await this.initialize();
+    }
+    
     // Protect against external process interruption
     const originalHandlers = {};
     if (process.listeners('SIGTERM').length > 0) {
@@ -94,15 +161,36 @@ export class EnhancedWebExtractor {
         throw new Error('Browser not initialized or disconnected');
       }
 
-      if (currentPage === null) {
+      if (currentPage === null || currentPage.isClosed()) {
         // Create new page with better error handling
+        console.log('📄 Creating new browser page...');
         currentPage = await this.browser.newPage();
         this.page = currentPage;
       }
       
-      // Set viewport and user agent
-      await currentPage.setViewport({ width: 1920, height: 1080 });
-      await currentPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      // Validate page is still open before setting viewport
+      if (currentPage.isClosed()) {
+        console.log('⚠️ Page was closed, creating a new one...');
+        currentPage = await this.browser.newPage();
+        this.page = currentPage;
+      }
+      
+      // Enable JavaScript and configure page for SPAs
+      await this.safePageOperation(currentPage, async (page) => {
+        // Ensure JavaScript is enabled
+        await page.setJavaScriptEnabled(true);
+        
+        // Set viewport and user agent
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        
+        // Configure for SPA support
+        await page.setDefaultNavigationTimeout(60000);
+        await page.setDefaultTimeout(30000);
+      }, 'page configuration');
+      
+      // Update currentPage reference after potential recovery
+      currentPage = this.page;
       
       // Add page error handlers
       currentPage.on('error', (error) => {
@@ -115,28 +203,44 @@ export class EnhancedWebExtractor {
       
       // Navigate to URL first with multiple fallback strategies
       console.log('🔗 Navigating to:', url);
+      // Centralized, configurable timeouts
+      const NAV_TIMEOUT = Math.max(this.config?.timeouts?.webExtraction || 30000, 45000);
+      const SELECTOR_TIMEOUT = Math.max(
+        this.config?.nextVersion?.authentication?.selectorTimeout || 15000,
+        20000
+      );
+      const JS_WAIT = Math.max(Math.floor(NAV_TIMEOUT / 8), 6000); // e.g., >=6s
+      const STANDARD_WAIT = 2000; // small waits
+      const SCREENSHOT_TIMEOUT = Math.max(Math.floor(NAV_TIMEOUT / 3), 15000);
       let navigationSuccessful = false;
 
       try {
+        // For SPAs, use networkidle0 which waits for network to be idle
         await currentPage.goto(url, {
-          waitUntil: 'domcontentloaded',
-          timeout: 15000
+          waitUntil: 'networkidle0',
+          timeout: NAV_TIMEOUT
         });
         navigationSuccessful = true;
+        console.log('✅ Navigation successful with networkidle0');
       } catch (navError) {
-        console.log('⚠️ Navigation with domcontentloaded failed, trying basic navigation...');
+        console.log('⚠️ Navigation with networkidle0 failed, trying domcontentloaded...');
         try {
           await currentPage.goto(url, {
-            waitUntil: 'load',
-            timeout: 10000
+            waitUntil: 'domcontentloaded',
+            timeout: NAV_TIMEOUT
           });
           navigationSuccessful = true;
+          console.log('✅ Navigation successful with domcontentloaded');
+          
+          // For SPAs, wait additional time for JavaScript to load
+          console.log('⏳ Waiting for SPA JavaScript to initialize...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
         } catch (loadError) {
           console.log('⚠️ Navigation with load failed, trying networkidle2...');
           try {
-      await currentPage.goto(url, { 
+            await currentPage.goto(url, { 
               waitUntil: 'networkidle2',
-              timeout: 10000
+              timeout: NAV_TIMEOUT
             });
             navigationSuccessful = true;
           } catch (idleError) {
@@ -167,7 +271,7 @@ export class EnhancedWebExtractor {
           console.log('⏳ Waiting for post-authentication content to load...');
           
           // Wait for page to stabilize after authentication
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, JS_WAIT));
           
           // Check if we've been redirected to a different URL
           const currentUrl = currentPage.url();
@@ -192,14 +296,14 @@ export class EnhancedWebExtractor {
               if (currentPage.url().includes('/login') || currentPage.url().includes('/auth')) {
                 await currentPage.goto(url, { 
                   waitUntil: ['networkidle0', 'domcontentloaded'],
-                  timeout: 30000
+                  timeout: NAV_TIMEOUT
                 });
               }
               
               console.log('✅ Successfully navigated to dashboard');
               
               // Additional wait for the new page to load
-              await new Promise(resolve => setTimeout(resolve, 3000));
+              await new Promise(resolve => setTimeout(resolve, JS_WAIT));
             } catch (navError) {
               console.log('⚠️ Navigation to dashboard failed:', navError.message);
               console.log('Continuing with current page');
@@ -225,7 +329,7 @@ export class EnhancedWebExtractor {
           for (const selector of dashboardSelectors) {
             try {
               await currentPage.waitForSelector(selector, { 
-                timeout: 5000,
+                timeout: SELECTOR_TIMEOUT,
                 visible: true 
               });
               console.log(`✅ Found dashboard content: ${selector}`);
@@ -241,7 +345,7 @@ export class EnhancedWebExtractor {
           }
           
           // Final wait for dynamic content
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, JS_WAIT));
           
         } catch (authError) {
           console.log('⚠️ Authentication failed, but continuing with extraction anyway');
@@ -255,20 +359,82 @@ export class EnhancedWebExtractor {
       // Check if page is still valid before extraction
       if (currentPage.isClosed()) {
         console.log('⚠️ Page was closed (likely due to authentication protection) - attempting to create new page');
+        
+        // Check if browser is still alive
+        if (!this.browser || !this.browser.isConnected()) {
+          console.log('❌ Browser connection lost, reinitializing...');
+          await this.initialize();
+        }
+        
         try {
           currentPage = await this.browser.newPage();
           this.page = currentPage;
           
-          // Set viewport and user agent
-          await currentPage.setViewport({ width: 1920, height: 1080 });
-          await currentPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+          // Set viewport and user agent with error handling
+          try {
+            await currentPage.setViewport({ width: 1920, height: 1080 });
+            await currentPage.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+          } catch (setupError) {
+            console.warn('⚠️ Failed to setup page viewport/user agent:', setupError.message);
+            // Continue without failing completely
+          }
           
-          // Navigate to URL again
-          await currentPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
-          console.log('✅ New page created and navigated successfully');
+          // Add error handling for the new page
+          currentPage.on('error', (error) => {
+            console.log('⚠️ Page error:', error.message);
+          });
+          
+          currentPage.on('close', () => {
+            console.log('⚠️ Page was closed unexpectedly');
+          });
+          
+          // Navigate to URL again with retry logic
+          let navigationSuccess = false;
+          for (let retryCount = 0; retryCount < 3; retryCount++) {
+            try {
+              await currentPage.goto(url, { 
+                waitUntil: 'domcontentloaded', 
+                timeout: NAV_TIMEOUT 
+              });
+              navigationSuccess = true;
+              break;
+            } catch (navError) {
+              console.log(`❌ Navigation attempt ${retryCount + 1} failed: ${navError.message}`);
+              if (retryCount === 2) {
+                throw navError;
+              }
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+          }
+          
+          if (navigationSuccess) {
+            console.log('✅ New page created and navigated successfully');
+          }
         } catch (pageError) {
           console.log('❌ Failed to create new page:', pageError.message);
-          throw new Error('Unable to extract data - page unavailable after authentication attempt');
+          
+          // Try to extract from public content if authentication failed
+          console.log('🔄 Attempting to extract public content instead...');
+          try {
+            // Create a new page for public content extraction
+            const publicPage = await this.browser.newPage();
+            
+            try {
+              await publicPage.setViewport({ width: 1920, height: 1080 });
+            } catch (viewportError) {
+              console.warn('⚠️ Failed to set viewport on public page, continuing anyway:', viewportError.message);
+            }
+            
+            await publicPage.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT });
+            
+            // Try basic extraction without authentication
+            currentPage = publicPage;
+            this.page = currentPage;
+            console.log('✅ Fallback to public content extraction');
+          } catch (fallbackError) {
+            console.log('❌ Fallback extraction also failed:', fallbackError.message);
+            throw new Error(`Unable to extract data - page unavailable after authentication attempt. Browser error: ${pageError.message}`);
+          }
         }
       }
 
@@ -286,8 +452,54 @@ export class EnhancedWebExtractor {
             throw new Error('Page was closed during extraction');
           }
           
-          // Reduced stability check (was 1000ms)
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Wait for dynamic content to load (especially for React/JS apps)
+          console.log('⏳ Waiting for dynamic content to render...');
+          
+          // Check if this is likely a React/JS heavy site
+          const isJSHeavySite = await currentPage.evaluate(() => {
+            return !!(window.React || window.Vue || window.Angular || 
+                     document.querySelector('[data-reactroot], [data-vue], .ng-app') ||
+                     document.scripts.length > 10);
+          });
+          
+          if (isJSHeavySite) {
+            console.log('🔍 Detected JS-heavy site, waiting longer for content...');
+            // Wait longer for JS frameworks to render
+            await new Promise(resolve => setTimeout(resolve, JS_WAIT));
+            
+            // Wait for common loading indicators to disappear
+            try {
+              await currentPage.waitForFunction(() => {
+                const loadingIndicators = document.querySelectorAll(
+                  '.loading, .spinner, [class*="loading"], [class*="spinner"], .loader'
+                );
+                return loadingIndicators.length === 0 || 
+                       Array.from(loadingIndicators).every(el => 
+                         getComputedStyle(el).display === 'none' || 
+                         getComputedStyle(el).visibility === 'hidden'
+                       );
+              }, { timeout: SELECTOR_TIMEOUT });
+              console.log('✅ Loading indicators cleared');
+            } catch (e) {
+              console.log('⚠️ Loading indicator check timed out, proceeding anyway');
+            }
+            
+            // Wait for content to appear
+            try {
+              await currentPage.waitForFunction(() => {
+                const meaningfulElements = document.querySelectorAll(
+                  'h1, h2, h3, h4, h5, h6, p, span, div[role], button, a, input, form, nav, header, main, section, article'
+                );
+                return meaningfulElements.length > 5; // Wait for at least some content
+              }, { timeout: SELECTOR_TIMEOUT });
+              console.log('✅ Meaningful content detected');
+            } catch (e) {
+              console.log('⚠️ Content detection timed out, proceeding with extraction');
+            }
+          } else {
+            // Standard wait for simpler sites
+            await new Promise(resolve => setTimeout(resolve, STANDARD_WAIT));
+          }
           
           extractedData = await currentPage.evaluate((pageUrl) => {
             // Very basic check
@@ -305,6 +517,16 @@ export class EnhancedWebExtractor {
             };
             
             console.log('🔍 Starting UNIVERSAL DOM extraction...');
+            
+            // Debug: Check what's actually on the page
+            console.log('📊 Page debug info:');
+            console.log(`  Document ready state: ${document.readyState}`);
+            console.log(`  Body children: ${document.body?.children?.length || 0}`);
+            console.log(`  All elements: ${document.querySelectorAll('*').length}`);
+            console.log(`  Visible elements: ${Array.from(document.querySelectorAll('*')).filter(el => {
+              const rect = el.getBoundingClientRect();
+              return rect.width > 0 && rect.height > 0;
+            }).length}`);
             
             // SEMANTIC APPROACH: Extract all meaningful elements regardless of styling/framework
             const extractSemanticElements = () => {
@@ -362,7 +584,37 @@ export class EnhancedWebExtractor {
                 }
               });
               
-              // 3. FORMS - Extract ALL form elements
+              // 2b. CLICKABLE ELEMENTS - Extract tabs, buttons, and interactive elements
+              const clickableElements = document.querySelectorAll('a, [role="tab"], [role="button"], .tab, .btn, [onclick], [class*="tab"], [class*="button"]');
+              clickableElements.forEach((element, index) => {
+                const rect = element.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0 && element.textContent?.trim()) {
+                  const style = window.getComputedStyle(element);
+                  semanticElements.push({
+                    id: `clickable-${index}`,
+                    type: element.getAttribute('role') || 'clickable',
+                    tag: element.tagName?.toLowerCase(),
+                    text: element.textContent.trim().substring(0, 100),
+                    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                    attributes: {
+                      href: element.href || '',
+                      role: element.getAttribute('role'),
+                      className: element.className,
+                      id: element.id
+                    },
+                    styles: {
+                      backgroundColor: style.backgroundColor,
+                      color: style.color,
+                      fontSize: style.fontSize,
+                      fontWeight: style.fontWeight,
+                      borderRadius: style.borderRadius
+                    },
+                    source: 'web'
+                  });
+                }
+              });
+              
+              // 3. FORMS - Extract ALL form elements and individual inputs
               const forms = document.querySelectorAll('form, [role="form"]');
               forms.forEach((form, index) => {
                 const rect = form.getBoundingClientRect();
@@ -383,6 +635,50 @@ export class EnhancedWebExtractor {
                       required: input.required || false
                     })),
                     rect: rect,
+                    source: 'web'
+                  });
+                }
+              });
+              
+              // 3b. INDIVIDUAL INPUTS - Extract each input as separate element (important for login pages)
+              const allInputs = document.querySelectorAll('input, button, select, textarea, [role="button"], [type="submit"]');
+              allInputs.forEach((input, index) => {
+                const rect = input.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                  const style = window.getComputedStyle(input);
+                  
+                  // Get meaningful text for the input
+                  let inputText = '';
+                  if (input.placeholder) inputText = input.placeholder;
+                  else if (input.value) inputText = input.value;
+                  else if (input.textContent?.trim()) inputText = input.textContent.trim();
+                  else if (input.name) inputText = input.name;
+                  else if (input.type) inputText = input.type;
+                  
+                  semanticElements.push({
+                    id: `input-${index}`,
+                    type: input.type || 'input',
+                    tag: input.tagName?.toLowerCase(),
+                    text: inputText.substring(0, 100),
+                    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+                    attributes: {
+                      type: input.type,
+                      name: input.name,
+                      id: input.id,
+                      className: input.className,
+                      placeholder: input.placeholder,
+                      value: input.value,
+                      required: input.required,
+                      disabled: input.disabled
+                    },
+                    styles: {
+                      backgroundColor: style.backgroundColor,
+                      color: style.color,
+                      fontSize: style.fontSize,
+                      border: style.border,
+                      borderRadius: style.borderRadius,
+                      padding: style.padding
+                    },
                     source: 'web'
                   });
                 }
@@ -551,6 +847,31 @@ export class EnhancedWebExtractor {
             
             console.log(`Extracted ${semanticElements.length} semantic + ${visualElements.length} visual = ${elements.length} total elements`);
             
+            // Fallback: If no elements extracted, try basic approach
+            if (elements.length === 0) {
+              console.log('⚠️ No elements from semantic/visual extraction, trying basic fallback...');
+              
+              // Basic extraction - get any visible text content
+              const basicElements = Array.from(document.querySelectorAll('*'))
+                .filter(el => {
+                  const rect = el.getBoundingClientRect();
+                  const hasText = el.textContent?.trim();
+                  return rect.width > 0 && rect.height > 0 && hasText && hasText.length > 2;
+                })
+                .slice(0, 20) // Limit to first 20
+                .map((el, index) => ({
+                  id: `fallback-${index}`,
+                  tag: el.tagName?.toLowerCase() || 'unknown',
+                  type: 'fallback',
+                  text: el.textContent?.trim().substring(0, 200),
+                  rect: el.getBoundingClientRect(),
+                  source: 'fallback'
+                }));
+                
+              elements.push(...basicElements);
+              console.log(`Fallback extraction added ${basicElements.length} elements`);
+            }
+            
             // Extract colors and typography
             document.querySelectorAll('*').forEach(el => {
               const style = window.getComputedStyle(el);
@@ -617,7 +938,7 @@ export class EnhancedWebExtractor {
             screenshot = await Promise.race([
               currentPage.screenshot({ encoding: 'base64' }),
               new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Screenshot timeout')), 5000)
+                setTimeout(() => reject(new Error('Screenshot timeout')), SCREENSHOT_TIMEOUT)
               )
             ]);
             
@@ -630,7 +951,7 @@ export class EnhancedWebExtractor {
               screenshot = null;
               break; // Don't throw error - continue without screenshot
             }
-            await new Promise(resolve => setTimeout(resolve, 500)); // Reduced wait time
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
       }
@@ -684,7 +1005,7 @@ export class EnhancedWebExtractor {
 
   async handleAuthentication(auth) {
     // Handle various authentication types
-    if (auth.type === 'basic') {
+      if (auth.type === 'basic') {
       await this.page.authenticate({
         username: auth.username,
         password: auth.password
@@ -696,7 +1017,12 @@ export class EnhancedWebExtractor {
       try {
         // Wait longer for the page to be fully loaded and DOM to be ready
         console.log('⏳ Waiting for page DOM to be fully ready...');
-        await this.page.waitForSelector('body', { timeout: 10000 });
+        // Use configurable selector timeout
+        const SELECTOR_TIMEOUT = Math.max(
+          this.config?.nextVersion?.authentication?.selectorTimeout || 15000,
+          20000
+        );
+        await this.page.waitForSelector('body', { timeout: SELECTOR_TIMEOUT });
         
         // Wait for DOM content to be loaded with timeout protection
         try {
@@ -710,7 +1036,7 @@ export class EnhancedWebExtractor {
                 }
               });
             }),
-            new Promise(resolve => setTimeout(resolve, 5000)) // 5 second timeout
+            new Promise(resolve => setTimeout(resolve, SELECTOR_TIMEOUT))
           ]);
           console.log('✅ DOM readiness check completed');
         } catch (e) {
@@ -718,18 +1044,18 @@ export class EnhancedWebExtractor {
         }
         
         // Additional wait for any dynamic content/JavaScript to load
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Wait for any form elements to appear
         try {
-          await this.page.waitForSelector('form, input', { timeout: 5000 });
+          await this.page.waitForSelector('form, input', { timeout: SELECTOR_TIMEOUT });
           console.log('✅ Form elements detected on page');
         } catch (e) {
           console.log('⚠️ No form elements found initially, continuing anyway...');
         }
         
         // Additional wait to ensure all form elements are rendered
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Debug: Check what input fields are available
         console.log('🔍 Checking available input fields...');
@@ -778,7 +1104,7 @@ export class EnhancedWebExtractor {
         for (const selector of possiblePasswordSelectors) {
           try {
             console.log(`🔍 Trying password selector: ${selector}`);
-            await this.page.waitForSelector(selector, { timeout: 2000 });
+            await this.page.waitForSelector(selector, { timeout: SELECTOR_TIMEOUT });
             
             // Check if the field is visible
             const isVisible = await this.page.evaluate((sel) => {
@@ -818,7 +1144,7 @@ export class EnhancedWebExtractor {
         for (const selector of possibleUsernameSelectors) {
           try {
             console.log(`🔍 Trying username selector: ${selector}`);
-            await this.page.waitForSelector(selector, { timeout: 2000 });
+            await this.page.waitForSelector(selector, { timeout: SELECTOR_TIMEOUT });
             
             // Check if the field is visible
             const isVisible = await this.page.evaluate((sel) => {
@@ -848,6 +1174,25 @@ export class EnhancedWebExtractor {
           if (this.page.isClosed()) {
             throw new Error('Page was closed before form filling');
           }
+          
+          // Check for CSRF tokens and hidden fields first
+          console.log('🔍 Checking for CSRF tokens and hidden fields...');
+          await this.page.evaluate(() => {
+            const hiddenInputs = document.querySelectorAll('input[type="hidden"]');
+            const metaTags = document.querySelectorAll('meta[name*="csrf"], meta[name*="token"]');
+            
+            console.log(`Found ${hiddenInputs.length} hidden inputs and ${metaTags.length} CSRF meta tags`);
+            
+            hiddenInputs.forEach((input, i) => {
+              if (input.name && input.value) {
+                console.log(`Hidden field ${i}: ${input.name} = ${input.value.substring(0, 20)}...`);
+              }
+            });
+            
+            metaTags.forEach((meta, i) => {
+              console.log(`Meta tag ${i}: ${meta.name} = ${meta.content?.substring(0, 20)}...`);
+            });
+          });
           
           console.log('🔧 Attempting to fill form fields...');
           
@@ -898,36 +1243,154 @@ export class EnhancedWebExtractor {
           console.log('🚀 Attempting to submit login form...');
           
           try {
-            // Handle form submission with navigation properly
+            // Enhanced form submission that handles modern web apps
+            console.log('🔍 Analyzing form submission method...');
+            
+            // First, try clicking the submit button (preferred for modern apps)
+            const submitSuccess = await this.page.evaluate(() => {
+              // Priority 1: Look for submit buttons with specific selectors
+              const submitSelectors = [
+                'button[type="submit"]',
+                'input[type="submit"]', 
+                '.login-btn',
+                '.submit-btn',
+                '.ant-btn[type="submit"]',
+                'button:contains("Login")',
+                'button:contains("Sign in")',
+                '[class*="login"][class*="button"]',
+                '[class*="submit"][class*="button"]'
+              ];
+              
+              for (const selector of submitSelectors) {
+                const btn = document.querySelector(selector);
+                if (btn && !btn.disabled) {
+                  console.log(`Found submit button: ${selector}`);
+                  btn.click();
+                  return { method: 'button_click', selector };
+                }
+              }
+              
+              // Priority 2: Try form submission as fallback
+              const forms = document.querySelectorAll('form');
+              if (forms.length > 0) {
+                console.log('Using form.submit() as fallback');
+                forms[0].submit();
+                return { method: 'form_submit' };
+              }
+              
+              return { method: 'none' };
+            });
+            
+            console.log(`📤 Form submission method: ${submitSuccess.method}`);
+            
+            // Wait for response with multiple strategies
             await Promise.race([
-              // Case 1: Form submits and redirects (most common)
-              Promise.all([
-                this.page.waitForNavigation({ 
-                  waitUntil: 'networkidle0', 
-                  timeout: 30000 
-                }),
-                this.page.evaluate(() => {
-                  const forms = document.querySelectorAll('form');
-                  if (forms.length > 0) {
-                    forms[0].submit();
-                    return true;
-                  }
-                  
-                  // Try submit button if no form
-                  const submitBtn = document.querySelector('button[type="submit"], input[type="submit"], .submit-btn, .login-btn');
-                  if (submitBtn) {
-                    submitBtn.click();
-                    return true;
-                  }
-                  return false;
-                })
-              ]),
-              // Case 2: SPA form that doesn't redirect but shows dashboard content
-              this.page.waitForSelector('.dashboard, [class*="dashboard"], main, .ant-layout-content, .content', { 
-                timeout: 30000,
+              // Strategy 1: Wait for navigation (traditional form submit)
+              this.page.waitForNavigation({ 
+                waitUntil: 'networkidle0', 
+                timeout: 15000
+              }).then(() => ({ type: 'navigation' })),
+              
+              // Strategy 2: Wait for URL change (SPA navigation)
+              this.page.waitForFunction(
+                (currentUrl) => window.location.href !== currentUrl,
+                { timeout: 15000 },
+                this.page.url()
+              ).then(() => ({ type: 'url_change' })),
+              
+              // Strategy 3: Wait for dashboard/content elements (SPA content update)
+              this.page.waitForSelector('.dashboard, [class*="dashboard"], main, .ant-layout-content, .content, [class*="shipment"], [class*="journey"]', { 
+                timeout: 15000,
                 visible: true 
-              })
+              }).then(() => ({ type: 'content_update' })),
+              
+              // Strategy 4: Wait for login form to disappear (successful login)
+              this.page.waitForFunction(
+                () => !document.querySelector('input[type="password"]'),
+                { timeout: 15000 }
+              ).then(() => ({ type: 'form_removed' })),
+              
+              // Strategy 5: Detect error messages (failed login)
+              this.page.waitForSelector('.error, .alert, [class*="error"], [class*="alert"], .message', {
+                timeout: 8000,
+                visible: true
+              }).then(() => ({ type: 'error_detected' }))
             ]);
+            
+                      // Give page time to stabilize after login
+          console.log('⏳ Waiting for authenticated content to load...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Wait for authenticated content indicators
+          try {
+            await this.page.waitForFunction(() => {
+              // Check for common authenticated page indicators
+              const indicators = [
+                'dashboard', 'logout', 'profile', 'welcome', 'shipment', 'journey',
+                'menu', 'navigation', 'sidebar', 'header', 'main-content'
+              ];
+              
+              const bodyText = document.body.innerText.toLowerCase();
+              const hasAuthIndicators = indicators.some(indicator => bodyText.includes(indicator));
+              
+              // Also check if login form is gone
+              const hasLoginForm = document.querySelector('input[type="password"]') !== null;
+              
+              console.log(`Auth check: hasAuthIndicators=${hasAuthIndicators}, hasLoginForm=${hasLoginForm}`);
+              return hasAuthIndicators && !hasLoginForm;
+            }, { timeout: 10000 });
+            
+            console.log('✅ Authenticated content detected');
+          } catch (waitError) {
+            console.warn('⚠️ Timeout waiting for authenticated content, proceeding anyway');
+          }
+          
+          // Additional wait for dynamic content
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Check final URL and content after authentication
+          const finalUrl = this.page.url();
+          console.log(`📍 Final URL after authentication: ${finalUrl}`);
+          
+          // Check if we need to navigate to the original protected URL
+          const targetUrl = url; // The original URL we want to access
+          console.log(`🎯 Target URL: ${targetUrl}, Current URL: ${finalUrl}`);
+          
+          // If authentication was successful but we're not on the target URL, navigate there
+          if (finalUrl !== targetUrl && !finalUrl.includes('/incoming/shipments') && !finalUrl.includes('/journey/listing')) {
+            console.log('🔄 Authentication completed, navigating to target URL...');
+            
+            try {
+              // Navigate to the original protected URL with authentication cookies
+              await this.page.goto(targetUrl, { 
+                waitUntil: 'networkidle0', 
+                timeout: 15000 
+              });
+              
+              // Wait for authenticated content to load
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              
+              const newUrl = this.page.url();
+              console.log(`📍 Final authenticated URL: ${newUrl}`);
+              
+              // Check if we successfully reached authenticated content
+              const hasAuthContent = await this.page.evaluate(() => {
+                const bodyText = document.body.innerText.toLowerCase();
+                const authIndicators = ['dashboard', 'logout', 'profile', 'welcome', 'shipment', 'journey'];
+                const hasLoginForm = document.querySelector('input[type="password"]') !== null;
+                return authIndicators.some(indicator => bodyText.includes(indicator)) && !hasLoginForm;
+              });
+              
+              if (hasAuthContent) {
+                console.log('✅ Successfully accessed authenticated content');
+              } else {
+                console.warn('⚠️ Still seeing login content after authentication');
+              }
+              
+            } catch (navError) {
+              console.warn(`⚠️ Failed to navigate to target URL: ${navError.message}`);
+            }
+          }
             
             console.log('✅ Login form submitted successfully');
             
@@ -965,7 +1428,7 @@ export class EnhancedWebExtractor {
             if (submitResult.success) {
               console.log(`✅ Form submitted using: ${submitResult.method}`);
               // Wait for potential page changes
-              await new Promise(resolve => setTimeout(resolve, 5000));
+              await new Promise(resolve => setTimeout(resolve, 6000));
             } else {
               throw new Error('All submit methods failed');
             }

@@ -5,6 +5,8 @@
 
 import puppeteer from 'puppeteer';
 import { loadConfig } from '../config/index.js';
+import { getBrowserConfig, validateBrowserAvailability } from '../utils/browserDetection.js';
+import { getResourceManager } from '../utils/ResourceManager.js';
 
 class BrowserPool {
   constructor() {
@@ -15,6 +17,7 @@ class BrowserPool {
     this.maxBrowsers = 3;
     this.maxPagesPerBrowser = 10;
     this.maxIdleTime = 5 * 60 * 1000; // 5 minutes
+    this.resourceManager = getResourceManager();
     
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
@@ -60,32 +63,48 @@ class BrowserPool {
       }
     }
 
-    // Launch new browser with production-ready configuration
-    const launchOptions = {
-      headless: this.config.puppeteer.headless,
-      timeout: this.config.puppeteer.timeout,
-      protocolTimeout: this.config.puppeteer.protocolTimeout,
-      executablePath: this.config.puppeteer.executablePath,
-      args: this.config.puppeteer.args,
-      ignoreDefaultArgs: ['--disable-extensions'],
-      handleSIGINT: false,
-      handleSIGTERM: false,
-      handleSIGHUP: false,
-      ...options
-    };
-
+    // Launch new browser with cross-platform configuration
     try {
+      // Validate browser availability first
+      const browserInfo = await validateBrowserAvailability();
+      console.log(`🌐 Browser info:`, browserInfo);
+      
+      // Get optimized browser configuration
+      const launchOptions = getBrowserConfig({
+        headless: this.config.puppeteer.headless,
+        timeout: this.config.puppeteer.timeout,
+        protocolTimeout: this.config.puppeteer.protocolTimeout,
+        ...options
+      });
+
+      console.log(`🚀 Launching browser with config:`, {
+        executablePath: launchOptions.executablePath || 'bundled',
+        headless: launchOptions.headless,
+        platform: process.platform
+      });
+
       const browser = await puppeteer.launch(launchOptions);
       this.browsers.set(browserKey, browser);
       
+      // Track browser in resource manager
+      const browserId = this.resourceManager.generateResourceId('browser');
+      this.resourceManager.track(browserId, browser, 'browser', {
+        browserKey,
+        platform: process.platform,
+        executablePath: launchOptions.executablePath
+      });
+      
       // Handle browser disconnection
       browser.on('disconnected', () => {
+        console.log(`🔌 Browser disconnected: ${browserKey}`);
         this.browsers.delete(browserKey);
         this.cleanupPagesForBrowser(browser);
       });
 
+      console.log(`✅ Browser launched successfully: ${browserKey}`);
       return browser;
     } catch (error) {
+      console.error(`❌ Failed to launch browser: ${error.message}`);
       throw new Error(`Failed to launch browser: ${error.message}`);
     }
   }
@@ -132,16 +151,24 @@ class BrowserPool {
       createdAt: Date.now()
     });
 
+    // Track page in resource manager
+    this.resourceManager.track(pageId, page, 'page', {
+      browserId: this.getBrowserKey(options),
+      viewport: { width: options.width || 1920, height: options.height || 1080 }
+    });
+
     // Add cleanup handlers
     page.on('close', () => {
+      console.log(`📄 Page closed: ${pageId}`);
       this.pages.delete(pageId);
     });
 
     page.on('error', (error) => {
-      console.warn(`Page ${pageId} error:`, error.message);
+      console.warn(`❌ Page ${pageId} error:`, error.message);
       this.pages.delete(pageId);
     });
 
+    console.log(`✅ Page created: ${pageId}`);
     return { page, pageId };
   }
 

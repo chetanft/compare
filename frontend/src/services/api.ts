@@ -6,7 +6,8 @@ import { FigmaData, WebData } from '../../../src/types/extractor';
 // API Configuration
 const API_CONFIG = {
   baseURL: getApiBaseUrl(),
-  timeout: 120000,
+  // Increased to accommodate slow, JS-heavy sites (e.g., FreightTiger). Adjustable if needed.
+  timeout: 420000,
   retries: 3
 };
 
@@ -56,7 +57,7 @@ class ApiService {
     const apiUrl = this.getApiUrl(url);
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+    const timeoutId = setTimeout(() => controller.abort(new Error(`Client request timeout after ${this.timeout}ms`)), this.timeout)
 
     try {
       console.log(`🌐 API Request: ${apiUrl}`);
@@ -74,7 +75,14 @@ class ApiService {
     } catch (error) {
       clearTimeout(timeoutId)
       
-      if (retryCount < this.retries && (error as Error).name !== 'AbortError') {
+      // Normalize abort errors with a helpful message
+      if ((error as Error).name === 'AbortError' || /aborted/i.test((error as Error).message)) {
+        const friendly = new Error(`Request aborted: timed out after ${Math.round(this.timeout/1000)}s`)
+        ;(friendly as any).code = 'ABORT_TIMEOUT'
+        throw friendly
+      }
+
+      if (retryCount < this.retries) {
         console.warn(`API request failed, retrying... (${retryCount + 1}/${this.retries})`)
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
         return this.fetchWithRetry(url, options, retryCount + 1)
@@ -185,15 +193,20 @@ class ApiService {
   }
 
   // Use axios for specific cases where fetch doesn't work well
-  async postAxios<T = any>(url: string, data: any): Promise<T> {
+  async postAxios<T = any>(url: string, data: any, options?: { headers?: Record<string, string> }): Promise<T> {
     try {
       const apiUrl = this.getApiUrl(url);
       console.log(`🌐 Axios Request: ${apiUrl}`);
       
+      const headers = options?.headers || {};
+      
+      // Don't set Content-Type for FormData - let axios handle it
+      if (!(data instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
       const response = await axios.post(apiUrl, data, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         timeout: this.timeout
       });
       
@@ -201,10 +214,10 @@ class ApiService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const apiError: ApiError = {
-          message: error.message,
+          message: error.response?.data?.error || error.message,
           status: error.response?.status,
           code: error.code,
-          details: error.response?.data?.error || error.response?.data?.message
+          details: error.response?.data?.details
         };
         throw apiError;
       }
@@ -262,6 +275,35 @@ export interface ComparisonRequest {
       password?: string
     }
   } | null
+}
+
+export interface ExtractionDetails {
+  figma: {
+    componentCount: number;
+    colors: Array<{name: string, value: string, type: string}>;
+    typography: Array<{fontFamily: string, fontSize: number, fontWeight: number}>;
+    extractionTime: number;
+    fileInfo: {name: string, nodeId?: string};
+  };
+  web: {
+    elementCount: number;
+    colors: string[];
+    typography: {
+      fontFamilies: string[];
+      fontSizes: string[];
+      fontWeights: string[];
+    };
+    spacing: string[];
+    borderRadius: string[];
+    extractionTime: number;
+    urlInfo: {url: string, title?: string};
+  };
+  comparison: {
+    totalComparisons: number;
+    matches: number;
+    deviations: number;
+    matchPercentage: number;
+  };
 }
 
 // Extract Figma data
@@ -479,13 +521,17 @@ export const extractWebOnly = async (
   try {
     console.log('Extracting Web-only data from URL:', webUrl);
     
-    // Use the dedicated endpoint for Web-only extraction
-    const endpoint = '/api/web-only/extract';
+    // Use the UnifiedWebExtractor endpoint with FreightTiger authentication fixes
+    const endpoint = '/api/web/extract-v3';
     
     const response = await apiService.post<WebOnlyResponse>(endpoint, { 
-      webUrl,
-      webSelector,
-      authentication
+      url: webUrl, // UnifiedWebExtractor expects 'url', not 'webUrl'
+      authentication,
+      options: {
+        includeScreenshot: false,
+        viewport: { width: 1920, height: 1080 },
+        timeout: webUrl.includes('freighttiger.com') ? 120000 : 60000 // Extended timeout for FreightTiger
+      }
     });
     
     if (!response.success) {
@@ -502,4 +548,88 @@ export const extractWebOnly = async (
 // Export convenience functions that use the singleton
 export const testConnection = async (data: { figmaPersonalAccessToken: string }) => {
   return apiService.testConnection(data);
+};
+
+// Screenshot Comparison API Functions
+export const uploadScreenshots = async (formData: FormData): Promise<{ uploadId: string }> => {
+  try {
+    console.log('🌐 Uploading screenshots with FormData:', formData);
+    
+    // Debug FormData contents
+    console.log('📝 FormData contents before upload:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+    }
+    
+    const response = await apiService.postAxios<ApiResponse<{ uploadId: string }>>(
+      '/api/screenshots/upload', 
+      formData
+    );
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Screenshot upload failed');
+    }
+    
+    return response.data as { uploadId: string };
+  } catch (error) {
+    console.error('Error uploading screenshots:', error);
+    throw error;
+  }
+};
+
+export const startScreenshotComparison = async (
+  uploadId: string, 
+  settings: any
+): Promise<any> => {
+  try {
+    const response = await apiService.postAxios<ApiResponse<any>>(
+      '/api/screenshots/compare',
+      { uploadId, settings }
+    );
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Screenshot comparison failed');
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error starting screenshot comparison:', error);
+    throw error;
+  }
+};
+
+export const getScreenshotComparisonStatus = async (
+  comparisonId: string
+): Promise<any> => {
+  try {
+    const response = await apiService.getAxios<ApiResponse<any>>(
+      `/api/screenshots/compare/${comparisonId}`
+    );
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to get comparison status');
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error getting comparison status:', error);
+    throw error;
+  }
+};
+
+export const listScreenshotComparisons = async (): Promise<any[]> => {
+  try {
+    const response = await apiService.getAxios<ApiResponse<any[]>>(
+      '/api/screenshots/list'
+    );
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to list comparisons');
+    }
+    
+    return response.data as any[];
+  } catch (error) {
+    console.error('Error listing comparisons:', error);
+    throw error;
+  }
 }; 

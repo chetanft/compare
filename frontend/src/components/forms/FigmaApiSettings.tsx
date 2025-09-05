@@ -3,7 +3,10 @@ import { KeyIcon, CheckCircleIcon, XCircleIcon, DocumentTextIcon } from '@heroic
 import { testConnection } from '../../services/api';
 import { Link } from 'react-router-dom';
 
-interface FigmaApiSettingsProps {
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';interface FigmaApiSettingsProps {
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -98,7 +101,7 @@ const FigmaApiSettings: React.FC<FigmaApiSettingsProps> = ({ value, onChange, on
           </div>
         </div>
         
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           Create a personal access token in your Figma account settings with all required scopes.
           <a 
             href="/FIGMA_API_SETUP_GUIDE.md" 
@@ -151,7 +154,7 @@ const FigmaApiSettings: React.FC<FigmaApiSettingsProps> = ({ value, onChange, on
         <div className={`mt-2 p-3 rounded-md ${
           connectionStatus.status === 'success' ? 'bg-green-50 text-green-800' : 
           connectionStatus.status === 'error' ? 'bg-red-50 text-red-800' : 
-          'bg-gray-50 text-gray-800'
+          'bg-muted/50 text-gray-800'
         }`}>
           {connectionStatus.message && (
             <p className="text-sm font-medium">{connectionStatus.message}</p>
@@ -160,7 +163,7 @@ const FigmaApiSettings: React.FC<FigmaApiSettingsProps> = ({ value, onChange, on
           {connectionStatus.status === 'success' && connectionStatus.user && (
             <div className="mt-2 text-sm">
               <p>Connected as: <strong>{connectionStatus.user.handle}</strong></p>
-              <p className="text-xs text-gray-500">{connectionStatus.user.email}</p>
+              <p className="text-xs text-muted-foreground">{connectionStatus.user.email}</p>
             </div>
           )}
           

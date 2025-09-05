@@ -1,6 +1,7 @@
-import React from 'react'
 import { Bars3Icon, BellIcon } from '@heroicons/react/24/outline'
 import MCPStatus from '../ui/MCPStatus'
+import { ThemeToggle } from '../ui/theme-toggle'
+import { Button } from '@/components/ui/button'
 
 interface HeaderProps {
   title: string
@@ -10,35 +11,36 @@ interface HeaderProps {
 
 export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="page-header px-6 py-4 sticky top-0 z-50">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onMenuClick}
-            className={`
-              p-2 rounded-md hover:bg-gray-100 transition-colors
-              ${sidebarOpen ? 'lg:hidden' : ''}
-            `}
+            className={`p-2 ${sidebarOpen ? 'lg:hidden' : ''}`}
           >
-            <Bars3Icon className="w-5 h-5 text-gray-500" />
-          </button>
+            <Bars3Icon className="w-5 h-5" />
+          </Button>
           
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-            <p className="text-sm text-gray-500">Create and manage your design comparisons</p>
+            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-sm text-muted-foreground">Create and manage your design comparisons</p>
           </div>
         </div>
         
         <div className="flex items-center space-x-4">
           <MCPStatus />
           
-          <button className="p-2 rounded-md hover:bg-gray-100 transition-colors relative">
-            <BellIcon className="w-5 h-5 text-gray-500" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          <ThemeToggle />
           
-          <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-white">U</span>
+          <Button variant="ghost" size="sm" className="p-2 relative">
+            <BellIcon className="w-5 h-5" />
+            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+          </Button>
+          
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+            <span className="text-sm font-medium text-primary-foreground">U</span>
           </div>
         </div>
       </div>

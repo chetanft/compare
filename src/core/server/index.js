@@ -8,9 +8,13 @@ import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 import { FigmaMCPClient } from '../../figma/mcpClient.js';
 import { EnhancedWebExtractor } from '../../web/enhancedWebExtractor.js';
+import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
 import ComparisonEngine from '../../compare/comparisonEngine.js';
+import { ScreenshotComparisonService } from '../../compare/ScreenshotComparisonService.js';
 import { loadConfig, getFigmaApiKey } from '../../config/index.js';
 import { logger } from '../../utils/logger.js';
 import { performanceMonitor } from '../../monitoring/performanceMonitor.js';
@@ -23,7 +27,9 @@ import {
   requestLogger,
   validateExtractionUrl 
 } from '../../server/middleware.js';
+import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
+import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
 import WebExtractorV2 from '../../web/WebExtractorV2.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -81,14 +87,51 @@ export async function startServer() {
   const app = express();
   const httpServer = createServer(app);
   
-  // Initialize services
-  const figmaClient = new FigmaMCPClient();
-  const comparisonEngine = new ComparisonEngine();
-  const browserPool = getBrowserPool();
-  const webExtractorV2 = new WebExtractorV2();
+  // Enhanced service initialization with backward compatibility
+  let serviceManager;
+  let figmaClient, comparisonEngine, browserPool, webExtractorV2, enhancedWebExtractor, unifiedWebExtractor, resourceManager;
   
-  // Start performance monitoring
-  performanceMonitor.startMonitoring();
+  try {
+    // Try enhanced service initialization
+    const { serviceManager: sm } = await import('../ServiceManager.js');
+    serviceManager = sm;
+    
+    const initResults = await serviceManager.initializeServices(config);
+    if (initResults.success) {
+      console.log('✅ Enhanced service initialization successful');
+      
+      // Get services from enhanced service manager
+      figmaClient = serviceManager.getService('mcpClient');
+      comparisonEngine = serviceManager.getService('comparisonEngine');
+      browserPool = serviceManager.getService('browserPool');
+      enhancedWebExtractor = serviceManager.getService('webExtractor');
+      webExtractorV2 = new WebExtractorV2(); // Keep this for compatibility
+      
+      // Initialize new unified extractor and resource manager
+      unifiedWebExtractor = new UnifiedWebExtractor();
+      resourceManager = getResourceManager();
+      
+    } else {
+      throw new Error('Enhanced initialization failed, using fallback');
+    }
+  } catch (error) {
+    console.warn('⚠️ Enhanced service initialization failed, using legacy mode:', error.message);
+    
+    // Fallback to legacy initialization (preserve existing functionality)
+    figmaClient = new FigmaMCPClient();
+    comparisonEngine = new ComparisonEngine();
+    browserPool = getBrowserPool();
+    webExtractorV2 = new WebExtractorV2();
+    unifiedWebExtractor = new UnifiedWebExtractor();
+    resourceManager = getResourceManager();
+    
+    // Import and initialize the enhanced web extractor for better extraction
+    const { EnhancedWebExtractor } = await import('../../web/enhancedWebExtractor.js');
+    enhancedWebExtractor = new EnhancedWebExtractor();
+    
+    // Start performance monitoring the old way
+    performanceMonitor.startMonitoring();
+  }
   
   // TODO: Initialize WebSocket server once compiled
   // const webSocketManager = initializeWebSocket(httpServer, config);
@@ -105,6 +148,14 @@ export async function startServer() {
   // Global MCP connection status
   let mcpConnected = false;
   
+  // Initialize Screenshot Comparison Service
+  let screenshotComparisonService;
+  try {
+    screenshotComparisonService = new ScreenshotComparisonService(config);
+  } catch (error) {
+    console.warn('⚠️ Screenshot comparison service initialization failed:', error.message);
+  }
+  
   // Configure enhanced middleware
   configureSecurityMiddleware(app, config);
   
@@ -118,9 +169,16 @@ export async function startServer() {
   const { generalLimiter, extractionLimiter } = configureRateLimit(config);
   app.use('/api', generalLimiter);
   
-  // Serve frontend static files
+  // Serve frontend static files (exclude report files)
   const frontendPath = path.join(__dirname, '../../../frontend/dist');
-  app.use(express.static(frontendPath));
+  
+  // Custom middleware to block report files from frontend static serving
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
+      return next(); // Skip static middleware for report files
+    }
+    express.static(frontendPath)(req, res, next);
+  });
   
   // Serve output files (reports, images, screenshots)
   const outputPath = path.join(__dirname, '../../../output');
@@ -141,26 +199,109 @@ export async function startServer() {
     }
   });
 
-  // API Routes - Enhanced health endpoint
+  // API Routes - Enhanced health endpoint with comprehensive monitoring
   app.get('/api/health', (req, res) => {
-    const realTimeMetrics = performanceMonitor.getRealTimeMetrics();
-    const browserStats = browserPool.getStats();
-    
-    res.json({
-      status: 'ok', 
-      mcp: mcpConnected,
-      webSocket: {
-        connected: webSocketManager.getActiveConnectionsCount() > 0,
-        activeConnections: webSocketManager.getActiveConnectionsCount(),
-        activeComparisons: webSocketManager.getActiveComparisonsCount(),
-      },
-      browser: {
-        pool: browserStats,
-        activeExtractions: webExtractorV2.getActiveExtractions(),
-      },
-      timestamp: new Date().toISOString(),
-      performance: realTimeMetrics
-    });
+    try {
+      const realTimeMetrics = performanceMonitor.getRealTimeMetrics();
+      const browserStats = browserPool.getStats();
+      
+      // Enhanced health data with service manager integration
+      let enhancedHealth = {};
+      if (serviceManager) {
+        enhancedHealth = serviceManager.getServicesStatus();
+      }
+      
+      res.json({
+        status: 'ok', 
+        mcp: mcpConnected,
+        webSocket: {
+          connected: webSocketManager.getActiveConnectionsCount() > 0,
+          activeConnections: webSocketManager.getActiveConnectionsCount(),
+          activeComparisons: webSocketManager.getActiveComparisonsCount(),
+        },
+        browser: {
+          pool: browserStats,
+          activeExtractions: webExtractorV2.getActiveExtractions(),
+        },
+        timestamp: new Date().toISOString(),
+        performance: realTimeMetrics,
+        // Enhanced monitoring data
+        enhanced: enhancedHealth
+      });
+    } catch (error) {
+      // Ensure health endpoint never crashes
+      res.json({
+        status: 'degraded',
+        error: 'Health check error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // New detailed health endpoint
+  app.get('/api/health/detailed', (req, res) => {
+    try {
+      if (!serviceManager) {
+        return res.json({
+          success: false,
+          error: 'Enhanced monitoring not available',
+          mode: 'legacy'
+        });
+      }
+
+      const servicesStatus = serviceManager.getServicesStatus();
+      
+      res.json({
+        success: true,
+        data: {
+          ...servicesStatus,
+          legacy: {
+            mcp: mcpConnected,
+            webSocket: {
+              connected: webSocketManager.getActiveConnectionsCount() > 0,
+              activeConnections: webSocketManager.getActiveConnectionsCount(),
+              activeComparisons: webSocketManager.getActiveComparisonsCount(),
+            },
+            browser: browserPool.getStats(),
+            performance: performanceMonitor.getRealTimeMetrics()
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Circuit breaker status endpoint
+  app.get('/api/health/circuit-breakers', async (req, res) => {
+    try {
+      if (!serviceManager) {
+        return res.json({
+          success: false,
+          error: 'Circuit breakers not available',
+          mode: 'legacy'
+        });
+      }
+
+      const { circuitBreakerRegistry } = await import('../resilience/CircuitBreaker.js');
+      
+      res.json({
+        success: true,
+        data: {
+          summary: circuitBreakerRegistry.getHealthStatus(),
+          details: circuitBreakerRegistry.getAllStats()
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
   });
 
   /**
@@ -501,25 +642,30 @@ export async function startServer() {
    * Web extraction endpoint
    */
   app.post('/api/web-only/extract', async (req, res) => {
-    
+
     try {
       const { webUrl, authentication } = req.body;
-      
-      if (!webUrl) {
+      const targetUrl = webUrl || req.body.url;
+
+      if (!targetUrl) {
         return res.status(400).json({
           success: false,
           error: 'Web URL is required'
         });
       }
 
-      console.log(`🔗 Starting web-only extraction for: ${webUrl}`);
-      
-      // Use the new enhanced extractor with browser pool
-      const webData = await webExtractorV2.extractWebData(webUrl, {
+      console.log(`🔗 Starting web-only extraction for: ${targetUrl}`);
+
+      // Route web-only extractions through the unified extractor for robustness
+      const isFreightTiger = targetUrl.includes('freighttiger.com');
+      const unifiedOptions = {
         authentication,
-        timeout: config.timeouts.webExtraction,
-        includeScreenshot: true
-      });
+        includeScreenshot: false,
+        viewport: { width: 1920, height: 1080 },
+        timeout: isFreightTiger ? Math.max(config.timeouts.webExtraction, 120000) : config.timeouts.webExtraction
+      };
+
+      const webData = await unifiedWebExtractor.extractWebData(targetUrl, unifiedOptions);
       
       // Generate HTML report for web extraction
       const reportGenerator = await import('../../reporting/index.js');
@@ -533,13 +679,13 @@ export async function startServer() {
         
         const reportData = {
           figmaData: {
-            fileName: `Web Extraction Report for ${new URL(webUrl).hostname}`,
+            fileName: `Web Extraction Report for ${new URL(targetUrl).hostname}`,
             extractedAt: new Date().toISOString(),
             components: [],
             metadata: {}
           },
           webData: {
-            url: webData.url || webUrl,
+            url: webData.url || targetUrl,
             extractedAt: webData.extractedAt || new Date().toISOString(),
             elements: elements,
             colorPalette: colorPalette,
@@ -621,6 +767,10 @@ export async function startServer() {
    * Comparison endpoint
    */
   app.post('/api/compare', async (req, res) => {
+    console.log('🚀 COMPARE ENDPOINT HIT - Request received');
+    console.log('🔍 Request body keys:', Object.keys(req.body));
+    console.log('🔍 Authentication in body:', !!req.body.authentication);
+    
     try {
       const { figmaUrl, webUrl, includeVisual = false } = req.body;
       
@@ -649,27 +799,89 @@ export async function startServer() {
   const startTime = Date.now();
   
   const figmaStartTime = Date.now();
-  const figmaData = await figmaClient.extractFigmaData(figmaUrl);
+  let figmaData = null;
+  try {
+    figmaData = await figmaClient.extractFigmaData(figmaUrl);
+    console.log('✅ Figma extraction successful');
+    console.log('📊 Figma data summary:', {
+      components: figmaData.components?.length || 0,
+      fileName: figmaData.fileName || 'Unknown',
+      hasMetadata: !!figmaData.metadata
+    });
+    
+    // Debug: Log first component if available
+    if (figmaData.components && figmaData.components.length > 0) {
+      const firstComponent = figmaData.components[0];
+      console.log('🔍 First component sample:', {
+        id: firstComponent.id,
+        name: firstComponent.name,
+        type: firstComponent.type,
+        hasProperties: !!firstComponent.properties,
+        propertyKeys: firstComponent.properties ? Object.keys(firstComponent.properties) : []
+      });
+    }
+  } catch (figmaError) {
+    console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
+    figmaData = { components: [], error: figmaError.message };
+  }
   const figmaDuration = Date.now() - figmaStartTime;
   performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });
   
   const webStartTime = Date.now();
-  const webExtractor = new EnhancedWebExtractor();
   let webData;
   
+  // DEBUG: Log the full request body to understand the structure
+  console.log('🔍 DEBUG: Full request body:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 DEBUG: Authentication object:', JSON.stringify(req.body.authentication, null, 2));
+  
+  // Extract authentication from request body if available
+  const authentication = req.body.authentication?.webAuth ? {
+    type: 'form',
+    username: req.body.authentication.webAuth.username,
+    password: req.body.authentication.webAuth.password
+  } : req.body.authentication && req.body.authentication.type ? {
+    type: req.body.authentication.type,
+    username: req.body.authentication.username,
+    password: req.body.authentication.password,
+    loginUrl: req.body.authentication.loginUrl,
+    waitTime: req.body.authentication.waitTime,
+    successIndicator: req.body.authentication.successIndicator
+  } : null;
+
+  console.log('🔧 Using UnifiedWebExtractor for comparison with auth:', authentication ? 'enabled' : 'disabled');
+  console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
+  
   try {
-    await webExtractor.initialize();
-    webData = await webExtractor.extractWebData(webUrl);
+    // Use the UnifiedWebExtractor instead of EnhancedWebExtractor
+    webData = await unifiedWebExtractor.extractWebData(webUrl, {
+      authentication: authentication,
+      timeout: webUrl.includes('freighttiger.com') ? 180000 : 60000,
+      includeScreenshot: false
+    });
     
-    // Ensure all async operations complete before cleanup
-    await new Promise(resolve => setTimeout(resolve, 500));
-  } finally {
-    // Always cleanup
-    try {
-      await webExtractor.cleanup();
-    } catch (cleanupError) {
-      console.error('❌ Cleanup failed:', cleanupError.message);
+    console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
+    console.log('📊 Web data summary:', {
+      elements: webData.elements?.length || 0,
+      colors: webData.colorPalette?.length || 0,
+      fontFamilies: webData.typography?.fontFamilies?.length || 0,
+      fontSizes: webData.typography?.fontSizes?.length || 0,
+      spacing: webData.spacing?.length || 0,
+      borderRadius: webData.borderRadius?.length || 0
+    });
+    
+    // Debug: Sample extracted data
+    if (webData.colorPalette?.length > 0) {
+      console.log('🎨 Sample colors:', webData.colorPalette.slice(0, 3));
     }
+    if (webData.typography?.fontFamilies?.length > 0) {
+      console.log('📝 Sample fonts:', webData.typography.fontFamilies.slice(0, 3));
+    }
+    if (webData.spacing?.length > 0) {
+      console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
+    }
+  } catch (webError) {
+    console.error('❌ Web extraction failed:', webError.message);
+    throw webError;
   }
   
   const webDuration = Date.now() - webStartTime;
@@ -680,8 +892,19 @@ export async function startServer() {
 
   // Compare the data
   const comparisonStartTime = Date.now();
+  console.log('🔄 Starting comparison with data:', {
+    figmaComponents: figmaData.components?.length || 0,
+    webElements: webData.elements?.length || 0
+  });
+  
   const comparison = await comparisonEngine.compareDesigns(figmaData, webData);
   const comparisonDuration = Date.now() - comparisonStartTime;
+  
+  console.log('✅ Comparison completed:', {
+    totalComparisons: comparison.comparisons?.length || 0,
+    totalMatches: comparison.summary?.totalMatches || 0,
+    totalDeviations: comparison.summary?.totalDeviations || 0
+  });
   
   const totalDuration = Date.now() - startTime;
   performanceMonitor.trackComparison(comparisonDuration, {
@@ -740,6 +963,42 @@ export async function startServer() {
         console.warn('Report Error Stack:', reportError.stack);
       }
 
+      // Prepare extraction details for frontend
+      const extractionDetails = {
+        figma: {
+          componentCount: figmaData?.components?.length || 0,
+          colors: figmaData?.colors || [],
+          typography: figmaData?.typography || [],
+          extractionTime: figmaDuration,
+          fileInfo: {
+            name: figmaData?.fileName || 'Unknown',
+            nodeId: figmaData?.nodeId
+          }
+        },
+        web: {
+          elementCount: webData?.elements?.length || 0,
+          colors: webData?.colorPalette || [],
+          typography: {
+            fontFamilies: webData?.typography?.fontFamilies || [],
+            fontSizes: webData?.typography?.fontSizes || [],
+            fontWeights: webData?.typography?.fontWeights || []
+          },
+          spacing: webData?.spacing || [],
+          borderRadius: webData?.borderRadius || [],
+          extractionTime: webDuration,
+          urlInfo: {
+            url: webUrl,
+            title: webData?.metadata?.title
+          }
+        },
+        comparison: {
+          totalComparisons: comparison?.comparisons?.length || 0,
+          matches: comparison?.summary?.totalMatches || 0,
+          deviations: comparison?.summary?.totalDeviations || 0,
+          matchPercentage: comparison?.overallMatch || 0
+        }
+      };
+
       // Add component counts to the response data
       const responseData = {
         figmaData: {
@@ -758,7 +1017,8 @@ export async function startServer() {
           figmaComponentCount: figmaData?.components?.length || 0,
           webElementCount: webData?.elements?.length || 0
         },
-        reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null
+        reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
+        extractionDetails
       };
 
       res.json({
@@ -776,14 +1036,366 @@ export async function startServer() {
   });
 
   /**
-   * Catch-all route - serve frontend
+   * Screenshot Comparison Endpoints
+   */
+  
+  // Configure multer for file uploads
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      const uploadId = req.uploadId || uuidv4();
+      req.uploadId = uploadId;
+      const uploadDir = path.join(process.cwd(), 'output/screenshots/uploads', uploadId);
+      fs.mkdirSync(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const prefix = file.fieldname === 'figmaScreenshot' ? 'figma' : 'developed';
+      cb(null, `${prefix}-original${ext}`);
+    }
+  });
+
+  const upload = multer({
+    storage,
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+      files: 2
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only JPEG, PNG, and WebP are allowed.'));
+      }
+    }
+  });
+
+  // Upload rate limiter
+  const uploadRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 uploads per window
+    message: {
+      success: false,
+      error: 'Too many upload attempts. Please try again later.',
+      code: 'UPLOAD_RATE_LIMIT'
+    }
+  });
+
+  // Screenshot upload endpoint
+  app.post('/api/screenshots/upload', 
+    uploadRateLimit,
+    (req, res, next) => {
+      upload.fields([
+        { name: 'figmaScreenshot', maxCount: 1 },
+        { name: 'developedScreenshot', maxCount: 1 }
+      ])(req, res, (err) => {
+        if (err) {
+          console.error('Multer error:', err);
+          return res.status(400).json({
+            success: false,
+            error: 'File upload error: ' + err.message
+          });
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      try {
+        console.log('Upload request received:', {
+          hasFiles: !!req.files,
+          fileFields: req.files ? Object.keys(req.files) : [],
+          body: req.body,
+          headers: {
+            'content-type': req.headers['content-type'],
+            'content-length': req.headers['content-length']
+          }
+        });
+        
+        const files = req.files;
+        
+        if (!files || !files.figmaScreenshot || !files.developedScreenshot) {
+          console.log('Missing files:', {
+            files: !!files,
+            figmaScreenshot: files ? !!files.figmaScreenshot : false,
+            developedScreenshot: files ? !!files.developedScreenshot : false
+          });
+          return res.status(400).json({
+            success: false,
+            error: 'Both Figma and developed screenshots are required'
+          });
+        }
+
+        // Get upload ID from multer storage
+        const uploadId = req.uploadId;
+        
+        // Store upload metadata
+        const metadata = {
+          uploadId,
+          figmaPath: files.figmaScreenshot[0].path,
+          developedPath: files.developedScreenshot[0].path,
+          figmaOriginalName: files.figmaScreenshot[0].originalname,
+          developedOriginalName: files.developedScreenshot[0].originalname,
+          uploadedAt: new Date().toISOString(),
+          metadata: req.body.metadata ? JSON.parse(req.body.metadata) : {}
+        };
+
+        const uploadDir = path.dirname(files.figmaScreenshot[0].path);
+        await fs.promises.writeFile(
+          path.join(uploadDir, 'metadata.json'),
+          JSON.stringify(metadata, null, 2)
+        );
+
+        res.json({
+          success: true,
+          data: { uploadId },
+          message: 'Screenshots uploaded successfully'
+        });
+
+      } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Upload failed: ' + error.message
+        });
+      }
+    }
+  );
+
+  // Start screenshot comparison endpoint
+  app.post('/api/screenshots/compare', async (req, res) => {
+    try {
+      const { uploadId, settings } = req.body;
+      
+      if (!uploadId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Upload ID is required'
+        });
+      }
+
+      if (!screenshotComparisonService) {
+        return res.status(503).json({
+          success: false,
+          error: 'Screenshot comparison service not available'
+        });
+      }
+
+      // Default settings
+      const comparisonSettings = {
+        threshold: 0.1,
+        colorTolerance: 30,
+        ignoreAntiAliasing: false,
+        includeTextAnalysis: true,
+        layoutAnalysis: true,
+        colorAnalysis: true,
+        spacingAnalysis: true,
+        ...settings
+      };
+
+      console.log(`📸 Starting screenshot comparison for upload: ${uploadId}`);
+      
+      const result = await screenshotComparisonService.compareScreenshots(uploadId, comparisonSettings);
+      
+      res.json({
+        success: true,
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Screenshot comparison error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Screenshot comparison failed: ' + error.message
+      });
+    }
+  });
+
+  // Serve screenshot comparison images
+  app.get('/api/screenshots/images/:comparisonId/:imageType', async (req, res) => {
+    try {
+      const { comparisonId, imageType } = req.params;
+      
+      // Validate image type
+      const allowedTypes = ['pixel-diff', 'side-by-side', 'figma-processed', 'developed-processed'];
+      if (!allowedTypes.includes(imageType)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid image type'
+        });
+      }
+      
+      const comparisonDir = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId);
+      let imagePath;
+      
+      switch (imageType) {
+        case 'pixel-diff':
+          imagePath = path.join(comparisonDir, 'pixel-diff.png');
+          break;
+        case 'side-by-side':
+          imagePath = path.join(comparisonDir, 'side-by-side.png');
+          break;
+        case 'figma-processed':
+          imagePath = path.join(comparisonDir, 'figma-processed.png');
+          break;
+        case 'developed-processed':
+          imagePath = path.join(comparisonDir, 'developed-processed.png');
+          break;
+      }
+      
+      // Check if image exists
+      if (!fs.existsSync(imagePath)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Image not found'
+        });
+      }
+      
+      // Set appropriate headers
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      
+      // Stream the image file
+      const imageStream = fs.createReadStream(imagePath);
+      imageStream.pipe(res);
+      
+    } catch (error) {
+      console.error('Error serving image:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to serve image'
+      });
+    }
+  });
+
+  // Serve screenshot comparison detailed reports
+  app.get('/api/screenshots/reports/:comparisonId', async (req, res) => {
+    try {
+      const { comparisonId } = req.params;
+      
+      const comparisonDir = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId);
+      const reportPath = path.join(comparisonDir, 'detailed-report.html');
+      
+      // Check if report exists
+      if (!fs.existsSync(reportPath)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Report not found'
+        });
+      }
+      
+      // Set appropriate headers for HTML
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      
+      // Stream the HTML file
+      const reportStream = fs.createReadStream(reportPath);
+      reportStream.pipe(res);
+      
+    } catch (error) {
+      console.error('Error serving report:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to serve report'
+      });
+    }
+  });
+
+  // Get screenshot comparison status/result endpoint
+  app.get('/api/screenshots/compare/:comparisonId', async (req, res) => {
+    try {
+      const { comparisonId } = req.params;
+      const resultPath = path.join(process.cwd(), 'output/screenshots/comparisons', comparisonId, 'result.json');
+      
+      if (!fs.existsSync(resultPath)) {
+        return res.status(404).json({
+          success: false,
+          error: 'Comparison result not found'
+        });
+      }
+
+      const result = JSON.parse(await fs.promises.readFile(resultPath, 'utf8'));
+      
+      res.json({
+        success: true,
+        data: result
+      });
+
+    } catch (error) {
+      console.error('Get comparison result error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve comparison result: ' + error.message
+      });
+    }
+  });
+
+  // List screenshot comparisons endpoint
+  app.get('/api/screenshots/list', async (req, res) => {
+    try {
+      const comparisonsDir = path.join(process.cwd(), 'output/screenshots/comparisons');
+      
+      if (!fs.existsSync(comparisonsDir)) {
+        return res.json({
+          success: true,
+          data: []
+        });
+      }
+
+      const dirs = await fs.promises.readdir(comparisonsDir);
+      const comparisons = [];
+
+      for (const dir of dirs) {
+        const resultPath = path.join(comparisonsDir, dir, 'result.json');
+        if (fs.existsSync(resultPath)) {
+          try {
+            const result = JSON.parse(await fs.promises.readFile(resultPath, 'utf8'));
+            comparisons.push({
+              id: result.id,
+              status: result.status,
+              createdAt: result.createdAt,
+              metrics: result.metrics ? {
+                overallSimilarity: result.metrics.overallSimilarity,
+                totalDiscrepancies: result.metrics.totalDiscrepancies,
+                qualityScore: result.metrics.qualityScore
+              } : null
+            });
+          } catch (parseError) {
+            console.warn(`Failed to parse result for ${dir}:`, parseError.message);
+          }
+        }
+      }
+
+      // Sort by creation date (newest first)
+      comparisons.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      res.json({
+        success: true,
+        data: comparisons
+      });
+
+    } catch (error) {
+      console.error('List comparisons error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to list comparisons: ' + error.message
+      });
+    }
+  });
+
+  /**
+   * Catch-all route - serve frontend (exclude report files)
    */
   app.get('*', (req, res) => {
+    // Don't serve frontend for report files
+    if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
+      return res.status(404).send('Report not found');
+    }
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 
   /**
-   * Enhanced web extraction endpoint
+   * Enhanced web extraction endpoint (V2 - Legacy)
    */
   app.post('/api/web/extract-v2',
     extractionLimiter,
@@ -808,13 +1420,70 @@ export async function startServer() {
   });
 
   /**
+   * Unified web extraction endpoint (V3 - Recommended)
+   */
+  app.post('/api/web/extract-v3',
+    extractionLimiter,
+    validateExtractionUrl(config.security.allowedHosts),
+    async (req, res, next) => {
+    try {
+      const { url, authentication, options = {} } = req.body;
+      const startTime = Date.now();
+
+      console.log(`🚀 Starting unified extraction for: ${url}`);
+
+      // Extract using unified extractor with cross-platform support
+      const webData = await unifiedWebExtractor.extractWebData(url, {
+        authentication,
+        timeout: options.timeout || config.timeouts.webExtraction,
+        includeScreenshot: options.includeScreenshot !== false,
+        viewport: options.viewport || { width: 1920, height: 1080 },
+        stabilityTimeout: options.stabilityTimeout || 5000,
+        ...options
+      });
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ Unified extraction completed in ${duration}ms`);
+
+      // Track performance
+      if (performanceMonitor) {
+        performanceMonitor.trackExtraction('unified-web', duration, {
+          url,
+          elementsExtracted: webData.elements?.length || 0,
+          hasScreenshot: !!webData.screenshot
+        });
+      }
+
+      res.json({
+        ...webData,
+        extractor: 'unified-v3',
+        performance: { duration }
+      });
+    } catch (error) {
+      console.error(`❌ Unified extraction failed: ${error.message}`);
+      next(error);
+    }
+  });
+
+  /**
    * Browser pool statistics endpoint
    */
   app.get('/api/browser/stats', (req, res) => {
     const stats = browserPool.getStats();
+    const resourceStats = resourceManager.getStats();
+    
     res.json({
       browserPool: stats,
-      activeExtractions: webExtractorV2.getActiveExtractions()
+      resourceManager: resourceStats,
+      activeExtractions: {
+        v2: webExtractorV2.getActiveExtractions(),
+        v3: unifiedWebExtractor.getActiveExtractions()
+      },
+      platform: {
+        os: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version
+      }
     });
   });
 
@@ -842,9 +1511,20 @@ export async function startServer() {
     console.log(`Received ${signal}, initiating graceful shutdown...`);
     
     try {
+      // Shutdown enhanced services first
+      if (serviceManager) {
+        console.log('Shutting down enhanced service manager...');
+        await serviceManager.shutdown();
+      }
+      
       // Cancel all active extractions
       console.log('Cancelling active extractions...');
       await webExtractorV2.cancelAllExtractions();
+      await unifiedWebExtractor.cancelAllExtractions();
+      
+      // Shutdown resource manager
+      console.log('Shutting down resource manager...');
+      await shutdownResourceManager();
       
       // Shutdown browser pool
       console.log('Shutting down browser pool...');

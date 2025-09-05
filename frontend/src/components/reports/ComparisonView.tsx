@@ -54,13 +54,13 @@ const ExtractedDataView: React.FC<ExtractedDataViewProps> = ({ data, error, isLo
     <div className="p-4">
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2">Extracted Data</h2>
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           Generated at: {new Date(data.metadata.timestamp).toLocaleString()}
         </div>
       </div>
 
       {/* URLs */}
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
+      <div className="mb-6 bg-card rounded-lg shadow p-4">
         <div className="grid grid-cols-1 gap-2">
           <div className="text-sm">
             <span className="font-medium">Figma URL:</span>{' '}
@@ -91,8 +91,8 @@ const ExtractedDataView: React.FC<ExtractedDataViewProps> = ({ data, error, isLo
                 'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
                 'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
                 selected
-                  ? 'bg-white text-blue-700 shadow'
-                  : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'
+                  ? 'bg-card text-blue-700 shadow'
+                  : 'text-blue-100 hover:bg-card/[0.12] hover:text-white'
               )
             }
           >
@@ -104,8 +104,8 @@ const ExtractedDataView: React.FC<ExtractedDataViewProps> = ({ data, error, isLo
                 'w-full rounded-lg py-2.5 text-sm font-medium leading-5',
                 'ring-white ring-opacity-60 ring-offset-2 ring-offset-blue-400 focus:outline-none focus:ring-2',
                 selected
-                  ? 'bg-white text-blue-700 shadow'
-                  : 'text-blue-100 hover:bg-white/[0.12] hover:text-white'
+                  ? 'bg-card text-blue-700 shadow'
+                  : 'text-blue-100 hover:bg-card/[0.12] hover:text-white'
               )
             }
           >

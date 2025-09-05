@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import apiService, { compareUrls } from '../../services/api'
-import { getApiBaseUrl, isProduction, getEnvVar } from '../../utils/environment'
+import { compareUrls } from '../../services/api'
+import { getApiBaseUrl } from '../../utils/environment'
 import ProgressIndicator, { ProgressStage } from '../ui/ProgressIndicator'
 import {
   DocumentTextIcon,
@@ -13,14 +13,17 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XMarkIcon,
-  EyeIcon,
-  EyeSlashIcon,
   InformationCircleIcon,
-  LockClosedIcon,
-  ArrowPathIcon,
   AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline'
-import { ComparisonRequest, ComparisonResult, AuthenticationConfig } from '../../types'
+import { ComparisonRequest, ComparisonResult } from '../../types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 // Add error type definition
 interface ComparisonError {
@@ -289,154 +292,131 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Design & Web Extraction</h2>
-          <p className="text-gray-600">Extract design elements from Figma and web implementations</p>
-          <div className="mt-2 p-3 bg-yellow-50 rounded-lg inline-block">
-            <p className="text-sm text-yellow-700">
-              <InformationCircleIcon className="inline-block w-5 h-5 mr-1 -mt-0.5" />
-              Comparison feature is disabled in this version. Only extraction data will be shown.
-            </p>
-          </div>
-        </div>
+    <div className="w-full">
+      <div className="mb-8 text-center">
+        <h2 className="text-3xl font-bold tracking-tight mb-3">Design & Web Extraction</h2>
+        <p className="text-lg text-muted-foreground mb-4">Extract design elements from Figma and web implementations</p>
+        <Alert className="max-w-2xl mx-auto">
+          <InformationCircleIcon className="h-4 w-4" />
+          <AlertDescription>
+            Comparison feature is disabled in this version. Only extraction data will be shown.
+          </AlertDescription>
+        </Alert>
+      </div>
+      
+      <form onSubmit={handleSubmit(onSubmit)} className="form-section">
         
         {/* Main Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Figma Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
-            className="card"
           >
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <DocumentTextIcon className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Figma Design</h3>
-                <p className="text-sm text-gray-500">Paste your Figma file or frame URL</p>
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <DocumentTextIcon className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Figma Design</CardTitle>
+                    <CardDescription>Paste your Figma file or frame URL</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
 
-            {/* Figma URL Input */}
-            <div className="mb-4">
-              <label htmlFor="figmaUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                Figma URL
-              </label>
-              <Controller
-                name="figmaUrl"
-                control={control}
-                rules={{ 
-                  required: 'Figma URL is required',
-                  pattern: {
-                    value: /^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//,
-                    message: 'Please enter a valid Figma URL'
-                  }
-                }}
-                render={({ field }) => (
-                  <input
-                    {...field}
-                    type="url"
-                    id="figmaUrl"
-                    placeholder="https://www.figma.com/file/..."
-                    className={`input-field ${errors.figmaUrl ? 'border-red-300' : ''}`}
-                    disabled={comparisonMutation.isPending}
+                {/* Figma URL Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="figmaUrl">Figma URL</Label>
+                  <Controller
+                    name="figmaUrl"
+                    control={control}
+                    rules={{ 
+                      required: 'Figma URL is required',
+                      pattern: {
+                        value: /^https:\/\/www\.figma\.com\/(file|design|proto)\/[a-zA-Z0-9-]+\//,
+                        message: 'Please enter a valid Figma URL'
+                      }
+                    }}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="url"
+                        id="figmaUrl"
+                        placeholder="https://www.figma.com/file/..."
+                        className={cn(errors.figmaUrl && 'border-destructive focus-visible:ring-destructive')}
+                        disabled={comparisonMutation.isPending}
+                      />
+                    )}
                   />
-                )}
-              />
-              {errors.figmaUrl && (
-                <p className="mt-1 text-xs text-red-600">{errors.figmaUrl.message}</p>
-              )}
-              {figmaUrlError && (
-                <p className="mt-1 text-xs text-red-600">{figmaUrlError}</p>
-              )}
-            </div>
-
-            {/* Figma Extraction Mode */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                <AdjustmentsHorizontalIcon className="w-5 h-5 mr-1" />
-                Extraction Mode
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Controller
-                  name="extractionMode"
-                  control={control}
-                  render={({ field }) => (
-                    <>
-                      <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'frame-only' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
-                        onClick={() => field.onChange('frame-only')}
-                      >
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            id="frame-only"
-                            checked={field.value === 'frame-only'}
-                            onChange={() => field.onChange('frame-only')}
-                            className="h-4 w-4 text-purple-600 border-gray-300"
-                            disabled={comparisonMutation.isPending}
-                          />
-                          <label htmlFor="frame-only" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
-                            Frame Only
-                          </label>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Extract only elements from the selected frame
-                        </p>
-                      </div>
-                      
-                      <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'global-styles' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
-                        onClick={() => field.onChange('global-styles')}
-                      >
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            id="global-styles"
-                            checked={field.value === 'global-styles'}
-                            onChange={() => field.onChange('global-styles')}
-                            className="h-4 w-4 text-purple-600 border-gray-300"
-                            disabled={comparisonMutation.isPending}
-                          />
-                          <label htmlFor="global-styles" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
-                            Global Styles
-                          </label>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Extract all global styles from the file
-                        </p>
-                      </div>
-                      
-                      <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'both' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
-                        onClick={() => field.onChange('both')}
-                      >
-                        <div className="flex items-center">
-                          <input
-                            type="radio"
-                            id="both"
-                            checked={field.value === 'both'}
-                            onChange={() => field.onChange('both')}
-                            className="h-4 w-4 text-purple-600 border-gray-300"
-                            disabled={comparisonMutation.isPending}
-                          />
-                          <label htmlFor="both" className="ml-2 block text-sm font-medium text-gray-700 cursor-pointer">
-                            Both
-                          </label>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Extract both frame elements and global styles
-                        </p>
-                      </div>
-                    </>
+                  {errors.figmaUrl && (
+                    <p className="text-xs text-destructive">{errors.figmaUrl.message}</p>
                   )}
-                />
-              </div>
-            </div>
+                  {figmaUrlError && (
+                    <p className="text-xs text-destructive">{figmaUrlError}</p>
+                  )}
+                </div>
+
+                {/* Figma Extraction Mode */}
+                <div className="space-y-3">
+                  <Label className="flex items-center text-sm font-medium">
+                    <AdjustmentsHorizontalIcon className="w-5 h-5 mr-1" />
+                    Extraction Mode
+                  </Label>
+                  <Controller
+                    name="extractionMode"
+                    control={control}
+                    render={({ field }) => (
+                      <RadioGroup
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={comparisonMutation.isPending}
+                        className="grid grid-cols-1 gap-4"
+                      >
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                          <RadioGroupItem value="frame-only" id="frame-only" className="mt-1" />
+                          <div className="flex-1 space-y-1">
+                            <Label htmlFor="frame-only" className="text-base font-medium cursor-pointer">
+                              Frame Only
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Extract only elements from the selected frame
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                          <RadioGroupItem value="global-styles" id="global-styles" className="mt-1" />
+                          <div className="flex-1 space-y-1">
+                            <Label htmlFor="global-styles" className="text-base font-medium cursor-pointer">
+                              Global Styles
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Extract all global styles from the file
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start space-x-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+                          <RadioGroupItem value="both" id="both" className="mt-1" />
+                          <div className="flex-1 space-y-1">
+                            <Label htmlFor="both" className="text-base font-medium cursor-pointer">
+                              Both
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Extract both frame elements and global styles
+                            </p>
+                          </div>
+                        </div>
+                      </RadioGroup>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
 
           {/* Web Section */}
@@ -444,75 +424,83 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="card"
           >
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <GlobeAltIcon className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Web Implementation</h3>
-                <p className="text-sm text-gray-500">Enter the live website URL</p>
-              </div>
-            </div>
-
-            <Controller
-              name="webUrl"
-              control={control}
-              rules={{
-                required: 'Web URL is required',
-                pattern: {
-                  value: /^https?:\/\/.+/,
-                  message: 'Please enter a valid URL'
-                }
-              }}
-              render={({ field }) => (
-                <div>
-                  <input
-                    {...field}
-                    type="url"
-                    placeholder=""
-                    className={`input-field ${errors.webUrl ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <GlobeAltIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Web Implementation</CardTitle>
+                    <CardDescription>Enter the live website URL</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="webUrl">Web URL</Label>
+                  <Controller
+                    name="webUrl"
+                    control={control}
+                    rules={{
+                      required: 'Web URL is required',
+                      pattern: {
+                        value: /^https?:\/\/.+/,
+                        message: 'Please enter a valid URL'
+                      }
+                    }}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="url"
+                        id="webUrl"
+                        placeholder="https://example.com"
+                        className={cn(errors.webUrl && 'border-destructive focus-visible:ring-destructive')}
+                        disabled={comparisonMutation.isPending}
+                      />
+                    )}
                   />
                   {errors.webUrl && (
-                    <p className="mt-1 text-sm text-red-600">{errors.webUrl.message}</p>
+                    <p className="text-xs text-destructive">{errors.webUrl.message}</p>
                   )}
                 </div>
-              )}
-            />
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CSS Selector (Optional)
-              </label>
-              <Controller
-                name="webSelector"
-                control={control}
-                render={({ field }) => (
-                  <input
-                    {...field}
-                    type="text"
-                    placeholder=""
-                    className="input-field"
+                <div className="space-y-2">
+                  <Label htmlFor="webSelector">CSS Selector (Optional)</Label>
+                  <Controller
+                    name="webSelector"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        type="text"
+                        id="webSelector"
+                        placeholder="e.g., .main-content, #hero-section"
+                        disabled={comparisonMutation.isPending}
+                      />
+                    )}
                   />
-                )}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Specify a CSS selector to focus on specific elements
-              </p>
-            </div>
+                  <p className="text-xs text-muted-foreground">
+                    Specify a CSS selector to focus on specific elements
+                  </p>
+                </div>
 
-            {webUrl && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="mt-3 p-3 bg-blue-50 rounded-lg"
-              >
-                <p className="text-sm text-blue-700">
-                  ✓ Valid web URL detected
-                </p>
-              </motion.div>
-            )}
+                {webUrl && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                  >
+                    <Alert>
+                      <CheckCircleIcon className="h-4 w-4" />
+                      <AlertDescription>
+                        Valid web URL detected
+                      </AlertDescription>
+                    </Alert>
+                  </motion.div>
+                )}
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
 
@@ -530,11 +518,11 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                <CogIcon className="w-6 h-6 text-gray-600" />
+                <CogIcon className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Advanced Options</h3>
-                <p className="text-sm text-gray-500">Authentication, visual comparison settings</p>
+                <p className="text-sm text-muted-foreground">Authentication, visual comparison settings</p>
               </div>
             </div>
             <motion.div
@@ -579,7 +567,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                         }`}
                       >
                         <div className="font-medium text-sm">{option.label}</div>
-                        <div className="text-xs text-gray-500">{option.desc}</div>
+                        <div className="text-xs text-muted-foreground">{option.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -590,7 +578,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg"
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg"
                   >
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -604,7 +592,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             {...field}
                             type="url"
                             placeholder=""
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         )}
                       />
@@ -621,7 +609,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             {...field}
                             type="text"
                             placeholder=""
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         )}
                       />
@@ -638,7 +626,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             {...field}
                             type="text"
                             placeholder=""
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         )}
                       />
@@ -655,7 +643,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                             {...field}
                             type="password"
                             placeholder=""
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         )}
                       />
@@ -682,7 +670,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                       <span className="text-sm font-medium text-gray-700">
                         Include Visual Comparison
                       </span>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         Generate pixel-perfect visual diff images
                       </p>
                     </div>
@@ -712,26 +700,22 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         </AnimatePresence>
 
         {/* Submit Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center"
-        >
-          <button
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
+          <Button
             type="button"
             onClick={() => reset()}
-            className="btn-secondary flex items-center justify-center space-x-2"
+            variant="outline"
             disabled={comparisonMutation.isPending}
+            className="flex items-center space-x-2"
           >
             <XMarkIcon className="w-5 h-5" />
             <span>Reset Form</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="submit"
             disabled={comparisonMutation.isPending || !figmaUrl || !webUrl}
-            className="btn-primary flex items-center justify-center space-x-2 min-w-[200px]"
+            className="flex items-center space-x-2 min-w-[200px]"
           >
             {comparisonMutation.isPending ? (
               <>
@@ -744,8 +728,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                 <span>Extract Design & Web Data</span>
               </>
             )}
-          </button>
-        </motion.div>
+          </Button>
+        </div>
 
         {/* Final Status Messages */}
         <AnimatePresence>
@@ -795,20 +779,21 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                 </p>
               </div>
               <div className="flex space-x-2">
-                <button
+                <Button
                   type="button"
                   onClick={openReportInNewTab}
-                  className="btn-primary btn-sm"
+                  size="sm"
                 >
                   View Report
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={downloadReport}
-                  className="btn-secondary btn-sm"
+                  variant="outline"
+                  size="sm"
                 >
                   Download
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}

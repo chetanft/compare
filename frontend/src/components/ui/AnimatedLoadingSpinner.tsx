@@ -133,7 +133,7 @@ export default function AnimatedLoadingSpinner({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
         transition={{ duration: 0.3 }}
-        className="text-sm text-gray-600 dark:text-gray-400 font-medium text-center"
+        className="text-sm text-muted-foreground dark:text-gray-400 font-medium text-center"
       >
         {currentMessage}
       </motion.div>

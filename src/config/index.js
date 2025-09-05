@@ -36,6 +36,7 @@ export async function loadConfig() {
         'http://localhost:3000',
         'http://localhost:3007',
         'http://localhost:5173',
+        'http://localhost:5174',
       ],
       credentials: env.CORS_CREDENTIALS !== 'false',
     },
@@ -84,6 +85,37 @@ export async function loadConfig() {
     },
     figma: {
       apiKey: env.FIGMA_API_KEY || env.FIGMA_PERSONAL_ACCESS_TOKEN,
+    },
+    // Next Version Features (Production-Ready)
+    nextVersion: {
+      enabled: env.ENABLE_NEXT_VERSION === 'true',
+      features: {
+        enhancedVisualComparison: env.ENABLE_VISUAL_COMPARISON !== 'false',
+        llmIntegration: env.ENABLE_LLM_INTEGRATION === 'true',
+        multiPageComparison: env.ENABLE_MULTI_PAGE === 'true',
+        performanceDashboard: env.ENABLE_PERFORMANCE_DASHBOARD === 'true',
+        autoErrorRecovery: env.ENABLE_ERROR_RECOVERY !== 'false'
+      },
+      llm: {
+        provider: env.LLM_PROVIDER || 'deepseek',
+        apiKey: env.LLM_API_KEY,
+        apiUrl: env.LLM_API_URL || 'https://api.deepseek.com/v1/chat/completions',
+        model: env.LLM_MODEL || 'deepseek-chat',
+        maxTokens: parseInt(env.LLM_MAX_TOKENS || '1000', 10),
+        timeout: parseInt(env.LLM_TIMEOUT || '30000', 10)
+      },
+      authentication: {
+        maxRetries: parseInt(env.AUTH_MAX_RETRIES || '3', 10),
+        retryDelay: parseInt(env.AUTH_RETRY_DELAY || '2000', 10),
+        selectorTimeout: parseInt(env.AUTH_SELECTOR_TIMEOUT || '15000', 10),
+        skipOnFailure: env.AUTH_SKIP_ON_FAILURE !== 'false'
+      },
+      visualComparison: {
+        diffThreshold: parseFloat(env.VISUAL_DIFF_THRESHOLD || '0.1'),
+        similarity: {
+          threshold: parseFloat(env.VISUAL_SIMILARITY_THRESHOLD || '85.0')
+        }
+      }
     },
   };
 

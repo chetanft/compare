@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './components/layout/Sidebar'
@@ -6,7 +6,9 @@ import Header from './components/layout/Header'
 import NewComparison from './pages/NewComparison'
 import Settings from './pages/Settings'
 import SingleSourcePage from './pages/SingleSourcePage'
+import ScreenshotComparison from './pages/ScreenshotComparison'
 import ErrorBoundary from './components/ui/ErrorBoundary'
+import { Toaster } from '@/components/ui/toaster'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -14,6 +16,7 @@ function AppContent() {
 
   const getPageTitle = (pathname: string): string => {
     if (pathname.includes('new-comparison')) return 'New Comparison'
+    if (pathname.includes('screenshot-comparison')) return 'Screenshot Comparison'
     if (pathname.includes('settings')) return 'Settings'
     if (pathname.includes('single-source')) return 'Single Source'
     return 'Comparison Tool'
@@ -26,7 +29,7 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="app-container flex h-screen">
       <Sidebar 
         isOpen={sidebarOpen} 
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -39,7 +42,7 @@ function AppContent() {
           sidebarOpen={sidebarOpen}
         />
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="main-content">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -53,6 +56,7 @@ function AppContent() {
               <Routes location={location}>
                 <Route path="/" element={<NewComparison />} />
                 <Route path="/new-comparison" element={<NewComparison />} />
+                <Route path="/screenshot-comparison" element={<ScreenshotComparison />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/single-source" element={<SingleSourcePage />} />
                 {/* Redirect any other routes to main comparison */}
@@ -71,6 +75,7 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AppContent />
+        <Toaster />
       </Router>
     </ErrorBoundary>
   )

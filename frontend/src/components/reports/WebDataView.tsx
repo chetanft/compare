@@ -26,7 +26,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
   const renderCSSProperties = (styles: any) => {
     if (!styles || typeof styles !== 'object') {
       return (
-        <div className="p-4 text-sm text-gray-500 italic">
+        <div className="p-4 text-sm text-muted-foreground italic">
           No CSS properties available
         </div>
       );
@@ -148,7 +148,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
 
     if (structuredSections.length === 0) {
       return (
-        <div className="p-4 text-sm text-gray-500 italic">
+        <div className="p-4 text-sm text-muted-foreground italic">
           No CSS properties found
         </div>
       );
@@ -161,13 +161,13 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
           
           return (
             <div key={section.title} className="border rounded-md overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">
+              <div className="bg-muted/50 px-4 py-2 text-sm font-medium text-foreground">
                 {section.title} ({entries.length})
               </div>
               <div className="divide-y">
                 {entries.map(([key, value]) => (
                   <div key={key} className="px-4 py-2 flex text-sm">
-                    <div className="w-1/3 font-medium text-gray-500">{key}</div>
+                    <div className="w-1/3 font-medium text-muted-foreground">{key}</div>
                     <div className="w-2/3 text-gray-900">{section.render(value, key)}</div>
                   </div>
                 ))}
@@ -186,21 +186,21 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
     return (
       <div key={element.id} className="mb-4 border rounded-lg overflow-hidden">
         <div 
-          className="flex items-center justify-between py-3 px-4 bg-gray-50 hover:bg-gray-100 cursor-pointer"
+          className="flex items-center justify-between py-3 px-4 bg-muted/50 hover:bg-gray-100 cursor-pointer"
           onClick={() => toggleElement(element.id)}
         >
           <div className="flex items-center">
             <CubeIcon className="w-5 h-5 mr-2 text-green-500" />
             <span className="font-medium text-gray-900">{element.tagName || 'Element'}</span>
             {element.className && (
-              <span className="ml-2 text-sm text-gray-500">.{element.className}</span>
+              <span className="ml-2 text-sm text-muted-foreground">.{element.className}</span>
             )}
             {element.id && (
-              <span className="ml-2 text-sm text-gray-500">#{element.id}</span>
+              <span className="ml-2 text-sm text-muted-foreground">#{element.id}</span>
             )}
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">
+            <span className="text-sm text-muted-foreground mr-2">
               {hasStyles ? `${Object.keys(element.styles).length} CSS properties` : 'No styles'}
             </span>
             {hasStyles && (
@@ -219,7 +219,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
         </div>
         
         {isExpanded && hasStyles && (
-          <div className="p-4 bg-white">
+          <div className="p-4 bg-card">
             {renderCSSProperties(element.styles)}
           </div>
         )}
@@ -231,7 +231,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
     <div className="p-4">
       <div className="mb-4">
         <h2 className="text-xl font-semibold mb-2">Web Implementation Details</h2>
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-muted-foreground">
           Extracted at: {new Date(data.timestamp).toLocaleString()}
         </div>
       </div>
@@ -255,13 +255,13 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
           <h3 className="font-medium mb-2">Screenshots</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {data.data.screenshots.map((screenshot, index) => (
-              <div key={index} className="bg-white rounded-lg shadow p-2">
+              <div key={index} className="bg-card rounded-lg shadow p-2">
                 <img
                   src={`data:image/png;base64,${screenshot}`}
                   alt={`Screenshot ${index + 1}`}
                   className="w-full h-auto rounded"
                 />
-                <div className="text-sm text-gray-600 mt-2">
+                <div className="text-sm text-muted-foreground mt-2">
                   Screenshot {index + 1}
                 </div>
               </div>
@@ -271,7 +271,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
       )}
 
       {/* Metadata */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-card rounded-lg shadow p-4">
         <h3 className="font-medium mb-2">Metadata</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>Version: {data.metadata.version}</div>

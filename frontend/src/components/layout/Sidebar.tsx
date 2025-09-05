@@ -1,13 +1,17 @@
-import React from 'react'
+import { FC } from 'react'
 import { motion } from 'framer-motion'
 import {
   BeakerIcon,
   CogIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ArrowsRightLeftIcon
+  ArrowsRightLeftIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface SidebarProps {
   isOpen: boolean
@@ -16,11 +20,12 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'New Comparison', href: '/new-comparison', icon: BeakerIcon },
+  { name: 'Screenshot Compare', href: '/screenshot-comparison', icon: CameraIcon },
   { name: 'Single Source', href: '/single-source', icon: ArrowsRightLeftIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ]
 
-export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
+const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
   const location = useLocation()
 
   return (
@@ -30,10 +35,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         width: isOpen ? 256 : 64,
         transition: { duration: 0.3, ease: "easeInOut" }
       }}
-      className="bg-white border-r border-gray-200 flex flex-col"
+      className="bg-card border-r flex flex-col"
     >
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           {isOpen && (
             <motion.div
@@ -42,21 +47,23 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               exit={{ opacity: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <h1 className="text-lg font-semibold text-gray-900">Design QA</h1>
-              <p className="text-sm text-gray-500">Figma-Web Comparison</p>
+              <h1 className="text-lg font-semibold">Design QA</h1>
+              <p className="text-sm text-muted-foreground">Figma-Web Comparison</p>
             </motion.div>
           )}
           
-          <button
+          <Button
             onClick={onToggle}
-            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            variant="ghost"
+            size="sm"
+            className="p-1.5 h-auto w-auto text-muted-foreground hover:text-foreground"
           >
             {isOpen ? (
               <ChevronLeftIcon className="h-5 w-5" />
             ) : (
               <ChevronRightIcon className="h-5 w-5" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -67,30 +74,33 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                           (item.href === '/new-comparison' && location.pathname === '/')
           
           return (
-            <Link
+            <Button
               key={item.name}
-              to={item.href}
-              className={`
-                flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                ${isActive 
-                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' 
-                  : 'text-gray-700 hover:bg-gray-100'
-                }
-              `}
-            >
-              <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400'}`} />
-              {isOpen && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="ml-3"
-                >
-                  {item.name}
-                </motion.span>
+              variant={isActive ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start h-auto px-3 py-2 text-sm font-medium",
+                isActive && "bg-secondary text-secondary-foreground"
               )}
-            </Link>
+              asChild
+            >
+              <Link to={item.href}>
+                <item.icon className={cn(
+                  "h-5 w-5",
+                  isActive ? "text-secondary-foreground" : "text-muted-foreground"
+                )} />
+                {isOpen && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="ml-3"
+                  >
+                    {item.name}
+                  </motion.span>
+                )}
+              </Link>
+            </Button>
           )
         })}
       </nav>
@@ -104,10 +114,19 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           transition={{ delay: 0.1 }}
           className="p-4 border-t border-gray-200"
         >
-          <p className="text-xs text-gray-500">Modern UI v2.0</p>
-          <p className="text-xs text-gray-400">Built with React & Tailwind</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Modern UI</p>
+              <p className="text-xs text-muted-foreground/70">Built with React & Tailwind</p>
+            </div>
+            <Badge variant="secondary" className="text-xs">
+              v2.0
+            </Badge>
+          </div>
         </motion.div>
       )}
     </motion.div>
   )
-} 
+}
+
+export default Sidebar 

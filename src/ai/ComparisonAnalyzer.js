@@ -1,5 +1,7 @@
 import natural from 'natural';
 import compromise from 'compromise';
+import { getLLMIntegrator } from './llmIntegrator.js';
+import { getConfig } from '../config/index.js';
 
 class ComparisonAnalyzer {
   constructor() {
@@ -94,11 +96,14 @@ class ComparisonAnalyzer {
       // Create issue breakdown
       analysis.issueBreakdown = this.createIssueBreakdown(analysis.insights);
 
-      // Generate AI summary
-      analysis.aiSummary = this.generateAISummary(analysis);
+      // Generate AI summary (enhanced with LLM if available)
+      analysis.aiSummary = await this.generateEnhancedAISummary(comparisonData, analysis);
 
       // Create action items
       analysis.actionItems = this.generateActionItems(analysis.insights);
+
+      // Generate quick wins
+      analysis.quickWins = this.generateQuickWins(analysis.insights);
 
       return analysis;
     } catch (error) {
@@ -118,6 +123,41 @@ class ComparisonAnalyzer {
    */
   analyzeVisualDifferences(visualDiffs) {
     const insights = [];
+    
+    if (!visualDiffs || !visualDiffs.comparisons) {
+      return insights;
+    }
+
+    // Analyze each visual comparison
+    visualDiffs.comparisons.forEach((comparison, index) => {
+      const similarity = comparison.similarity || 0;
+      
+      if (similarity < 70) {
+        insights.push({
+          type: 'visual-mismatch',
+          severity: similarity < 50 ? 'critical' : similarity < 60 ? 'high' : 'medium',
+          category: 'visual',
+          title: `Significant Visual Difference Detected`,
+          description: `Visual similarity is ${similarity.toFixed(1)}% (expected >70%)`,
+          suggestion: 'Review layout, colors, and spacing to improve visual consistency',
+          confidence: 0.9,
+          location: comparison.location || { x: 0, y: 0, width: 100, height: 100 }
+        });
+      }
+      
+      // Analyze specific visual aspects
+      if (comparison.colorDifference > 30) {
+        insights.push({
+          type: 'color-inconsistency',
+          severity: 'medium',
+          category: 'visual',
+          title: 'Color Inconsistency',
+          description: 'Significant color differences detected between design and implementation',
+          suggestion: 'Verify brand colors and ensure consistent color usage',
+          confidence: 0.8
+        });
+      }
+    });
     
     if (visualDiffs.pixelDifference) {
       const pixelDiffPercentage = visualDiffs.pixelDifference.percentage || 0;
@@ -511,6 +551,39 @@ class ComparisonAnalyzer {
   }
 
   /**
+   * Generate enhanced AI summary using LLM integration if available
+   * Falls back to original method if LLM is not configured
+   */
+  async generateEnhancedAISummary(comparisonData, analysis) {
+    try {
+      const config = await getConfig();
+      
+      // Check if LLM integration is enabled
+      if (config.nextVersion?.enabled && config.nextVersion?.features?.llmIntegration) {
+        console.log('🤖 Generating enhanced AI summary with LLM...');
+        
+        const llmIntegrator = getLLMIntegrator();
+        const llmSummary = await llmIntegrator.getLLMSummary(comparisonData);
+        
+        // Combine LLM insights with traditional analysis
+        const traditionalSummary = this.generateAISummary(analysis);
+        
+        return `${llmSummary}
+
+---
+
+Traditional Analysis:
+${traditionalSummary}`;
+      }
+    } catch (error) {
+      console.log('⚠️ Enhanced AI summary failed, using traditional method:', error.message);
+    }
+    
+    // Fallback to traditional AI summary
+    return this.generateAISummary(analysis);
+  }
+
+  /**
    * Estimate time to fix issues
    */
   estimateFixTime(insights) {
@@ -529,6 +602,42 @@ class ComparisonAnalyzer {
     if (totalHours < 8) return `${Math.ceil(totalHours)} hours`;
     if (totalHours < 40) return `${Math.ceil(totalHours / 8)} days`;
     return `${Math.ceil(totalHours / 40)} weeks`;
+  }
+
+  /**
+   * Generate quick wins - high impact, low effort fixes
+   */
+  generateQuickWins(insights) {
+    const quickWins = [];
+    
+    // Filter for quick win candidates
+    const candidates = insights.filter(insight => {
+      // Quick wins: low effort + high impact
+      const isLowEffort = ['color', 'font-size', 'spacing', 'text'].some(type => 
+        insight.type.includes(type)
+      );
+      const isHighImpact = insight.severity === 'high' || insight.severity === 'critical';
+      
+      return isLowEffort && isHighImpact;
+    });
+
+    // Sort by confidence and take top 3
+    candidates
+      .sort((a, b) => (b.confidence || 0.5) - (a.confidence || 0.5))
+      .slice(0, 3)
+      .forEach(insight => {
+        quickWins.push({
+          title: insight.title || insight.description,
+          description: insight.description,
+          action: insight.suggestion,
+          estimatedTime: '5-15 minutes',
+          impact: insight.impact || 'High',
+          confidence: insight.confidence || 0.8,
+          category: insight.category
+        });
+      });
+
+    return quickWins;
   }
 
   /**

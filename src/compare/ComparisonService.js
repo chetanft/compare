@@ -240,6 +240,29 @@ export class ComparisonService {
         )
       ]);
 
+      // Perform visual comparison if enabled
+      if (options.includeVisual) {
+        console.log('🎨 Performing visual comparison...');
+        try {
+          const { EnhancedVisualComparison } = await import('../visual/enhancedVisualComparison.js');
+          const visualComparison = new EnhancedVisualComparison(this.config);
+          
+          const visualResults = await visualComparison.performVisualComparison(
+            figmaData, 
+            webData, 
+            this.webExtractor, 
+            this.figmaExtractor
+          );
+          
+          // Integrate visual results into comparison results
+          comparisonResults.visual = visualResults;
+          console.log('✅ Visual comparison completed');
+        } catch (visualError) {
+          console.log('⚠️ Visual comparison failed, continuing without it:', visualError.message);
+          comparisonResults.visual = { error: visualError.message, status: 'failed' };
+        }
+      }
+
       // Generate reports with streaming and timeout
       const reports = await Promise.race([
         this.generateReports(comparisonResults, {

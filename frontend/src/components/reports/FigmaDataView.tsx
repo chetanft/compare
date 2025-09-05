@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Tab } from '@headlessui/react';
+import { useState } from 'react';
 import {
   SwatchIcon,
   DocumentTextIcon,
   CubeIcon,
   ArrowsPointingOutIcon,
   Square3Stack3DIcon,
-  PaintBrushIcon
+  PaintBrushIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { classNames } from '../../utils/classNames';
 import { FigmaData } from '../../../../src/types/extractor';
 
@@ -138,7 +142,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     
     if (!properties || typeof properties !== 'object') {
       return (
-        <div className="p-4 text-sm text-gray-500 italic">
+        <div className="p-4 text-sm text-muted-foreground italic">
           No properties available
         </div>
       );
@@ -172,7 +176,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             return (
               <div className="space-y-1">
                 <div className="font-medium">{value.fontFamily}</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {value.fontSize}px • {value.fontWeight} • {value.lineHeight ? `${value.lineHeight}px` : 'auto'}
                 </div>
               </div>
@@ -190,7 +194,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               return (
                 <div className="space-y-1">
                   <div className="font-medium">Padding</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {value.top}px {value.right}px {value.bottom}px {value.left}px
                   </div>
                 </div>
@@ -218,7 +222,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             return (
               <div className="space-y-1">
                 <div className="font-medium">Size</div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                   {value.width}px × {value.height}px
                 </div>
               </div>
@@ -254,7 +258,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               <div className="space-y-1">
                 <div className="font-medium">{value.length} shadow{value.length > 1 ? 's' : ''}</div>
                 {value.map((shadow: any, index: number) => (
-                  <div key={index} className="text-xs text-gray-500">
+                  <div key={index} className="text-xs text-muted-foreground">
                     {shadow.type}: {shadow.offsetX}px {shadow.offsetY}px {shadow.radius}px
                   </div>
                 ))}
@@ -275,7 +279,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             return (
               <div className="space-y-1">
                 <div className="font-medium">{varName}</div>
-                <div className="text-xs text-gray-500 font-mono">{varId}</div>
+                <div className="text-xs text-muted-foreground font-mono">{varId}</div>
               </div>
             );
           }
@@ -288,7 +292,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
         render: (value: any, key: string) => {
           if (typeof value === 'string' && (value.includes('fills') || value.includes('strokes'))) {
             return (
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {value.split(', ').join(' + ')}
               </div>
             );
@@ -311,7 +315,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
       const allEntries = Object.entries(properties);
       if (allEntries.length === 0) {
         return (
-          <div className="p-4 text-sm text-gray-500 italic">
+          <div className="p-4 text-sm text-muted-foreground italic">
             Properties object is empty
           </div>
         );
@@ -320,13 +324,13 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
       return (
         <div className="mt-2">
           <div className="border rounded-md overflow-hidden">
-            <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">
+            <div className="bg-muted/50 px-4 py-2 text-sm font-medium text-foreground">
               Raw Properties
             </div>
             <div className="divide-y">
               {allEntries.map(([key, value]) => (
                 <div key={key} className="px-4 py-2 flex text-sm">
-                  <div className="w-1/3 font-medium text-gray-500">{key}</div>
+                  <div className="w-1/3 font-medium text-muted-foreground">{key}</div>
                   <div className="w-2/3 text-gray-900 font-mono text-xs">
                     {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                   </div>
@@ -345,13 +349,13 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           
           return (
             <div key={section.title} className="border rounded-md overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700">
+              <div className="bg-muted/50 px-4 py-2 text-sm font-medium text-foreground">
                 {section.title} ({entries.length})
               </div>
               <div className="divide-y">
                 {entries.map(([key, value]) => (
                   <div key={key} className="px-4 py-2 flex text-sm">
-                    <div className="w-1/3 font-medium text-gray-500">{key}</div>
+                    <div className="w-1/3 font-medium text-muted-foreground">{key}</div>
                     <div className="w-2/3 text-gray-900">{section.render(value, key)}</div>
                   </div>
                 ))}
@@ -384,17 +388,17 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
         <div 
           className={classNames(
             "flex items-center justify-between py-3 px-4",
-            "bg-gray-50 hover:bg-gray-100 cursor-pointer"
+            "bg-muted/50 hover:bg-gray-100 cursor-pointer"
           )}
           onClick={() => toggleComponent(component.id)}
         >
           <div className="flex items-center">
             <CubeIcon className="w-5 h-5 mr-2 text-blue-500" />
             <span className="font-medium text-gray-900">{component.name}</span>
-            <span className="ml-2 text-sm text-gray-500">{component.type}</span>
+            <span className="ml-2 text-sm text-muted-foreground">{component.type}</span>
           </div>
           <div className="flex items-center">
-            <span className="text-sm text-gray-500 mr-2">
+            <span className="text-sm text-muted-foreground mr-2">
               {hasProperties ? `${propertyCount} properties` : 'No properties'}
             </span>
             {hasProperties && (
@@ -414,7 +418,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
         </div>
         
         {isExpanded && hasProperties && (
-          <div className="p-4 bg-white">
+          <div className="p-4 bg-card">
             {renderComponentProperties(properties)}
           </div>
         )}
@@ -427,7 +431,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     const alpha = token.alpha !== undefined ? token.alpha : 1;
     
     return (
-      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-white">
+      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-card">
         <div 
           className="w-10 h-10 rounded mr-3 border"
           style={{ 
@@ -439,7 +443,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           <div className="font-medium text-sm">
             {token.name || `Color ${index + 1}`}
           </div>
-          <div className="text-xs text-gray-500 flex items-center">
+          <div className="text-xs text-muted-foreground flex items-center">
             <span className="uppercase">{colorValue}</span>
             {alpha !== 1 && (
               <span className="ml-2">Opacity: {Math.round(alpha * 100)}%</span>
@@ -457,7 +461,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
       '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     
     return (
-      <div key={index} className="p-3 border rounded mb-2 bg-white">
+      <div key={index} className="p-3 border rounded mb-2 bg-card">
         <div 
           className="mb-2" 
           style={{ 
@@ -470,7 +474,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
         >
           {(token as any).text || token.name || 'The quick brown fox jumps over the lazy dog'}
         </div>
-        <div className="text-xs text-gray-500 grid grid-cols-2 gap-2">
+        <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2">
           <div>
             <span className="font-medium">Font:</span> {token.fontFamily}
           </div>
@@ -501,7 +505,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     const type = token.type || 'spacing';
     
     return (
-      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-white">
+      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-card">
         <div className="w-16 h-10 mr-3 bg-gray-100 flex items-center justify-center relative">
           {type === 'gap' ? (
             <div className="flex items-center">
@@ -519,7 +523,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           <div className="font-medium text-sm">
             {token.name || `${type === 'gap' ? 'Gap' : 'Spacing'} ${index + 1}`}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {value}{unit} {type && `(${type})`}
           </div>
         </div>
@@ -532,7 +536,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     const unit = token.unit || 'px';
     
     return (
-      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-white">
+      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-card">
         <div 
           className="w-10 h-10 mr-3 bg-gray-100"
           style={{ 
@@ -543,7 +547,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           <div className="font-medium text-sm">
             {token.name || `Border Radius ${index + 1}`}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {value}{unit}
           </div>
         </div>
@@ -559,9 +563,9 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
       : `inset ${offsetX}px ${offsetY}px ${radius}px ${spread}px ${color}`;
     
     return (
-      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-white">
+      <div key={index} className="flex items-center p-2 border rounded mb-2 bg-card">
         <div 
-          className="w-12 h-12 mr-3 bg-white border"
+          className="w-12 h-12 mr-3 bg-card border"
           style={{ 
             boxShadow: shadowValue
           }}
@@ -570,7 +574,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           <div className="font-medium text-sm">
             {token.name || `${type === 'DROP_SHADOW' ? 'Drop Shadow' : 'Inner Shadow'} ${index + 1}`}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {offsetX}px {offsetY}px {radius}px {spread}px {color}
           </div>
         </div>
@@ -588,7 +592,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-card rounded-lg border overflow-hidden">
       <Tab.Group>
         <Tab.List className="flex border-b">
           {tabs.map((tab) => (
@@ -598,8 +602,8 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                 classNames(
                   'flex items-center py-3 px-4 text-sm font-medium focus:outline-none',
                   selected
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                 )
               }
             >
@@ -614,11 +618,11 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Figma Design</h3>
-                <p className="mt-1 text-sm text-gray-500">{data.data?.name || 'Unknown'}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{data.data?.name || 'Unknown'}</p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded">
+                <div className="bg-muted/50 p-4 rounded">
                   <h4 className="font-medium mb-2 flex items-center">
                     <CubeIcon className="w-5 h-5 mr-1 text-blue-500" />
                     Components
@@ -626,7 +630,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                   <p className="text-2xl font-semibold">{totalComponents}</p>
                 </div>
                 
-                <div className="bg-gray-50 p-4 rounded">
+                <div className="bg-muted/50 p-4 rounded">
                   <h4 className="font-medium mb-2 flex items-center">
                     <SwatchIcon className="w-5 h-5 mr-1 text-blue-500" />
                     Design Tokens
@@ -644,7 +648,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               </div>
               
               {data.data?.lastModified && (
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-muted-foreground">
                   Last modified: {new Date(data.data?.lastModified).toLocaleString()}
                 </div>
               )}
@@ -656,7 +660,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Components</h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {totalComponents} components
                 </span>
               </div>
@@ -667,7 +671,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                     {components.map(component => renderComponent(component))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     No components found
                   </div>
                 )}
@@ -680,18 +684,18 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Colors</h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {totalColors} colors
                 </span>
               </div>
               
               <div className="border rounded-lg overflow-hidden">
                 {totalColors > 0 ? (
-                  <div className="p-2 bg-gray-50">
+                  <div className="p-2 bg-muted/50">
                     {colors.map((color, index) => renderColorToken(color, index))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     No colors found
                   </div>
                 )}
@@ -704,18 +708,18 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Typography</h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {totalTypography} typography styles
                 </span>
               </div>
               
               <div className="border rounded-lg overflow-hidden">
                 {totalTypography > 0 ? (
-                  <div className="p-2 bg-gray-50">
+                  <div className="p-2 bg-muted/50">
                     {typography.map((item, index) => renderTypographyToken(item, index))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     No typography styles found
                   </div>
                 )}
@@ -728,18 +732,18 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Spacing</h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {(data.data?.tokens?.spacing?.length || 0)} spacing tokens
                 </span>
               </div>
               
               <div className="border rounded-lg overflow-hidden">
                 {data.data?.tokens?.spacing?.length ? (
-                  <div className="p-2 bg-gray-50">
+                  <div className="p-2 bg-muted/50">
                     {data.data?.tokens?.spacing.map((spacing, index) => renderSpacingToken(spacing, index))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-muted-foreground">
                     No spacing tokens found
                   </div>
                 )}
@@ -752,16 +756,16 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Shadows & Border Radius</h3>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {(data.data?.tokens?.shadows?.length || 0) + (data.data?.tokens?.borderRadius?.length || 0)} tokens
                 </span>
               </div>
               
               {data.data?.tokens?.borderRadius?.length ? (
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Border Radius</h4>
+                  <h4 className="text-sm font-medium text-foreground mb-2">Border Radius</h4>
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="p-2 bg-gray-50">
+                    <div className="p-2 bg-muted/50">
                       {data.data?.tokens?.borderRadius.map((radius, index) => renderBorderRadiusToken(radius, index))}
                     </div>
                   </div>
@@ -770,15 +774,15 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               
               {data.data?.tokens?.shadows?.length ? (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Shadows</h4>
+                  <h4 className="text-sm font-medium text-foreground mb-2">Shadows</h4>
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="p-2 bg-gray-50">
+                    <div className="p-2 bg-muted/50">
                       {data.data?.tokens?.shadows.map((shadow, index) => renderShadowToken(shadow, index))}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 text-center text-gray-500 border rounded">
+                <div className="p-4 text-center text-muted-foreground border rounded">
                   No shadow or border radius tokens found
                 </div>
               )}

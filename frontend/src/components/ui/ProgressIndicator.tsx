@@ -128,7 +128,7 @@ export default function ProgressIndicator({ stages, currentStage, error }: Progr
                 >
                   <h3 className={`text-sm font-medium ${
                     hasError ? 'text-red-900' :
-                    isActive ? `text-${color}-900` : 'text-gray-500'
+                    isActive ? `text-${color}-900` : 'text-muted-foreground'
                   }`}>
                     {title}
                   </h3>

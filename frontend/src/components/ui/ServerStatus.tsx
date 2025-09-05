@@ -52,7 +52,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
     return (
       <div className={`flex items-center ${className}`}>
         <div className="animate-pulse w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-        <span className="text-xs text-gray-500">Checking server...</span>
+        <span className="text-xs text-muted-foreground">Checking server...</span>
       </div>
     );
   }
@@ -61,7 +61,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
     return (
       <div className={`flex items-center ${className}`}>
         <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
-        <span className="text-xs text-gray-500">Server unavailable</span>
+        <span className="text-xs text-muted-foreground">Server unavailable</span>
       </div>
     );
   }
@@ -75,7 +75,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
           isOnline ? 'bg-green-500' : 'bg-red-500'
         }`}
       ></div>
-      <span className="text-xs text-gray-500">
+      <span className="text-xs text-muted-foreground">
         {isOnline ? 'Server online' : 'Server offline'}
       </span>
     </div>

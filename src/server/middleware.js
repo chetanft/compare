@@ -22,7 +22,7 @@ export function configureSecurityMiddleware(app, config) {
         // Distinguish style sheets loaded via <link/ @import>
         styleSrcElem: ["'self'", "https://fonts.googleapis.com"],
         scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
         // Allow websocket connections to same origin
         connectSrc: ["'self'", "ws:", "wss:"],
         // Allow font files from Google Fonts CDN

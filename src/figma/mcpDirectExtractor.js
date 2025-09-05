@@ -166,21 +166,113 @@ class MCPDirectFigmaExtractor {
         }
       }
 
-      // Extract fill properties (colors)
-      if (node.fills && globalVars?.styles?.[node.fills]) {
-        const fillStyle = globalVars.styles[node.fills];
-        if (Array.isArray(fillStyle) && fillStyle.length > 0) {
-          component.properties.fill = fillStyle[0]; // Use first fill
-          component.properties.backgroundColor = fillStyle[0];
+      // Enhanced color extraction from fills
+      if (node.fills) {
+        if (globalVars?.styles?.[node.fills]) {
+          const fillStyle = globalVars.styles[node.fills];
+          if (Array.isArray(fillStyle) && fillStyle.length > 0) {
+            component.properties.fill = fillStyle[0];
+            component.properties.backgroundColor = fillStyle[0];
+          }
+        } else if (Array.isArray(node.fills) && node.fills.length > 0) {
+          // Direct fills array
+          const validFills = node.fills.filter(fill => 
+            fill.type === 'SOLID' && fill.visible !== false && fill.color
+          );
+          
+          if (validFills.length > 0) {
+            component.properties.fills = validFills.map(fill => ({
+              type: fill.type,
+              color: this.rgbaToHex(fill.color),
+              opacity: fill.opacity || 1
+            }));
+            component.properties.color = this.rgbaToHex(validFills[0].color);
+          }
         }
       }
 
-      // Extract text properties for text nodes
+      // Extract background color
+      if (node.backgroundColor) {
+        component.properties.backgroundColor = this.rgbaToHex(node.backgroundColor);
+      }
+
+      // Extract stroke/border properties
+      if (node.strokes && Array.isArray(node.strokes) && node.strokes.length > 0) {
+        const validStrokes = node.strokes.filter(stroke => stroke.color);
+        if (validStrokes.length > 0) {
+          component.properties.strokes = validStrokes.map(stroke => ({
+            color: this.rgbaToHex(stroke.color),
+            weight: node.strokeWeight || 1
+          }));
+          component.properties.borderColor = this.rgbaToHex(validStrokes[0].color);
+          component.properties.borderWidth = node.strokeWeight || 1;
+        }
+      }
+
+      // Enhanced text and typography properties
       if (node.type === 'TEXT') {
-        component.properties.fontSize = node.fontSize || 'inherit';
-        component.properties.fontFamily = node.fontFamily || 'inherit';
-        component.properties.fontWeight = node.fontWeight || 'normal';
-        component.properties.textContent = node.characters || node.name;
+        const typography = {};
+        typography.fontSize = node.fontSize || node.style?.fontSize || 'inherit';
+        typography.fontFamily = node.fontFamily || node.style?.fontFamily || 'inherit';
+        typography.fontWeight = node.fontWeight || node.style?.fontWeight || 'normal';
+        typography.textContent = node.characters || node.name;
+        
+        if (node.style) {
+          if (node.style.letterSpacing) typography.letterSpacing = node.style.letterSpacing;
+          if (node.style.lineHeightPx) typography.lineHeight = node.style.lineHeightPx;
+          if (node.style.lineHeightPercent) typography.lineHeightPercent = node.style.lineHeightPercent;
+          if (node.style.textAlignHorizontal) typography.textAlign = node.style.textAlignHorizontal;
+          if (node.style.textDecoration) typography.textDecoration = node.style.textDecoration;
+          if (node.style.textCase) typography.textTransform = node.style.textCase;
+        }
+        
+        component.properties.typography = typography;
+        // Also set individual properties for backward compatibility
+        component.properties.fontSize = typography.fontSize;
+        component.properties.fontFamily = typography.fontFamily;
+        component.properties.fontWeight = typography.fontWeight;
+        component.properties.textContent = typography.textContent;
+      }
+
+      // Enhanced spacing and layout properties
+      const layout = {};
+      
+      // Dimensions from absoluteBoundingBox
+      if (node.absoluteBoundingBox) {
+        layout.width = node.absoluteBoundingBox.width;
+        layout.height = node.absoluteBoundingBox.height;
+        layout.x = node.absoluteBoundingBox.x;
+        layout.y = node.absoluteBoundingBox.y;
+      }
+
+      // Padding properties
+      if (node.paddingLeft !== undefined) layout.paddingLeft = node.paddingLeft;
+      if (node.paddingRight !== undefined) layout.paddingRight = node.paddingRight;
+      if (node.paddingTop !== undefined) layout.paddingTop = node.paddingTop;
+      if (node.paddingBottom !== undefined) layout.paddingBottom = node.paddingBottom;
+
+      // Auto-layout spacing
+      if (node.itemSpacing !== undefined) layout.itemSpacing = node.itemSpacing;
+      if (node.counterAxisSpacing !== undefined) layout.counterAxisSpacing = node.counterAxisSpacing;
+
+      // Border radius properties
+      if (node.cornerRadius !== undefined) {
+        layout.borderRadius = node.cornerRadius;
+        component.properties.borderRadius = node.cornerRadius;
+      }
+      
+      if (node.rectangleCornerRadii && Array.isArray(node.rectangleCornerRadii)) {
+        layout.borderRadii = {
+          topLeft: node.rectangleCornerRadii[0] || 0,
+          topRight: node.rectangleCornerRadii[1] || 0,
+          bottomRight: node.rectangleCornerRadii[2] || 0,
+          bottomLeft: node.rectangleCornerRadii[3] || 0
+        };
+        component.properties.borderRadii = layout.borderRadii;
+      }
+
+      if (Object.keys(layout).length > 0) {
+        component.properties.layout = layout;
       }
 
       // Add meaningful properties for filtering
@@ -208,7 +300,9 @@ class MCPDirectFigmaExtractor {
     // Include components with visual properties
     if (component.properties.fill || component.properties.backgroundColor || 
         component.properties.width || component.properties.height ||
-        component.properties.textContent) {
+        component.properties.textContent || component.properties.fills ||
+        component.properties.strokes || component.properties.color ||
+        component.properties.typography || component.properties.layout) {
       return true;
     }
 
@@ -218,6 +312,34 @@ class MCPDirectFigmaExtractor {
     }
 
     return false;
+  }
+
+  /**
+   * Convert RGBA color object to hex string
+   */
+  rgbaToHex(rgba) {
+    if (!rgba || typeof rgba !== 'object') return null;
+    
+    const r = Math.round((rgba.r || 0) * 255);
+    const g = Math.round((rgba.g || 0) * 255);
+    const b = Math.round((rgba.b || 0) * 255);
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  }
+
+  /**
+   * Check if a color is valid (not default/transparent)
+   */
+  isValidColor(color) {
+    if (!color || typeof color !== 'object') return false;
+    
+    // Check if it's not completely transparent
+    if (color.a !== undefined && color.a === 0) return false;
+    
+    // Check if it's not default black (0,0,0)
+    if (color.r === 0 && color.g === 0 && color.b === 0) return false;
+    
+    return true;
   }
 
   /**

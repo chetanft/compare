@@ -136,13 +136,20 @@ class VisualDiff {
    */
   async saveDiffImage(diffBuffer, width, height, options = {}) {
     try {
-      // Ensure output directory exists
-      await fs.mkdir(this.outputDir, { recursive: true });
-
-      // Generate filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = options.diffFilename || `visual-diff-${timestamp}.png`;
-      const diffImagePath = path.join(this.outputDir, filename);
+      // Use provided output path or generate default
+      let diffImagePath;
+      if (options.outputPath) {
+        diffImagePath = options.outputPath;
+        // Ensure output directory exists
+        await fs.mkdir(path.dirname(diffImagePath), { recursive: true });
+      } else {
+        // Ensure output directory exists
+        await fs.mkdir(this.outputDir, { recursive: true });
+        // Generate filename
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = options.diffFilename || `visual-diff-${timestamp}.png`;
+        diffImagePath = path.join(this.outputDir, filename);
+      }
 
       // Create PNG from diff buffer
       const diffPng = new PNG({ width, height });

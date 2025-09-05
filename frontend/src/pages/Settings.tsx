@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useForm, Controller } from 'react-hook-form'
 import {
@@ -10,13 +10,23 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  KeyIcon,
+
   GlobeAltIcon
 } from '@heroicons/react/24/outline'
 import { checkServerHealth } from '../services/serverStatus'
 import ServerStatus from '../components/ui/ServerStatus'
 import MCPStatus from '../components/ui/MCPStatus'
 import FigmaApiSettings from '../components/forms/FigmaApiSettings'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
+import { cn } from '@/lib/utils'
 
 
 interface SettingsForm {
@@ -292,8 +302,8 @@ export default function Settings() {
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-3 text-gray-600">Loading settings...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-3 text-muted-foreground">Loading settings...</span>
           </div>
         </div>
       </div>
@@ -308,7 +318,7 @@ export default function Settings() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600">Configure your comparison tool preferences and integrations</p>
+              <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
             </div>
             
             <ServerStatus 
@@ -317,210 +327,195 @@ export default function Settings() {
           </div>
           
           {usingCachedSettings && (
-            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-              ⚠️ Using cached settings. Changes will be saved locally until the server comes back online.
-            </div>
+            <Alert className="mt-2">
+              <ExclamationTriangleIcon className="h-4 w-4" />
+              <AlertDescription>
+                Using cached settings. Changes will be saved locally until the server comes back online.
+              </AlertDescription>
+            </Alert>
           )}
           
           {serverStatus === 'offline' && !usingCachedSettings && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-800">
-              ⚠️ Server is offline. Changes will be saved locally only.
-            </div>
+            <Alert variant="destructive" className="mt-2">
+              <ExclamationTriangleIcon className="h-4 w-4" />
+              <AlertDescription>
+                Server is offline. Changes will be saved locally only.
+              </AlertDescription>
+            </Alert>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-1">
-            <nav className="space-y-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-500'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{tab.name}</span>
-                  </button>
-                )
-              })}
-            </nav>
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-              {/* General Settings */}
-              {activeTab === 'general' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="grid w-full grid-cols-7">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <TabsTrigger 
+                  key={tab.id} 
+                  value={tab.id}
+                  className="flex items-center space-x-2 text-xs"
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">General Settings</h3>
-                  
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.name}</span>
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <TabsContent value="general">
+              <Card>
+                <CardHeader>
+                  <CardTitle>General Settings</CardTitle>
+                  <CardDescription>
+                    Configure basic application settings and preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Default Timeout (ms)
-                      </label>
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultTimeout">Default Timeout (ms)</Label>
                       <Controller
                         name="defaultTimeout"
                         control={control}
                         rules={{ required: 'Timeout is required', min: 1000 }}
                         render={({ field }) => (
-                          <input
+                          <Input
                             {...field}
+                            id="defaultTimeout"
                             type="number"
                             min="1000"
                             step="1000"
-                            className="input-field"
+                            className={cn(errors.defaultTimeout && 'border-destructive')}
                           />
                         )}
                       />
                       {errors.defaultTimeout && (
-                        <p className="mt-1 text-sm text-red-600">{errors.defaultTimeout.message}</p>
+                        <p className="text-sm text-destructive">{errors.defaultTimeout.message}</p>
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Concurrent Comparisons
-                      </label>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxConcurrentComparisons">Max Concurrent Comparisons</Label>
                       <Controller
                         name="maxConcurrentComparisons"
                         control={control}
                         rules={{ required: 'Required', min: 1, max: 10 }}
                         render={({ field }) => (
-                          <input
+                          <Input
                             {...field}
+                            id="maxConcurrentComparisons"
                             type="number"
                             min="1"
                             max="10"
-                            className="input-field"
                           />
                         )}
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Report Retention (days)
-                      </label>
+                    <div className="space-y-2">
+                      <Label htmlFor="reportRetentionDays">Report Retention (days)</Label>
                       <Controller
                         name="reportRetentionDays"
                         control={control}
                         rules={{ required: 'Required', min: 1 }}
                         render={({ field }) => (
-                          <input
+                          <Input
                             {...field}
+                            id="reportRetentionDays"
                             type="number"
                             min="1"
-                            className="input-field"
                           />
                         )}
                       />
                     </div>
 
-                    <div className="flex items-center">
+                    <div className="flex items-center space-x-2">
                       <Controller
                         name="autoDeleteOldReports"
                         control={control}
                         render={({ field }) => (
-                          <input
-                            type="checkbox"
+                          <Checkbox
+                            id="autoDeleteOldReports"
                             checked={field.value}
-                            onChange={field.onChange}
-                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            onCheckedChange={field.onChange}
                           />
                         )}
                       />
-                      <label className="ml-3 text-sm font-medium text-gray-700">
+                      <Label htmlFor="autoDeleteOldReports">
                         Auto-delete old reports
-                      </label>
+                      </Label>
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-              {/* Figma Settings */}
-              {activeTab === 'figma' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Figma API Settings</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Configure your Figma API integration for accessing design files.
-                  </p>
-                  
-                  <div className="space-y-6">
+            <TabsContent value="figma">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Figma API Settings</CardTitle>
+                  <CardDescription>
+                    Configure your Figma API integration for accessing design files
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <Controller
+                    name="figmaPersonalAccessToken"
+                    control={control}
+                    render={({ field }) => (
+                      <FigmaApiSettings
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                      />
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="defaultFigmaExportFormat">Default Export Format</Label>
                       <Controller
-                        name="figmaPersonalAccessToken"
+                        name="defaultFigmaExportFormat"
                         control={control}
                         render={({ field }) => (
-                        <FigmaApiSettings
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          />
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger id="defaultFigmaExportFormat">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="svg">SVG</SelectItem>
+                              <SelectItem value="png">PNG</SelectItem>
+                            </SelectContent>
+                          </Select>
                         )}
                       />
+                    </div>
 
-                    {/* Other Figma settings */}
-                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                      <div className="sm:col-span-3">
-                        <label htmlFor="defaultFigmaExportFormat" className="block text-sm font-medium text-gray-700">
-                          Default Export Format
-                        </label>
-                        <Controller
-                          name="defaultFigmaExportFormat"
-                          control={control}
-                          render={({ field }) => (
-                            <select
-                              id="defaultFigmaExportFormat"
-                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                              {...field}
-                            >
-                              <option value="svg">SVG</option>
-                              <option value="png">PNG</option>
-                            </select>
-                          )}
-                        />
-                      </div>
-
-                      <div className="sm:col-span-3">
-                        <label htmlFor="figmaExportScale" className="block text-sm font-medium text-gray-700">
-                          PNG Export Scale
-                        </label>
-                        <Controller
-                          name="figmaExportScale"
-                          control={control}
-                          render={({ field }) => (
-                            <select
-                              id="figmaExportScale"
-                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                              {...field}
-                            >
-                              <option value="1">1x</option>
-                              <option value="2">2x</option>
-                              <option value="3">3x</option>
-                              <option value="4">4x</option>
-                            </select>
-                          )}
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="figmaExportScale">PNG Export Scale</Label>
+                      <Controller
+                        name="figmaExportScale"
+                        control={control}
+                        render={({ field }) => (
+                          <Select value={field.value.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
+                            <SelectTrigger id="figmaExportScale">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1x</SelectItem>
+                              <SelectItem value="2">2x</SelectItem>
+                              <SelectItem value="3">3x</SelectItem>
+                              <SelectItem value="4">4x</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
                     </div>
                   </div>
-                </motion.div>
-              )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
               {/* MCP Integration Settings */}
               {activeTab === 'mcp' && (
@@ -530,7 +525,7 @@ export default function Settings() {
                   className="card"
                 >
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">MCP Integration</h3>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     Configure how the application connects to Figma using Model Context Protocol (MCP) or direct API access.
                   </p>
                   
@@ -556,7 +551,7 @@ export default function Settings() {
                           </select>
                         )}
                       />
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Choose how to connect to Figma. API is recommended for most users.
                       </p>
                     </div>
@@ -659,9 +654,9 @@ export default function Settings() {
                         name="mcpConnectionMethod"
                         control={control}
                         render={({ field }) => (
-                          <button
+                          <Button
                             type="button"
-                            className="btn-secondary"
+                            variant="outline"
                             onClick={async () => {
                               const method = field.value
                               if (method === 'none') {
@@ -685,7 +680,7 @@ export default function Settings() {
                             }}
                           >
                             🔍 Test Connection
-                          </button>
+                          </Button>
                         )}
                       />
                     </div>
@@ -830,7 +825,7 @@ export default function Settings() {
                           />
                         )}
                       />
-                      <p className="mt-1 text-xs text-gray-500">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         Lower values = more strict matching
                       </p>
                     </div>
@@ -986,9 +981,9 @@ export default function Settings() {
                     </div>
 
                     <div className="space-y-4">
-                      <button
+                      <Button
                         type="button"
-                        className="btn-secondary"
+                        variant="outline"
                         onClick={() => {
                           // Clear all stored tokens/credentials
                           if (confirm('This will clear all stored API tokens and credentials. Continue?')) {
@@ -997,14 +992,14 @@ export default function Settings() {
                         }}
                       >
                         Clear All Stored Credentials
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         type="button"
-                        className="btn-secondary"
+                        variant="outline"
                         onClick={() => {
                           // Export settings (without sensitive data)
-                          const settings = { /* sanitized settings */ }
+                          const settings = {}
                           const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' })
                           const url = URL.createObjectURL(blob)
                           const a = document.createElement('a')
@@ -1014,7 +1009,7 @@ export default function Settings() {
                         }}
                       >
                         Export Settings (Safe)
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </motion.div>
@@ -1038,17 +1033,17 @@ export default function Settings() {
                 </div>
 
                 <div className="flex space-x-3">
-                  <button
+                  <Button
                     type="button"
-                    className="btn-secondary"
+                    variant="outline"
                     onClick={() => window.location.reload()}
                   >
                     Reset
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
                     disabled={!isDirty || isSaving}
-                    className="btn-primary flex items-center space-x-2"
+                    className="flex items-center space-x-2"
                   >
                     {isSaving ? (
                       <>
@@ -1058,12 +1053,11 @@ export default function Settings() {
                     ) : (
                       <span>Save Settings</span>
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </form>
-          </div>
-        </div>
+        </Tabs>
       </div>
     </div>
   )

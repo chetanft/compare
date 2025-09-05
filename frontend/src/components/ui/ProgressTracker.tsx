@@ -169,7 +169,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
       case 'running':
         return 'bg-blue-100 border-blue-200'
       default:
-        return 'bg-gray-50 border-gray-200'
+        return 'bg-muted/50 border-gray-200'
     }
   }
 
@@ -191,7 +191,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Extraction Progress</h3>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {currentProgress?.message || 'Initializing extraction...'}
           </p>
         </div>
@@ -199,7 +199,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
           <div className="text-2xl font-bold text-indigo-600">
             {Math.round(overallProgress)}%
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             {startTime && `${formatTime(getElapsedTime())} elapsed`}
           </div>
         </div>
@@ -207,7 +207,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
 
       {/* Overall Progress Bar */}
       <div className="mb-6">
-        <div className="flex justify-between text-sm text-gray-600 mb-2">
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
           <span>Overall Progress</span>
           <span>{Math.round(overallProgress)}%</span>
         </div>
@@ -252,11 +252,11 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
                       {getStatusIcon(step.status)}
                     </div>
                     <div className="flex-shrink-0">
-                      <Icon className="w-6 h-6 text-gray-600" />
+                      <Icon className="w-6 h-6 text-muted-foreground" />
                     </div>
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900">{step.name}</h4>
-                      <p className="text-sm text-gray-600">{step.description}</p>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -264,7 +264,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
                       {Math.round(step.progress)}%
                     </div>
                     {step.estimatedTime && step.status === 'pending' && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         ~{step.estimatedTime}s
                       </div>
                     )}
@@ -274,7 +274,7 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
                 {/* Step Progress Bar */}
                 {step.status !== 'pending' && (
                   <div className="mt-3">
-                    <div className="w-full bg-white bg-opacity-50 rounded-full h-2">
+                    <div className="w-full bg-card bg-opacity-50 rounded-full h-2">
                       <motion.div
                         className={`h-2 rounded-full ${
                           step.status === 'completed' 
@@ -310,8 +310,8 @@ export default function ProgressTracker({ comparisonId, onComplete, onError }: P
 
       {/* Real-time Details */}
       {currentProgress?.details && (
-        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-          <div className="text-xs text-gray-600 space-y-1">
+        <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+          <div className="text-xs text-muted-foreground space-y-1">
             {currentProgress.details.currentStep && (
               <div>Current: {currentProgress.details.currentStep}</div>
             )}

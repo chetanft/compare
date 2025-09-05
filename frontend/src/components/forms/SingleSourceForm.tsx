@@ -1,20 +1,27 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { extractFigmaOnly, extractWebOnly, FigmaOnlyResponse, WebOnlyResponse } from '../../services/api';
 import { AuthenticationConfig } from '../../types';
-import LoadingSpinner from '../ui/LoadingSpinner';
-import ErrorMessage from '../ui/ErrorMessage';
 import {
   DocumentTextIcon,
   GlobeAltIcon,
-  CogIcon,
   ArrowPathIcon,
   LockClosedIcon,
   InformationCircleIcon,
   AdjustmentsHorizontalIcon
 } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PAGE_CONTENT, FORM_CONTENT, EXTRACTION_MODES, BUTTON_LABELS } from '../../constants/content';
 import { toast } from '../../utils/toast';
+import { cn } from '@/lib/utils';
 
 interface SingleSourceFormProps {
   onFigmaSuccess?: (data: FigmaOnlyResponse['data']) => void;
@@ -203,50 +210,35 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
   const error = figmaMutation.error || webMutation.error;
   
   return (
-    <div className="max-w-4xl mx-auto">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Single Source Extraction</h2>
-          <p className="text-gray-600">Extract design elements from either Figma or web</p>
-        </div>
+    <div className="w-full">
+      <div className="mb-8 text-center">
+        <h2 className="text-3xl font-bold tracking-tight mb-3">{PAGE_CONTENT.SINGLE_SOURCE.title}</h2>
+        <p className="text-lg text-muted-foreground">{PAGE_CONTENT.SINGLE_SOURCE.description}</p>
+      </div>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <InformationCircleIcon className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Error: </strong>
+            {(error as Error).message || 'An error occurred during extraction'}
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <Tabs value={extractionType} onValueChange={(value) => handleExtractionTypeChange(value as 'figma' | 'web')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="figma" className="flex items-center space-x-2">
+            <DocumentTextIcon className="w-4 h-4" />
+            <span>{PAGE_CONTENT.SINGLE_SOURCE.figma.title}</span>
+          </TabsTrigger>
+          <TabsTrigger value="web" className="flex items-center space-x-2">
+            <GlobeAltIcon className="w-4 h-4" />
+            <span>{PAGE_CONTENT.SINGLE_SOURCE.web.title}</span>
+          </TabsTrigger>
+        </TabsList>
         
-        {/* Show error message if there's an error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{(error as Error).message || 'An error occurred during extraction'}</span>
-          </div>
-        )}
-        
-        {/* Extraction Type Selection */}
-        <div className="card">
-          <div className="flex justify-center space-x-4">
-            <button
-              type="button"
-              className={`px-6 py-3 rounded-lg ${
-                extractionType === 'figma' 
-                  ? 'bg-purple-600 text-white' 
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => handleExtractionTypeChange('figma')}
-            >
-              <DocumentTextIcon className="w-5 h-5 inline-block mr-2" />
-              Figma Design
-            </button>
-            <button
-              type="button"
-              className={`px-6 py-3 rounded-lg ${
-                extractionType === 'web' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-              onClick={() => handleExtractionTypeChange('web')}
-            >
-              <GlobeAltIcon className="w-5 h-5 inline-block mr-2" />
-              Web Implementation
-            </button>
-          </div>
-        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-6">
         
         {/* Figma Form */}
         {extractionType === 'figma' && (
@@ -271,7 +263,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                     {...field}
                     type="url"
                     placeholder="Enter Figma URL"
-                    className={`input-field ${errors.figmaUrl ? 'border-red-300' : ''}`}
+                    className={`flex h-10 w-full rounded-md border px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.figmaUrl ? 'border-destructive focus-visible:ring-destructive' : 'border-input bg-background'}`}
                     disabled={isLoading}
                   />
                   {errors.figmaUrl && (
@@ -294,7 +286,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                   render={({ field }) => (
                     <>
                       <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'frame-only' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'frame-only' ? 'bg-purple-50 border-purple-300' : 'bg-card border-gray-200'}`}
                         onClick={() => field.onChange('frame-only')}
                       >
                         <div className="flex items-center">
@@ -309,13 +301,13 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                             Frame Only
                           </label>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Extract only elements from the selected frame
                         </p>
                       </div>
                       
                       <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'global-styles' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'global-styles' ? 'bg-purple-50 border-purple-300' : 'bg-card border-gray-200'}`}
                         onClick={() => field.onChange('global-styles')}
                       >
                         <div className="flex items-center">
@@ -330,13 +322,13 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                             Global Styles
                           </label>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Extract all global styles from the file
                         </p>
                       </div>
                       
                       <div 
-                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'both' ? 'bg-purple-50 border-purple-300' : 'bg-white border-gray-200'}`}
+                        className={`p-3 border rounded-lg cursor-pointer ${field.value === 'both' ? 'bg-purple-50 border-purple-300' : 'bg-card border-gray-200'}`}
                         onClick={() => field.onChange('both')}
                       >
                         <div className="flex items-center">
@@ -351,7 +343,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                             Both
                           </label>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Extract both frame elements and global styles
                         </p>
                       </div>
@@ -393,7 +385,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                     {...field}
                     type="url"
                     placeholder="Enter website URL"
-                    className={`input-field ${errors.webUrl ? 'border-red-300' : ''}`}
+                    className={`flex h-10 w-full rounded-md border px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.webUrl ? 'border-destructive focus-visible:ring-destructive' : 'border-input bg-background'}`}
                     disabled={isLoading}
                   />
                   {errors.webUrl && (
@@ -416,10 +408,10 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                       {...field}
                       type="text"
                       placeholder="Enter CSS selectors"
-                      className="input-field"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       disabled={isLoading}
                     />
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Specify CSS selectors to focus on specific elements
                     </p>
                   </div>
@@ -470,7 +462,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
               
               {/* Authentication Fields */}
               {showAuth && authType === 'credentials' && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-4">
                   <Controller
                     name="authentication.loginUrl"
                     control={control}
@@ -486,7 +478,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                           {...field}
                           type="url"
                           placeholder="Enter login page URL"
-                          className="input-field"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={isLoading}
                         />
                       </div>
@@ -509,7 +501,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                             {...field}
                             type="text"
                             placeholder="Username"
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={isLoading}
                           />
                         </div>
@@ -531,7 +523,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                             {...field}
                             type="password"
                             placeholder="••••••••"
-                            className="input-field"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={isLoading}
                           />
                         </div>
@@ -551,10 +543,10 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
                           {...field}
                           type="text"
                           placeholder="CSS selector for successful login"
-                          className="input-field"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={isLoading}
                         />
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           CSS selector that indicates successful login
                         </p>
                       </div>
@@ -567,23 +559,24 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
         )}
         
         {/* Submit Button */}
-        <div className="flex justify-center">
-          <button
+        <div className="flex justify-center pt-6 border-t">
+          <Button
             type="submit"
             disabled={isLoading}
-            className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 flex items-center"
+            className="px-8 py-3 flex items-center gap-2"
           >
             {isLoading ? (
               <>
-                <ArrowPathIcon className="w-5 h-5 mr-2 animate-spin" />
-                Extracting...
+                <ArrowPathIcon className="w-5 h-5 animate-spin" />
+                <span>Extracting...</span>
               </>
             ) : (
-              'Extract Data'
+              <span>{BUTTON_LABELS.extractData}</span>
             )}
-          </button>
+          </Button>
         </div>
-      </form>
+        </form>
+      </Tabs>
     </div>
   );
-} 
+}
