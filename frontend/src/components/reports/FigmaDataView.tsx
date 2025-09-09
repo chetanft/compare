@@ -5,13 +5,9 @@ import {
   CubeIcon,
   ArrowsPointingOutIcon,
   Square3Stack3DIcon,
-  PaintBrushIcon,
-  ChevronDownIcon
+  PaintBrushIcon
 } from '@heroicons/react/24/outline';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Tab } from '@headlessui/react';
 import { classNames } from '../../utils/classNames';
 import { FigmaData } from '../../../../src/types/extractor';
 
@@ -119,8 +115,8 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   const [expandedComponents, setExpandedComponents] = useState<Record<string, boolean>>({});
   
   // Extract design tokens from data
-  const colors = data.data?.tokens?.colors || [];
-  const typography = data.data?.tokens?.typography || [];
+  const colors = data.data?.colors || [];
+  const typography = data.data?.typography || [];
   const components = data.data?.components || [];
   const styles = data.data?.styles || [];
   
@@ -692,7 +688,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               <div className="border rounded-lg overflow-hidden">
                 {totalColors > 0 ? (
                   <div className="p-2 bg-muted/50">
-                    {colors.map((color, index) => renderColorToken(color, index))}
+                    {colors.map((color: any, index: number) => renderColorToken(color, index))}
                   </div>
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
@@ -716,7 +712,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               <div className="border rounded-lg overflow-hidden">
                 {totalTypography > 0 ? (
                   <div className="p-2 bg-muted/50">
-                    {typography.map((item, index) => renderTypographyToken(item, index))}
+                    {typography.map((item: any, index: number) => renderTypographyToken(item, index))}
                   </div>
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
@@ -740,7 +736,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
               <div className="border rounded-lg overflow-hidden">
                 {data.data?.tokens?.spacing?.length ? (
                   <div className="p-2 bg-muted/50">
-                    {data.data?.tokens?.spacing.map((spacing, index) => renderSpacingToken(spacing, index))}
+                    {data.data?.tokens?.spacing.map((spacing: any, index: number) => renderSpacingToken(spacing, index))}
                   </div>
                 ) : (
                   <div className="p-4 text-center text-muted-foreground">
@@ -766,7 +762,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                   <h4 className="text-sm font-medium text-foreground mb-2">Border Radius</h4>
                   <div className="border rounded-lg overflow-hidden">
                     <div className="p-2 bg-muted/50">
-                      {data.data?.tokens?.borderRadius.map((radius, index) => renderBorderRadiusToken(radius, index))}
+                      {data.data?.tokens?.borderRadius.map((radius: any, index: number) => renderBorderRadiusToken(radius, index))}
                     </div>
                   </div>
                 </div>
@@ -777,7 +773,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                   <h4 className="text-sm font-medium text-foreground mb-2">Shadows</h4>
                   <div className="border rounded-lg overflow-hidden">
                     <div className="p-2 bg-muted/50">
-                      {data.data?.tokens?.shadows.map((shadow, index) => renderShadowToken(shadow, index))}
+                      {data.data?.tokens?.shadows.map((shadow: any, index: number) => renderShadowToken(shadow, index))}
                     </div>
                   </div>
                 </div>

@@ -28,8 +28,14 @@ export interface AuthenticationConfig {
 export interface ExtractionDetails {
   figma: {
     componentCount: number;
-    colors: Array<{name: string, value: string, type: string}>;
-    typography: Array<{fontFamily: string, fontSize: number, fontWeight: number}>;
+    colors: string[]; // Direct hex strings like "#ffffff"
+    typography: {
+      fontFamilies: string[];
+      fontSizes: string[];
+      fontWeights: string[];
+    };
+    spacing: string[]; // Spacing values like "padding: 13px 20px 13px 20px"
+    borderRadius: string[]; // Border radius values like "8px"
     extractionTime: number;
     fileInfo: {name: string, nodeId?: string};
   };
@@ -54,49 +60,93 @@ export interface ExtractionDetails {
   };
 }
 
-export interface ComparisonResult {
-  success?: boolean
-  data?: {
-    reports?: {
-      directUrl?: string
-      downloadUrl?: string
-      hasError?: boolean
-    }
-    reportPath?: string // Added reportPath for direct HTML report access
-    extractionDetails?: ExtractionDetails
-    [key: string]: any
+// Unified API Response Format
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: {
+    message: string
+    code: string
+    stage?: string
+    details?: any
   }
-  reportPath?: string // Added reportPath at root level
-  extractionDetails?: ExtractionDetails
+  timestamp: string
+  processingTime?: string
+}
+
+// Standardized Comparison Result
+export interface ComparisonResult extends ApiResponse<ComparisonData> {
   comparisonId?: string
   id?: string
-  timestamp?: string
+}
+
+export interface ComparisonData {
+  // Main comparison metrics
+  comparison: {
+    overallSimilarity: number
+    totalComparisons: number
+    matchedElements: number
+    discrepancies: number
+  }
+  
+  // Detailed extraction information
+  extractionDetails: {
+    figma: {
+      componentCount?: number
+      colors?: string[] // Direct hex strings
+      typography?: {
+        fontFamilies?: string[]
+        fontSizes?: string[]
+        fontWeights?: string[]
+      }
+      spacing?: string[]
+      borderRadius?: string[]
+      extractionTime?: number
+      fileInfo?: {
+        name?: string
+        nodeId?: string
+      }
+      fileKey?: string
+      fileName?: string
+      url?: string
+    }
+    web: {
+      elementCount?: number
+      colors?: string[]
+      typography?: {
+        fontFamilies?: string[]
+        fontSizes?: string[]
+        fontWeights?: string[]
+      }
+      spacing?: string[]
+      borderRadius?: string[]
+      extractionTime?: number
+      urlInfo?: {
+        url?: string
+        title?: string
+      }
+      extractorVersion?: string
+    }
+    comparison: {
+      totalComparisons: number
+      matches: number
+      deviations: number
+      matchPercentage: number
+    }
+  }
+  
+  // Raw data for detailed analysis
   figmaData?: {
-    fileId?: string
-    fileName?: string
-    componentsCount?: number
-    components?: any[]
+    components: any[]
+    metadata: any
   }
   webData?: {
-    url?: string
-    elementsCount?: number
-    elements?: any[]
+    elements: any[]
+    metadata: any
   }
-  comparison?: {
-    matches?: any[]
-    mismatches?: any[]
-    missing?: any[]
-    extra?: any[]
-  }
-  metadata?: {
-    extractedAt?: string
-    figmaComponentCount?: number
-    webComponentCount?: number
-    matchCount?: number
-    mismatchCount?: number
-    missingCount?: number
-    extraCount?: number
-  }
+  
+  // Report information
+  reportPath?: string
   reports?: {
     directUrl?: string
     downloadUrl?: string
@@ -305,4 +355,5 @@ export interface QuickWin {
   impact: string
   confidence?: number
   category: string
+} 
 } 

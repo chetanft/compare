@@ -8,10 +8,12 @@ import Settings from './pages/Settings'
 import SingleSourcePage from './pages/SingleSourcePage'
 import ScreenshotComparison from './pages/ScreenshotComparison'
 import ErrorBoundary from './components/ui/ErrorBoundary'
+import { ServerStartup } from './components/ServerStartup'
 import { Toaster } from '@/components/ui/toaster'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [serverReady, setServerReady] = useState(false)
   const location = useLocation()
 
   const getPageTitle = (pathname: string): string => {
@@ -26,6 +28,11 @@ function AppContent() {
     initial: { opacity: 0, x: 20 },
     in: { opacity: 1, x: 0 },
     out: { opacity: 0, x: -20 }
+  }
+
+  // Show server startup screen if server is not ready
+  if (!serverReady) {
+    return <ServerStartup onServerReady={() => setServerReady(true)} />
   }
 
   return (

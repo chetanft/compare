@@ -9,15 +9,31 @@ interface ServerStatusProps {
 }
 
 interface ServerStatusResponse {
-  status: string;
-  message?: string;
-  version?: string;
-  uptime?: number;
+  success: boolean;
+  data: {
+    status: string;
+    message?: string;
+    version?: string;
+    uptime?: number;
+    timestamp?: string;
+  };
   timestamp?: string;
 }
 
 export default function ServerStatus({ className = '', onStatusChange }: ServerStatusProps) {
   const apiBaseUrl = getApiBaseUrl();
+  
+  // Extract port from the API base URL
+  const getPortFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.port || (urlObj.protocol === 'https:' ? '443' : '80');
+    } catch {
+      return '3007'; // Default port
+    }
+  };
+  
+  const currentPort = getPortFromUrl(apiBaseUrl);
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['serverStatus'],
@@ -40,10 +56,10 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
   useEffect(() => {
     if (isLoading) {
       onStatusChange?.('checking');
-    } else if (error || !data) {
+    } else if (error || !data || !data.success) {
       onStatusChange?.('offline');
     } else {
-      const isOnline = data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
+      const isOnline = data.data.status === 'healthy' || data.data.status === 'ok' || data.data.status === 'online';
       onStatusChange?.(isOnline ? 'online' : 'offline');
     }
   }, [data, isLoading, error, onStatusChange]);
@@ -52,21 +68,21 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
     return (
       <div className={`flex items-center ${className}`}>
         <div className="animate-pulse w-2 h-2 rounded-full bg-gray-400 mr-2"></div>
-        <span className="text-xs text-muted-foreground">Checking server...</span>
+        <span className="text-xs text-muted-foreground">Port {currentPort} - Checking...</span>
       </div>
     );
   }
   
-  if (error || !data) {
+  if (error || !data || !data.success) {
     return (
       <div className={`flex items-center ${className}`}>
         <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
-        <span className="text-xs text-muted-foreground">Server unavailable</span>
+        <span className="text-xs text-muted-foreground">Port {currentPort} - Offline</span>
       </div>
     );
   }
   
-  const isOnline = data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
+  const isOnline = data.data.status === 'healthy' || data.data.status === 'ok' || data.data.status === 'online';
   
   return (
     <div className={`flex items-center ${className}`}>
@@ -76,7 +92,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
         }`}
       ></div>
       <span className="text-xs text-muted-foreground">
-        {isOnline ? 'Server online' : 'Server offline'}
+        Port {currentPort} - {isOnline ? 'Connected' : 'Disconnected'}
       </span>
     </div>
   );

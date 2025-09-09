@@ -63,12 +63,14 @@ export default function NewComparison() {
   }
 
   const handleSuccess = (comparisonResult: ComparisonResult) => {
-    console.log('🔍 DEBUG: handleSuccess received:', comparisonResult);
-    console.log('🔍 DEBUG: comparisonResult.data:', comparisonResult?.data);
-    console.log('🔍 DEBUG: comparisonResult.extractionDetails:', comparisonResult?.extractionDetails);
-    console.log('🔍 DEBUG: comparisonResult.reportPath:', comparisonResult?.reportPath);
-    console.log('🔍 DEBUG: comparisonResult.reports:', comparisonResult?.reports);
+    console.log('🔍 NewComparison handleSuccess received:', JSON.stringify(comparisonResult, null, 2));
+    console.log('🔍 NewComparison: comparisonResult.data exists?', !!comparisonResult?.data);
+    console.log('🔍 NewComparison: comparisonResult.extractionDetails exists?', !!comparisonResult?.extractionDetails);
+    console.log('🔍 NewComparison: comparisonResult.data?.extractionDetails exists?', !!comparisonResult?.data?.extractionDetails);
+    console.log('🔍 NewComparison: comparisonResult.reportPath:', comparisonResult?.reportPath);
+    console.log('🔍 NewComparison: comparisonResult.data?.reportPath:', comparisonResult?.data?.reportPath);
     
+    // The API service already returns the correct structure
     setResult(comparisonResult)
     
     // Check if reports are available in the result
@@ -152,6 +154,37 @@ export default function NewComparison() {
               <div className="text-sm text-muted-foreground">Web Elements</div>
             </div>
           </div>
+
+          {/* Comparison Results */}
+          {result.extractionDetails?.comparison && (
+            <div className="mb-8">
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">Comparison Results</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-green-600 mb-2">
+                        {result.extractionDetails.comparison.matches || 0}
+                      </div>
+                      <div className="text-muted-foreground">Matches Found</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-red-600 mb-2">
+                        {result.extractionDetails.comparison.deviations || 0}
+                      </div>
+                      <div className="text-muted-foreground">Deviations</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-blue-600 mb-2">
+                        {Math.round(result.extractionDetails.comparison.matchPercentage || 0)}%
+                      </div>
+                      <div className="text-muted-foreground">Match Rate</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Extraction Details */}
           {result.extractionDetails && (

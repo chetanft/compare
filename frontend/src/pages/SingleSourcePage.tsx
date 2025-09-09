@@ -69,23 +69,42 @@ export default function SingleSourcePage() {
   
   const handleFigmaSuccess = (data: FigmaOnlyResponse['data']) => {
     console.log('Figma data received:', {
-      componentCount: data.metadata.componentCount,
-      colorCount: data.metadata.colorCount,
-      typographyCount: data.metadata.typographyCount,
-      actualColorsLength: data.tokens?.colors?.length || 0
+      componentCount: data.metadata?.totalComponents || data.components?.length || 0,
+      colorCount: data.metadata?.colorCount || data.colors?.length || 0,
+      typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
+      actualColorsLength: data.colors?.length || 0,
+      hasColors: !!(data.colors && data.colors.length > 0),
+      hasTypography: !!(data.typography && data.typography.length > 0),
+      hasComponents: !!(data.components && data.components.length > 0)
     });
     
-    // Force a complete reset of the component state
-    setFigmaData(null);
+    // Validate data before setting
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid Figma data received:', data);
+      return;
+    }
+    
+    // Clear any previous data first
     setWebData(null);
+    
+    // Set new data with proper structure
+    const processedData = {
+      ...data,
+      components: data.components || [],
+      colors: data.colors || [],
+      typography: data.typography || [],
+      metadata: {
+        ...data.metadata,
+        totalComponents: data.metadata?.totalComponents || data.components?.length || 0,
+        colorCount: data.metadata?.colorCount || data.colors?.length || 0,
+        typographyCount: data.metadata?.typographyCount || data.typography?.length || 0
+      }
+    };
+    
+    setFigmaData(processedData);
     
     // Force component re-render with new key
     setResetKey(prev => prev + 1);
-    
-    // Set new data with delay to ensure clean state
-    setTimeout(() => {
-      setFigmaData(data);
-    }, 100);
   };
   
   const handleWebSuccess = (data: WebOnlyResponse['data']) => {
@@ -139,20 +158,20 @@ export default function SingleSourcePage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">File Name</p>
-                  <p className="font-medium">{figmaData.metadata.fileName}</p>
+                  <p className="font-medium">{figmaData.metadata?.fileName || figmaData.fileName || 'Unknown'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Method</p>
-                  <Badge variant="secondary">{figmaData.metadata.extractionMethod}</Badge>
+                  <Badge variant="secondary">{figmaData.metadata?.extractionMethod || 'figma-api'}</Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Components</p>
-                  <p className="font-medium">{figmaData.metadata.componentCount}</p>
+                  <p className="font-medium">{figmaData.metadata?.totalComponents || figmaData.components?.length || 0}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Extracted</p>
                   <p className="font-medium text-sm">
-                    {new Date(figmaData.metadata.extractedAt).toLocaleString()}
+                    {new Date(figmaData.extractedAt || figmaData.metadata?.extractedAt || Date.now()).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -176,19 +195,21 @@ export default function SingleSourcePage() {
             </div>
             
             {/* Colors Section */}
-            {figmaData.tokens?.colors && figmaData.tokens.colors.length > 0 && (
+            {figmaData.colors && Array.isArray(figmaData.colors) && figmaData.colors.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Colors ({figmaData.metadata.colorCount})</h3>
+                <h3 className="text-lg font-semibold mb-4">Colors ({figmaData.colors.length})</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                  {figmaData.tokens.colors.map((color, index) => {
+                  {figmaData.colors.map((color: any, index: number) => {
                     const colorValue = getColorValue(color);
                     return (
-                      <div key={index} className="flex flex-col items-center">
+                      <div key={`color-${index}-${color.name || color.value}`} className="flex flex-col items-center">
                         <div 
                           className="w-12 h-12 rounded-lg border shadow-sm" 
                           style={{ backgroundColor: colorValue }}
                         />
-                        <span className="text-xs mt-1 font-medium">{color.name || `Color ${index + 1}`}</span>
+                        <span className="text-xs mt-1 font-medium truncate max-w-16" title={color.name || `Color ${index + 1}`}>
+                          {color.name || `Color ${index + 1}`}
+                        </span>
                         <span className="text-xs text-muted-foreground">{colorValue}</span>
                       </div>
                     );
@@ -198,24 +219,24 @@ export default function SingleSourcePage() {
             )}
             
             {/* Typography Section */}
-            {figmaData.tokens?.typography && figmaData.tokens.typography.length > 0 && (
+            {figmaData.typography && Array.isArray(figmaData.typography) && figmaData.typography.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-4">Typography ({figmaData.metadata.typographyCount})</h3>
+                <h3 className="text-lg font-semibold mb-4">Typography ({figmaData.typography.length})</h3>
                 <div className="space-y-3">
-                  {figmaData.tokens.typography.map((typo, index) => (
-                    <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                  {figmaData.typography.map((typo: any, index: number) => (
+                    <div key={`typo-${index}-${typo.name || typo.fontFamily}`} className="p-3 bg-muted/50 rounded-lg">
                       <p 
                         className="mb-2" 
                         style={{ 
-                          fontFamily: typo.fontFamily,
-                          fontSize: `${typo.fontSize}px`,
-                          fontWeight: typo.fontWeight
+                          fontFamily: typo.fontFamily || 'inherit',
+                          fontSize: typo.fontSize ? `${typo.fontSize}px` : 'inherit',
+                          fontWeight: typo.fontWeight || 'normal'
                         }}
                       >
-                        {typo.name || 'The quick brown fox jumps over the lazy dog'}
+                        {typo.characters || typo.name || 'The quick brown fox jumps over the lazy dog'}
                       </p>
                       <div className="text-xs text-muted-foreground">
-                        {typo.fontFamily}, {typo.fontSize}px, weight: {typo.fontWeight}
+                        {typo.fontFamily || 'Unknown'}, {typo.fontSize || 'Unknown'}px, weight: {typo.fontWeight || 'Unknown'}
                       </div>
                     </div>
                   ))}
@@ -303,7 +324,7 @@ export default function SingleSourcePage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {element.id ? `#${element.id}` : ''}
                           {element.classes && element.classes.length > 0 && 
-                            (element.id ? ' ' : '') + element.classes.map(c => `.${c}`).join(' ')}
+                            (element.id ? ' ' : '') + element.classes.map((c: string) => `.${c}`).join(' ')}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                           {element.text && element.text.length > 30 
@@ -401,19 +422,19 @@ export default function SingleSourcePage() {
             <div>
               <p className="text-sm font-medium">Metadata:</p>
               <ul className="list-disc list-inside text-sm">
-                <li>Component Count: {figmaData.metadata.componentCount}</li>
+                <li>Component Count: {figmaData.metadata.totalComponents}</li>
                 <li>Color Count: {figmaData.metadata.colorCount}</li>
                 <li>Typography Count: {figmaData.metadata.typographyCount}</li>
                 <li>Extraction Method: {figmaData.metadata.extractionMethod}</li>
-                <li>Extracted At: {new Date(figmaData.metadata.extractedAt).toLocaleString()}</li>
+                <li>Extracted At: {new Date(figmaData.extractedAt || figmaData.metadata.extractedAt || Date.now()).toLocaleString()}</li>
               </ul>
             </div>
             <div>
               <p className="text-sm font-medium">Actual Data:</p>
               <ul className="list-disc list-inside text-sm">
                 <li>Components Array Length: {figmaData.components?.length || 0}</li>
-                <li>Colors Array Length: {figmaData.tokens?.colors?.length || 0}</li>
-                <li>Typography Array Length: {figmaData.tokens?.typography?.length || 0}</li>
+                <li>Colors Array Length: {figmaData.colors?.length || 0}</li>
+                <li>Typography Array Length: {figmaData.typography?.length || 0}</li>
                 <li>Reset Key: {resetKey}</li>
               </ul>
             </div>
@@ -422,7 +443,7 @@ export default function SingleSourcePage() {
           <div className="mt-4">
             <p className="text-sm font-medium">First 3 Colors:</p>
             <pre className="text-xs bg-gray-200 p-2 rounded mt-1 overflow-auto max-h-40">
-              {figmaData.tokens?.colors?.slice(0, 3).map((color, i) => 
+              {figmaData.colors?.slice(0, 3).map((color: any, i: number) => 
                 JSON.stringify(color, null, 2) + (i < 2 ? ',\n' : '')
               )}
             </pre>

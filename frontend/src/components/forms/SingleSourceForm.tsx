@@ -71,33 +71,31 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
     },
     onSuccess: (data) => {
       console.log('Figma extraction successful, data received:', {
-        componentCount: data.metadata.componentCount,
-        colorCount: data.metadata.colorCount,
-        typographyCount: data.metadata.typographyCount,
-        actualColorsCount: data.tokens?.colors?.length || 0
+        componentCount: data.metadata?.totalComponents || data.components?.length || 0,
+        colorCount: data.metadata?.colorCount || data.colors?.length || 0,
+        typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
+        actualColorsCount: data.colors?.length || 0,
+        dataStructure: Object.keys(data || {})
       });
+      
+      // Validate data before passing to parent
+      if (!data || typeof data !== 'object') {
+        console.error('Invalid Figma data structure received:', data);
+        toast({
+          title: 'Data Error',
+          description: 'Received invalid data structure from server',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
       
       // Pass the data to parent component
       onFigmaSuccess?.(data);
       
-      // Reset form after success
-      setTimeout(() => {
-        reset({
-          extractionType: 'figma',
-          figmaUrl: '',
-          extractionMode: 'both',
-          webUrl: '',
-          webSelector: '',
-          authentication: {
-            type: 'credentials',
-            loginUrl: '',
-            username: '',
-            password: '',
-            waitTime: 3000,
-            successIndicator: ''
-          }
-        });
-      }, 500);
+      // Don't reset form after success to keep the URL visible
+      // User can manually clear if needed
     },
     onError: (error: any) => {
       console.error('Figma extraction failed:', error);
@@ -141,24 +139,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
     onSuccess: (data) => {
       onWebSuccess?.(data);
     },
-    onSettled: () => {
-      // Reset form after submission (success or error)
-      reset({
-        extractionType: 'web',
-        figmaUrl: '',
-        extractionMode: 'both',
-        webUrl: '',
-        webSelector: '',
-        authentication: {
-          type: 'credentials',
-          loginUrl: '',
-          username: '',
-          password: '',
-          waitTime: 3000,
-          successIndicator: ''
-        }
-      });
-    }
+    // Don't reset form to keep URLs visible after extraction
   });
   
   // Handle extraction type change
@@ -193,9 +174,9 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
       });
     } else if (extractionType === 'web' && data.webUrl) {
       // Only include authentication if it's enabled
-      const auth = authType === 'none' ? undefined : {
+      const auth: AuthenticationConfig | undefined = authType === 'none' ? undefined : {
         ...data.authentication,
-        type: 'form' // Ensure the backend knows this is form-based authentication
+        type: authType as AuthenticationConfig['type'] // Use the selected auth type
       };
       
       webMutation.mutate({ 

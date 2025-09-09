@@ -1,5 +1,6 @@
 import { Bars3Icon, BellIcon } from '@heroicons/react/24/outline'
 import MCPStatus from '../ui/MCPStatus'
+import ServerStatus from '../ui/ServerStatus'
 import { ThemeToggle } from '../ui/theme-toggle'
 import { Button } from '@/components/ui/button'
 
@@ -30,6 +31,8 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
         </div>
         
         <div className="flex items-center space-x-4">
+          <ServerStatus />
+          
           <MCPStatus />
           
           <ThemeToggle />

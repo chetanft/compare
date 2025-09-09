@@ -5,6 +5,9 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  future: {
+    hoverOnlyWhenSupported: true
+  },
   theme: {
   	extend: {
   		fontFamily: {

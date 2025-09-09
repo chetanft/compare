@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Default API port
-const API_PORT = 3007;
+// Default API port - Random safe port to avoid conflicts
+const API_PORT = 47832;
 
 // printConfig function to log configuration
 function printConfig(config: any) {
@@ -14,6 +14,9 @@ function printConfig(config: any) {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  esbuild: {
+    drop: ['console', 'debugger']
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -51,6 +54,10 @@ export default defineConfig({
     },
   },
   build: {
+    target: 'es2020',
+    reportCompressedSize: false,
+    cssMinify: 'esbuild',
+    skipLibCheck: true,
     // Code splitting configuration to reduce bundle size
     rollupOptions: {
       output: {
@@ -84,14 +91,8 @@ export default defineConfig({
     // Set chunk size warning limit (reduced from default)
     chunkSizeWarningLimit: 500,
     
-    // Enable minification and tree shaking
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console.logs in production
-        drop_debugger: true
-      }
-    },
+    // Enable fast minification and tree shaking (use esbuild for speed)
+    minify: 'esbuild',
     
     // Source maps for debugging
     sourcemap: false // Disable in production for smaller build

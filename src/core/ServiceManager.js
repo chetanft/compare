@@ -211,7 +211,7 @@ export class ServiceManager {
       // Import and initialize services the old way
       const { getBrowserPool } = await import('../browser/BrowserPool.js');
       const { FigmaMCPClient } = await import('../figma/mcpClient.js');
-      const { EnhancedWebExtractor } = await import('../web/enhancedWebExtractor.js');
+      const { default: UnifiedWebExtractor } = await import('../web/UnifiedWebExtractor.js');
       const ComparisonEngine = (await import('../compare/comparisonEngine.js')).default;
 
       // Initialize services
@@ -219,7 +219,7 @@ export class ServiceManager {
       await browserPool.initialize();
 
       const mcpClient = new FigmaMCPClient();
-      const webExtractor = new EnhancedWebExtractor();
+      const webExtractor = new UnifiedWebExtractor();
       const comparisonEngine = new ComparisonEngine();
 
       // Store in legacy format

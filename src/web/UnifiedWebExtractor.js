@@ -38,11 +38,14 @@ export class UnifiedWebExtractor {
     const isFreightTiger = url.includes('freighttiger.com');
     const defaultTimeout = isFreightTiger ? 180000 : (this.config?.timeouts?.webExtraction || 30000); // 3 minutes for FreightTiger
     const actualTimeout = options.timeout || defaultTimeout;
+    const deadlineTs = startTime + actualTimeout;
+    // Propagate absolute deadline to downstream helpers
+    options._deadlineTs = deadlineTs;
     
     console.log(`⏱️ Setting extraction timeout: ${actualTimeout}ms (FreightTiger: ${isFreightTiger})`);
     
     const timeoutId = setTimeout(() => {
-      console.log(`⏰ Extraction timeout reached for: ${url}`);
+      console.log(`⏰ Extraction deadline reached for: ${url}`);
       controller.abort();
     }, actualTimeout);
 
@@ -82,13 +85,14 @@ export class UnifiedWebExtractor {
         console.log('🚛 Configuring for FreightTiger - allowing all resources (no interception)');
       }
 
-      // Track extraction
+      // Track extraction and mark page as active
       this.activeExtractions.set(extractionId, { 
         pageId, 
         controller, 
-        startTime,
+        startTime, 
         url 
       });
+      this.browserPool.markPageActive(pageId);
 
       // Track extraction in resource manager
       this.resourceManager.track(extractionId, controller, 'extraction', {
@@ -175,20 +179,26 @@ export class UnifiedWebExtractor {
       // Extract data with enhanced error handling for navigation
       let extractionResult;
       try {
-        extractionResult = await Promise.race([
-          this.performExtraction(page, url, options),
-          abortPromise
-        ]);
+        // Check if page and browser are still connected before extraction
+        if (page.isClosed()) {
+          throw new Error('Page was closed before extraction could begin');
+        }
+        
+        const browser = page.browser();
+        if (!browser.isConnected()) {
+          throw new Error('Browser disconnected before extraction');
+        }
+        
+        // Do not race the actual extraction with the abort signal.
+        // If the deadline triggers while we already collect DOM, allow extraction to finish.
+        extractionResult = await this.performExtraction(page, url, options);
       } catch (error) {
         if (error.message.includes('Execution context was destroyed')) {
           console.log('🔄 Page navigated during extraction, retrying...');
           // Wait a bit for navigation to complete
           await new Promise(resolve => setTimeout(resolve, 3000));
           // Retry extraction
-          extractionResult = await Promise.race([
-            this.performExtraction(page, page.url(), options),
-            abortPromise
-          ]);
+          extractionResult = await this.performExtraction(page, page.url(), options);
         } else {
           throw error;
         }
@@ -316,12 +326,22 @@ export class UnifiedWebExtractor {
   async navigateToPage(page, url, options) {
     const maxRetries = 3;
     const baseTimeout = Math.max(this.config?.timeouts?.webExtraction || 30000, 45000);
-    
-    const strategies = [
-      { waitUntil: 'networkidle0', timeout: baseTimeout },
-      { waitUntil: 'domcontentloaded', timeout: baseTimeout },
-      { waitUntil: 'load', timeout: baseTimeout }
-    ];
+    const deadlineTs = options._deadlineTs;
+    const timeLeft = () => (deadlineTs ? Math.max(2000, deadlineTs - Date.now() - 500) : baseTimeout);
+    const mkTimeout = () => Math.min(baseTimeout, timeLeft());
+
+    const isFreightTiger = url.includes('freighttiger.com');
+    const strategies = isFreightTiger
+      ? [
+          { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
+          { waitUntil: 'networkidle0', timeout: mkTimeout() },
+          { waitUntil: 'load', timeout: mkTimeout() }
+        ]
+      : [
+          { waitUntil: 'networkidle0', timeout: mkTimeout() },
+          { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
+          { waitUntil: 'load', timeout: mkTimeout() }
+        ];
 
     let lastError;
     
@@ -1079,8 +1099,12 @@ export class UnifiedWebExtractor {
   async waitForPageStability(page, options) {
     // Increase timeout for FreightTiger due to complex SystemJS loading
     const isFreightTiger = page.url().includes('freighttiger.com');
-    const defaultStabilityTimeout = isFreightTiger ? 30000 : 5000; // 30s for FreightTiger, 5s for others
-    const stabilityTimeout = options.stabilityTimeout || defaultStabilityTimeout;
+    // For JS-heavy apps, use short stability waits and rely on content heuristics
+    const defaultStabilityTimeout = isFreightTiger ? 12000 : 5000; // 12s for FT, 5s others
+    const stabilityTimeout = Math.min(
+      options.stabilityTimeout || defaultStabilityTimeout,
+      options._deadlineTs ? Math.max(2000, options._deadlineTs - Date.now() - 1000) : defaultStabilityTimeout
+    );
     
     console.log(`⏱️ Using stability timeout: ${stabilityTimeout}ms (FreightTiger: ${isFreightTiger})`);
     
@@ -1130,7 +1154,7 @@ export class UnifiedWebExtractor {
       }
       
       // Additional stability wait
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       
     } catch (error) {
       console.warn('⚠️ Page stability check failed:', error.message);
@@ -1492,21 +1516,35 @@ export class UnifiedWebExtractor {
    */
   async cleanup(extractionId) {
     const extraction = this.activeExtractions.get(extractionId);
-    if (extraction) {
-      const { pageId, controller } = extraction;
-      
+    if (!extraction) {
+      return; // Already cleaned up or doesn't exist
+    }
+    
+    const { pageId, controller } = extraction;
+    
+    try {
       // Abort if still running
-      if (!controller.signal.aborted) {
+      if (controller && !controller.signal.aborted) {
         controller.abort();
       }
       
+      // Mark page as inactive before cleanup
+      if (pageId) {
+        this.browserPool.markPageInactive(pageId);
+      }
+      
       // Close page through browser pool
-      await this.browserPool.closePage(pageId);
+      if (pageId) {
+        await this.browserPool.closePage(pageId);
+      }
       
       // Clean up from resource manager
       await this.resourceManager.cleanup(extractionId);
       
-      // Remove from active extractions
+    } catch (error) {
+      console.error(`⚠️ Error during cleanup of ${extractionId}:`, error.message);
+    } finally {
+      // Always remove from active extractions
       this.activeExtractions.delete(extractionId);
     }
   }
@@ -1537,6 +1575,13 @@ export class UnifiedWebExtractor {
     await Promise.allSettled(
       extractionIds.map(id => this.cancelExtraction(id))
     );
+  }
+
+  /**
+   * Check if extractor is ready (compatibility method)
+   */
+  isReady() {
+    return this.browserPool && this.resourceManager && this.config;
   }
 }
 

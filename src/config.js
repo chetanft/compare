@@ -6,7 +6,7 @@
 export const config = {
   // Server configuration
   server: {
-    port: process.env.PORT || 3007,
+    port: process.env.PORT || 3001,
     host: process.env.HOST || 'localhost'
   },
 
@@ -21,6 +21,7 @@ export const config = {
   cors: {
     origin: [
       'http://localhost:3000',
+      'http://localhost:3001',
       'http://localhost:3007',
       'http://localhost:5173'
     ],

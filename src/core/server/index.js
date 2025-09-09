@@ -9,9 +9,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import multer from 'multer';
+import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
 import { FigmaMCPClient } from '../../figma/mcpClient.js';
-import { EnhancedWebExtractor } from '../../web/enhancedWebExtractor.js';
 import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
 import ComparisonEngine from '../../compare/comparisonEngine.js';
 import { ScreenshotComparisonService } from '../../compare/ScreenshotComparisonService.js';
@@ -30,7 +30,6 @@ import {
 import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
 import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
-import WebExtractorV2 from '../../web/WebExtractorV2.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,7 +88,9 @@ export async function startServer() {
   
   // Enhanced service initialization with backward compatibility
   let serviceManager;
-  let figmaClient, comparisonEngine, browserPool, webExtractorV2, enhancedWebExtractor, unifiedWebExtractor, resourceManager;
+  let figmaClient, comparisonEngine, browserPool, unifiedWebExtractor, resourceManager;
+  // Legacy compatibility aliases - all point to UnifiedWebExtractor
+  let webExtractorV2, enhancedWebExtractor;
   
   try {
     // Try enhanced service initialization
@@ -104,12 +105,14 @@ export async function startServer() {
       figmaClient = serviceManager.getService('mcpClient');
       comparisonEngine = serviceManager.getService('comparisonEngine');
       browserPool = serviceManager.getService('browserPool');
-      enhancedWebExtractor = serviceManager.getService('webExtractor');
-      webExtractorV2 = new WebExtractorV2(); // Keep this for compatibility
       
-      // Initialize new unified extractor and resource manager
+      // Initialize unified extractor and resource manager
       unifiedWebExtractor = new UnifiedWebExtractor();
       resourceManager = getResourceManager();
+      
+      // Legacy compatibility - all extractors point to the unified one
+      enhancedWebExtractor = serviceManager.getService('webExtractor'); // This now returns UnifiedWebExtractor
+      webExtractorV2 = unifiedWebExtractor; // Compatibility alias
       
     } else {
       throw new Error('Enhanced initialization failed, using fallback');
@@ -121,19 +124,18 @@ export async function startServer() {
     figmaClient = new FigmaMCPClient();
     comparisonEngine = new ComparisonEngine();
     browserPool = getBrowserPool();
-    webExtractorV2 = new WebExtractorV2();
     unifiedWebExtractor = new UnifiedWebExtractor();
     resourceManager = getResourceManager();
     
-    // Import and initialize the enhanced web extractor for better extraction
-    const { EnhancedWebExtractor } = await import('../../web/enhancedWebExtractor.js');
-    enhancedWebExtractor = new EnhancedWebExtractor();
+    // Legacy compatibility - all extractors point to the unified one
+    enhancedWebExtractor = unifiedWebExtractor; // Compatibility alias
+    webExtractorV2 = unifiedWebExtractor; // Compatibility alias
     
     // Start performance monitoring the old way
     performanceMonitor.startMonitoring();
   }
   
-  // TODO: Initialize WebSocket server once compiled
+  // WebSocket server implementation pending - will be added in future version
   // const webSocketManager = initializeWebSocket(httpServer, config);
   const webSocketManager = {
     getActiveConnectionsCount: () => 0,
@@ -166,7 +168,9 @@ export async function startServer() {
   app.use(responseFormatter);
   
   // Rate limiting
-  const { generalLimiter, extractionLimiter } = configureRateLimit(config);
+  const { generalLimiter, healthLimiter, extractionLimiter } = configureRateLimit(config);
+  app.use('/api/health', healthLimiter);
+  app.use('/api/mcp/status', healthLimiter);
   app.use('/api', generalLimiter);
   
   // Serve frontend static files (exclude report files)
@@ -272,6 +276,35 @@ export async function startServer() {
         success: false,
         error: error.message,
         timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // MCP status endpoint
+  app.get('/api/mcp/status', async (req, res) => {
+    try {
+      let mcpStatus = {
+        available: false,
+        connected: mcpConnected,
+        error: null
+      };
+
+      if (figmaClient) {
+        try {
+          const connectionTest = await figmaClient.connect();
+          mcpStatus.available = connectionTest;
+          mcpStatus.connected = connectionTest;
+        } catch (error) {
+          mcpStatus.error = error.message;
+        }
+      }
+
+      res.json(mcpStatus);
+    } catch (error) {
+      res.status(500).json({
+        available: false,
+        connected: false,
+        error: error.message
       });
     }
   });
@@ -576,8 +609,11 @@ export async function startServer() {
 
   /**
    * Web extraction endpoint (legacy route)
+   * @deprecated Use /api/web/extract-v3 instead
    */
   app.post('/api/web/extract', async (req, res) => {
+    console.warn('⚠️ DEPRECATED: /api/web/extract will be removed. Use /api/web/extract-v3');
+    res.setHeader('X-Deprecated-Endpoint', 'true');
     let webExtractor = null;
     
     // Track this extraction to prevent SIGTERM interruption
@@ -597,11 +633,13 @@ export async function startServer() {
 
       console.log(`🔗 Starting web extraction for: ${url}`);
       
-      // Create a completely fresh extractor instance for each request
-      webExtractor = new EnhancedWebExtractor();
+      // Use the unified extractor instead of creating a new instance
+      webExtractor = unifiedWebExtractor;
       
-      // Initialize the browser
-      await webExtractor.initialize();
+      // Ensure extractor is initialized
+      if (!webExtractor.isReady()) {
+        await webExtractor.initialize();
+      }
       
       // Extract web data (no authentication for legacy endpoint)
       const rawWebData = await webExtractor.extractWebData(url);
@@ -621,16 +659,7 @@ export async function startServer() {
         error: error.message
       });
     } finally {
-      // Always cleanup, even if there was an error
-      if (webExtractor) {
-        try {
-          await webExtractor.cleanup();
-        } catch (cleanupError) {
-          console.error('❌ Cleanup failed:', cleanupError.message);
-        }
-      }
-      
-      // Mark extraction as completed
+      // Mark extraction as completed (cleanup is handled by unified extractor internally)
       if (global.trackExtraction) {
         global.trackExtraction.end();
         console.log(`✅ Extraction completed. Active extractions: ${global.trackExtraction.getActive()}`);
@@ -782,48 +811,67 @@ export async function startServer() {
       }
 
 
-      // Check MCP connection
-      if (!mcpConnected) {
-        mcpConnected = await figmaClient.connect();
+      // Extract data from both sources using the same method as single source
+      logger.info('Starting data extraction', { figmaUrl, webUrl });
+      const startTime = Date.now();
+      
+      const figmaStartTime = Date.now();
+      let figmaData = null;
+      try {
+        console.log('🎨 Using FigmaHandler for comparison (same as single source)');
+        console.log('🔍 Config type:', typeof config);
+        console.log('🔍 Config has figma:', !!config.figma);
+        console.log('🔍 Figma API key set:', !!config.figma?.apiKey);
         
-        if (!mcpConnected) {
-          return res.status(503).json({
-            success: false,
-            error: 'Figma Dev Mode MCP server not available. Please ensure Figma Desktop is running with Dev Mode MCP enabled.'
-          });
-        }
-      }
+        // Import FigmaHandler - same method as single source
+        const { FigmaHandler } = await import('../../shared/api/handlers/figma-handler.js');
+        
+        // Create mock response object to capture the result
+        let figmaResult = null;
+        const mockRes = {
+          json: (data) => { figmaResult = data; },
+          status: (code) => ({ json: (data) => { figmaResult = { ...data, statusCode: code }; } })
+        };
+        
+        // Create config wrapper with get method for FigmaHandler compatibility
+        const configWrapper = {
+          get: (key, defaultValue) => {
+            // Handle nested keys like 'figma.apiKey'
+            const keys = key.split('.');
+            let value = config;
+            for (const k of keys) {
+              value = value?.[k];
+            }
+            console.log(`🔍 Config get: ${key} = ${value ? '[SET]' : '[NOT SET]'}`);
+            return value !== undefined ? value : defaultValue;
+          }
+        };
+        
+        // Extract using the same method as single source
+        await FigmaHandler.extract({
+          body: { 
+            figmaUrl, 
+            lightMode: true, 
+            skipAnalysis: false,
+            figmaPersonalAccessToken: process.env.FIGMA_API_KEY || process.env.FIGMA_PERSONAL_ACCESS_TOKEN
+          }
+        }, mockRes, configWrapper, null);
 
-        // Extract data from both sources
-  logger.info('Starting data extraction', { figmaUrl, webUrl });
-  const startTime = Date.now();
-  
-  const figmaStartTime = Date.now();
-  let figmaData = null;
-  try {
-    figmaData = await figmaClient.extractFigmaData(figmaUrl);
-    console.log('✅ Figma extraction successful');
-    console.log('📊 Figma data summary:', {
-      components: figmaData.components?.length || 0,
-      fileName: figmaData.fileName || 'Unknown',
-      hasMetadata: !!figmaData.metadata
-    });
-    
-    // Debug: Log first component if available
-    if (figmaData.components && figmaData.components.length > 0) {
-      const firstComponent = figmaData.components[0];
-      console.log('🔍 First component sample:', {
-        id: firstComponent.id,
-        name: firstComponent.name,
-        type: firstComponent.type,
-        hasProperties: !!firstComponent.properties,
-        propertyKeys: firstComponent.properties ? Object.keys(firstComponent.properties) : []
-      });
-    }
-  } catch (figmaError) {
-    console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
-    figmaData = { components: [], error: figmaError.message };
-  }
+        if (figmaResult && figmaResult.success) {
+          figmaData = figmaResult.data;
+          console.log('✅ Figma extraction successful via FigmaHandler');
+          console.log('📊 Figma data summary:', {
+            components: figmaData.components?.length || 0,
+            fileName: figmaData.fileName || 'Unknown',
+            hasMetadata: !!figmaData.metadata
+          });
+        } else {
+          throw new Error(figmaResult?.error || 'Figma extraction failed');
+        }
+      } catch (figmaError) {
+        console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
+        figmaData = { components: [], error: figmaError.message };
+      }
   const figmaDuration = Date.now() - figmaStartTime;
   performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });
   
@@ -852,11 +900,14 @@ export async function startServer() {
   console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
   
   try {
+    console.log(`🔧 Using authentication: ${authentication ? 'enabled' : 'disabled'}`);
+    
     // Use the UnifiedWebExtractor instead of EnhancedWebExtractor
     webData = await unifiedWebExtractor.extractWebData(webUrl, {
       authentication: authentication,
-      timeout: webUrl.includes('freighttiger.com') ? 180000 : 60000,
-      includeScreenshot: false
+      timeout: webUrl.includes('freighttiger.com') ? 300000 : 60000, // 5 minutes for FreightTiger
+      includeScreenshot: false,
+      stabilityTimeout: webUrl.includes('freighttiger.com') ? 60000 : 5000 // Extra stability time for FreightTiger
     });
     
     console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
@@ -1396,11 +1447,15 @@ export async function startServer() {
 
   /**
    * Enhanced web extraction endpoint (V2 - Legacy)
+   * @deprecated Use /api/web/extract-v3 instead
    */
   app.post('/api/web/extract-v2',
     extractionLimiter,
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
+    console.warn('⚠️ DEPRECATED: /api/web/extract-v2 will be removed. Use /api/web/extract-v3');
+    res.setHeader('X-Deprecated-Endpoint', 'true');
+    
     try {
       const { url, authentication, options = {} } = req.body;
 

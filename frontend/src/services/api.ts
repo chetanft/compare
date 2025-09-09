@@ -6,8 +6,8 @@ import { FigmaData, WebData } from '../../../src/types/extractor';
 // API Configuration
 const API_CONFIG = {
   baseURL: getApiBaseUrl(),
-  // Increased to accommodate slow, JS-heavy sites (e.g., FreightTiger). Adjustable if needed.
-  timeout: 420000,
+  // Extended timeout for comparison operations that include web extraction with authentication
+  timeout: 120000, // 2 minutes - allows for backend web extraction + comparison processing
   retries: 3
 };
 
@@ -340,7 +340,8 @@ export const extractWebData = async (url: string): Promise<WebData> => {
   try {
     console.log('Extracting Web data from URL:', url);
     
-    const response = await apiService.post<ApiResponse<WebData>>('/api/web/extract', { url });
+    // Use the newer unified endpoint instead of legacy /api/web/extract
+    const response = await apiService.post<ApiResponse<WebData>>('/api/web/extract-v3', { url });
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to extract Web data');
@@ -364,13 +365,104 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       extractionMode: request.extractionMode || 'both'
     };
     
-    const response = await apiService.postAxios<ApiResponse<ComparisonResult>>('/api/compare', requestWithDefaults);
+    const response = await apiService.postAxios<{success: boolean, data: any, error?: string, timestamp?: string}>('/api/compare', requestWithDefaults);
+    
+    console.log('🔍 compareUrls: Raw response from API:', JSON.stringify(response, null, 2));
+    
+    // Validate response structure
+    if (!response || typeof response !== 'object') {
+      throw new Error('Invalid response format from API');
+    }
     
     if (!response.success) {
       throw new Error(response.error || 'Comparison failed');
     }
     
-    return response.data as ComparisonResult;
+    // Transform the response to match the ComparisonResult interface
+    // The API returns figmaData.elements (not components) and webData.elements
+    // Also check extractionDetails for the counts
+    const figmaCount = response.data?.extractionDetails?.figma?.totalElements ||
+      (Array.isArray(response.data?.figmaData?.elements) ? response.data.figmaData.elements.length : 0) ||
+      (Array.isArray(response.data?.figmaData?.components) ? response.data.figmaData.components.length : 0) ||
+      response.data?.figmaData?.metadata?.totalElements || 0;
+    
+    const webCount = response.data?.extractionDetails?.web?.elementCount ||
+      (Array.isArray(response.data?.webData?.elements) ? response.data.webData.elements.length : 0) ||
+      response.data?.webData?.metadata?.elementCount || 0;
+
+    const comparisonResult: ComparisonResult = {
+      success: response.success,
+      data: {
+        comparison: {
+          overallSimilarity: response.data.comparison?.overallSimilarity || response.data.summary?.overallSimilarity || 0,
+          totalComparisons: response.data.comparison?.totalFigmaComponents || response.data.summary?.totalComparisons || 0,
+          matchedElements: response.data.summary?.matchedElements || 0,
+          discrepancies: response.data.summary?.discrepancies || 0
+        },
+        extractionDetails: {
+          figma: {
+            componentCount: figmaCount,
+            fileKey: response.data.extractionDetails?.figma?.fileKey || response.data.figmaData?.metadata?.fileKey,
+            fileName: response.data.extractionDetails?.figma?.fileName || response.data.figmaData?.metadata?.fileName,
+            url: response.data.extractionDetails?.figma?.url,
+            // Design properties from Figma extraction
+            colors: response.data.figmaData?.colorPalette || [],
+            typography: response.data.figmaData?.typography || {},
+            spacing: response.data.figmaData?.spacing || [],
+            borderRadius: response.data.figmaData?.borderRadius || []
+          },
+          web: {
+            elementCount: webCount,
+            urlInfo: {
+              url: response.data.extractionDetails?.web?.url || response.data.webData?.url,
+              title: response.data.extractionDetails?.web?.title || response.data.webData?.metadata?.title
+            },
+            extractorVersion: response.data.extractionDetails?.web?.extractorVersion || response.data.webData?.metadata?.extractorVersion,
+            // Design properties from web extraction
+            colors: response.data.webData?.colorPalette || [],
+            typography: response.data.webData?.typography || {},
+            spacing: response.data.webData?.spacing || [],
+            borderRadius: response.data.webData?.borderRadius || []
+          },
+          comparison: {
+            totalComparisons: response.data.summary?.totalComparisons || response.data.comparison?.totalFigmaComponents || 0,
+            matches: response.data.summary?.matchedElements || response.data.comparison?.matches?.length || 0,
+            deviations: response.data.summary?.discrepancies || response.data.comparison?.discrepancies?.length || 0,
+            matchPercentage: Math.round((response.data.summary?.overallSimilarity || response.data.comparison?.overallSimilarity || 0) * 100)
+          }
+        },
+        figmaData: response.data.figmaData,
+        webData: response.data.webData,
+        reportPath: response.data.reportPath,
+        reports: response.data.reports
+      },
+      timestamp: response.timestamp || new Date().toISOString(),
+      processingTime: (response as any).processingTime,
+      error: (response as any).error
+    };
+
+    // Backward-compatible fields expected by existing UI (top-level)
+    // These mirror canonical data above without changing the API contract
+    // - figmaData.componentsCount
+    // - webData.elementsCount
+    // - extractionDetails (top-level alias)
+    (comparisonResult as any).figmaData = { 
+      ...(response.data?.figmaData || {}),
+      componentsCount: figmaCount,
+      components: response.data?.figmaData?.elements || response.data?.figmaData?.components || []
+    };
+    (comparisonResult as any).webData = { 
+      ...(response.data?.webData || {}),
+      elementsCount: webCount,
+      elements: response.data?.webData?.elements || []
+    };
+    (comparisonResult as any).extractionDetails = comparisonResult.data?.extractionDetails;
+    
+    console.log('🔍 compareUrls: figmaCount =', figmaCount, 'webCount =', webCount);
+    console.log('🔍 compareUrls: comparisonResult.figmaData.componentsCount =', (comparisonResult as any).figmaData?.componentsCount);
+    console.log('🔍 compareUrls: comparisonResult.webData.elementsCount =', (comparisonResult as any).webData?.elementsCount);
+    console.log('🔍 compareUrls: Returning transformed comparison result:', JSON.stringify(comparisonResult, null, 2));
+    return comparisonResult;
   } catch (error) {
     console.error('Error comparing URLs:', error);
     throw error;
@@ -407,25 +499,25 @@ export interface FigmaOnlyResponse {
     components: any[];
     colors: any[];
     typography: any[];
-    styles: any;
-    tokens: {
-      colors: any[];
-      typography: any[];
-      spacing: any[];
-      borderRadius: any[];
-    };
+    styles?: any;
+    fileName: string;
+    fileId: string;
+    nodeId: string;
+    extractedAt: string;
     metadata: {
       fileName: string;
-      extractedAt: string;
+      fileKey: string;
+      nodeId: string;
       extractionMethod: string;
-      componentCount: number;
+      totalComponents: number;
       colorCount: number;
       typographyCount: number;
-      version: string;
+      extractedAt?: string;
     };
-    reportPath?: string; // Added reportPath
+    reportPath?: string;
   };
   error?: string;
+  timestamp?: string;
 }
 
 export interface WebOnlyResponse {
@@ -471,35 +563,55 @@ export const extractFigmaOnly = async (options: FigmaExtractionOptions): Promise
     
     // Check if the response is in the expected format (with success field)
     if (response && typeof response === 'object') {
-      if ('success' in response) {
-        // Old format with success field
-        if (!response.success) {
-          throw new Error(response.error || 'Failed to extract Figma data');
-        }
-        console.log('Returning response.data:', response.data);
-        return response.data;
-      } else {
-        // New format from minimal-server (direct response without success wrapper)
-        // Transform the response to match the expected format
+      if ('success' in response && response.success) {
+        // Standard format with success field
+        const data = response.data;
+        console.log('Returning response.data:', data);
+        
+        // Ensure all required fields are present - map new API structure to expected format
         return {
-          components: response.components || [],
-          colors: response.colors || [],
+          components: data.elements || data.components || [],
+          colors: data.colorPalette || data.colors || [],
+          typography: data.typography || [],
+          spacing: data.spacing || [],
+          borderRadius: data.borderRadius || [],
+          styles: data.styles || {},
+          fileName: data.fileName || data.metadata?.fileName || 'Unknown',
+          fileId: data.fileId || data.metadata?.fileKey || '',
+          nodeId: data.nodeId || data.metadata?.nodeId || '',
+          extractedAt: data.extractedAt || data.metadata?.extractedAt || new Date().toISOString(),
+          metadata: {
+            fileName: data.metadata?.fileName || data.fileName || 'Unknown',
+            fileKey: data.metadata?.fileKey || data.fileId || '',
+            nodeId: data.metadata?.nodeId || data.nodeId || '',
+            extractionMethod: data.metadata?.extractionMethod || 'figma-api',
+            totalComponents: data.metadata?.totalElements || data.elements?.length || data.components?.length || 0,
+            colorCount: data.colorPalette?.length || data.colors?.length || 0,
+            typographyCount: data.typography?.fontFamilies?.length || data.typography?.length || 0
+          },
+          reportPath: data.reportPath
+        };
+      } else if ('success' in response && !response.success) {
+        throw new Error(response.error || 'Failed to extract Figma data');
+      } else {
+        // Fallback: treat as direct data response
+        return {
+          components: response.elements || response.components || [],
+          colors: response.colorPalette || response.colors || [],
           typography: response.typography || [],
           styles: response.styles || {},
-          tokens: {
-            colors: response.colors || [],
-            typography: response.typography || [],
-            spacing: [],
-            borderRadius: []
-          },
+          fileName: response.fileName || 'Unknown',
+          fileId: response.fileId || '',
+          nodeId: response.nodeId || '',
+          extractedAt: response.extractedAt || new Date().toISOString(),
           metadata: response.metadata || {
             fileName: 'Unknown',
-            extractedAt: new Date().toISOString(),
+            fileKey: '',
+            nodeId: '',
             extractionMethod: 'figma-api',
-            componentCount: 0,
+            totalComponents: 0,
             colorCount: 0,
-            typographyCount: 0,
-            version: '1.0.0'
+            typographyCount: 0
           }
         };
       }
@@ -602,7 +714,7 @@ export const getScreenshotComparisonStatus = async (
   comparisonId: string
 ): Promise<any> => {
   try {
-    const response = await apiService.getAxios<ApiResponse<any>>(
+    const response = await apiService.getAxios(
       `/api/screenshots/compare/${comparisonId}`
     );
     
@@ -619,7 +731,7 @@ export const getScreenshotComparisonStatus = async (
 
 export const listScreenshotComparisons = async (): Promise<any[]> => {
   try {
-    const response = await apiService.getAxios<ApiResponse<any[]>>(
+    const response = await apiService.getAxios(
       '/api/screenshots/list'
     );
     

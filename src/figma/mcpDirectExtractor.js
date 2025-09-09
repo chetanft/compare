@@ -3,6 +3,11 @@
  * Uses mcp_Framelink_Figma_MCP tools directly for superior Figma extraction
  */
 
+// Check if MCP tools are available in global scope
+const isMCPToolsAvailable = () => {
+  return typeof globalThis.mcp_Framelink_Figma_MCP_get_figma_data === 'function';
+};
+
 class MCPDirectFigmaExtractor {
   constructor(config) {
     this.config = config;

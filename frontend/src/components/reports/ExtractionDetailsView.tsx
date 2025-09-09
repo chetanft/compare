@@ -9,7 +9,10 @@ interface ExtractionDetailsViewProps {
 }
 
 const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractionDetails }) => {
-  const { figma, web, comparison } = extractionDetails;
+  // Safely destructure with fallbacks to prevent undefined errors
+  const figma = extractionDetails?.figma || {};
+  const web = extractionDetails?.web || {};
+  const comparison = extractionDetails?.comparison || {};
 
   return (
     <div className="space-y-6">
@@ -19,23 +22,23 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-sm text-muted-foreground">FIGMA DATA</h3>
-            <Badge variant="secondary">{figma.extractionTime}ms</Badge>
+            <Badge variant="secondary">{figma.extractionTime || 0}ms</Badge>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Components:</span>
-              <Badge variant="outline">{figma.componentCount}</Badge>
+              <Badge variant="outline">{figma.componentCount || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Colors:</span>
-              <Badge variant="outline">{figma.colors.length}</Badge>
+              <Badge variant="outline">{figma.colors?.length || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Typography:</span>
-              <Badge variant="outline">{figma.typography.length}</Badge>
+              <Badge variant="outline">{figma.typography?.fontFamilies?.length || 0}</Badge>
             </div>
             <div className="text-xs text-muted-foreground mt-2">
-              {figma.fileInfo.name}
+              {figma.fileInfo?.name || 'Unknown'}
             </div>
           </div>
         </Card>
@@ -44,24 +47,24 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
         <Card className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-sm text-muted-foreground">WEB DATA</h3>
-            <Badge variant="secondary">{web.extractionTime}ms</Badge>
+            <Badge variant="secondary">{web.extractionTime || 0}ms</Badge>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Elements:</span>
-              <Badge variant="outline">{web.elementCount}</Badge>
+              <Badge variant="outline">{web.elementCount || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Colors:</span>
-              <Badge variant="outline">{web.colors.length}</Badge>
+              <Badge variant="outline">{web.colors?.length || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Fonts:</span>
-              <Badge variant="outline">{web.typography.fontFamilies.length}</Badge>
+              <Badge variant="outline">{web.typography?.fontFamilies?.length || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Spacing:</span>
-              <Badge variant="outline">{web.spacing.length}</Badge>
+              <Badge variant="outline">{web.spacing?.length || 0}</Badge>
             </div>
           </div>
         </Card>
@@ -71,23 +74,23 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-sm text-muted-foreground">COMPARISON</h3>
             <Badge 
-              variant={comparison.matchPercentage > 50 ? "default" : "destructive"}
+              variant={(comparison.matchPercentage || 0) > 50 ? "default" : "destructive"}
             >
-              {comparison.matchPercentage.toFixed(1)}%
+              {(comparison.matchPercentage || 0).toFixed(1)}%
             </Badge>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Comparisons:</span>
-              <Badge variant="outline">{comparison.totalComparisons}</Badge>
+              <Badge variant="outline">{comparison.totalComparisons || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Matches:</span>
-              <Badge variant="default">{comparison.matches}</Badge>
+              <Badge variant="default">{comparison.matches || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Issues:</span>
-              <Badge variant="destructive">{comparison.deviations}</Badge>
+              <Badge variant="destructive">{comparison.deviations || 0}</Badge>
             </div>
           </div>
         </Card>
@@ -102,42 +105,92 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           <h3 className="font-semibold mb-4">Figma Extraction Details</h3>
           
           {/* Colors */}
-          {figma.colors.length > 0 && (
+          {(figma.colors?.length || 0) > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">Colors ({figma.colors.length})</h4>
-              <div className="flex flex-wrap gap-2">
-                {figma.colors.slice(0, 10).map((color, index) => (
+              <h4 className="text-sm font-medium mb-2">Colors ({figma.colors?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {(figma.colors || []).map((color, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <div 
                       className="w-4 h-4 rounded border"
-                      style={{ backgroundColor: color.value }}
+                      style={{ backgroundColor: color }}
                     />
-                    <span className="text-xs">{color.value}</span>
+                    <span className="text-xs">{color}</span>
                   </div>
                 ))}
-                {figma.colors.length > 10 && (
-                  <Badge variant="outline">+{figma.colors.length - 10} more</Badge>
-                )}
               </div>
             </div>
           )}
 
           {/* Typography */}
-          {figma.typography.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Typography ({figma.typography.length})</h4>
-              <div className="space-y-2">
-                {figma.typography.slice(0, 5).map((typo, index) => (
-                  <div key={index} className="text-xs p-2 bg-muted rounded">
-                    <div className="font-medium">{typo.fontFamily}</div>
-                    <div className="text-muted-foreground">
-                      {typo.fontSize}px • {typo.fontWeight}
-                    </div>
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Typography</h4>
+            <div className="space-y-2">
+              {(figma.typography?.fontFamilies?.length || 0) > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Font Families:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(figma.typography?.fontFamilies || []).map((font, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {font}
+                      </Badge>
+                    ))}
                   </div>
+                </div>
+              )}
+              
+              {(figma.typography?.fontSizes?.length || 0) > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Font Sizes:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(figma.typography?.fontSizes || []).map((size, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {size}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(figma.typography?.fontWeights?.length || 0) > 0 && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Font Weights:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(figma.typography?.fontWeights || []).map((weight, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {weight}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Spacing */}
+          {(figma.spacing?.length || 0) > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">Spacing ({figma.spacing?.length || 0})</h4>
+              <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                {(figma.spacing || []).map((space, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {space}
+                  </Badge>
                 ))}
-                {figma.typography.length > 5 && (
-                  <Badge variant="outline">+{figma.typography.length - 5} more</Badge>
-                )}
+              </div>
+            </div>
+          )}
+
+          {/* Border Radius */}
+          {(figma.borderRadius?.length || 0) > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2">Border Radius ({figma.borderRadius?.length || 0})</h4>
+              <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
+                {(figma.borderRadius || []).map((radius, index) => (
+                  <Badge key={index} variant="outline" className="text-xs">
+                    {radius}
+                  </Badge>
+                ))}
               </div>
             </div>
           )}
@@ -148,11 +201,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           <h3 className="font-semibold mb-4">Web Extraction Details</h3>
           
           {/* Colors */}
-          {web.colors.length > 0 && (
+          {(web.colors?.length || 0) > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">Colors ({web.colors.length})</h4>
-              <div className="flex flex-wrap gap-2">
-                {web.colors.slice(0, 10).map((color, index) => (
+              <h4 className="text-sm font-medium mb-2">Colors ({web.colors?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {(web.colors || []).map((color, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <div 
                       className="w-4 h-4 rounded border"
@@ -161,9 +214,6 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                     <span className="text-xs">{color}</span>
                   </div>
                 ))}
-                {web.colors.length > 10 && (
-                  <Badge variant="outline">+{web.colors.length - 10} more</Badge>
-                )}
               </div>
             </div>
           )}
@@ -172,11 +222,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           <div className="mb-4">
             <h4 className="text-sm font-medium mb-2">Typography</h4>
             <div className="space-y-2">
-              {web.typography.fontFamilies.length > 0 && (
+              {(web.typography?.fontFamilies?.length || 0) > 0 && (
                 <div>
                   <span className="text-xs text-muted-foreground">Font Families:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {web.typography.fontFamilies.map((font, index) => (
+                    {(web.typography?.fontFamilies || []).map((font, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {font}
                       </Badge>
@@ -184,11 +234,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                   </div>
                 </div>
               )}
-              {web.typography.fontSizes.length > 0 && (
+              {(web.typography?.fontSizes?.length || 0) > 0 && (
                 <div>
                   <span className="text-xs text-muted-foreground">Font Sizes:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {web.typography.fontSizes.slice(0, 8).map((size, index) => (
+                  <div className="flex flex-wrap gap-1 mt-1 max-h-20 overflow-y-auto">
+                    {(web.typography?.fontSizes || []).map((size, index) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {size}
                       </Badge>
@@ -200,28 +250,25 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           </div>
 
           {/* Spacing */}
-          {web.spacing.length > 0 && (
+          {(web.spacing?.length || 0) > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">Spacing ({web.spacing.length})</h4>
-              <div className="flex flex-wrap gap-1">
-                {web.spacing.slice(0, 8).map((spacing, index) => (
+              <h4 className="text-sm font-medium mb-2">Spacing ({web.spacing?.length || 0})</h4>
+              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                {(web.spacing || []).map((spacing, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     {spacing}
                   </Badge>
                 ))}
-                {web.spacing.length > 8 && (
-                  <Badge variant="outline">+{web.spacing.length - 8} more</Badge>
-                )}
               </div>
             </div>
           )}
 
           {/* Border Radius */}
-          {web.borderRadius.length > 0 && (
+          {(web.borderRadius?.length || 0) > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-2">Border Radius ({web.borderRadius.length})</h4>
+              <h4 className="text-sm font-medium mb-2">Border Radius ({web.borderRadius?.length || 0})</h4>
               <div className="flex flex-wrap gap-1">
-                {web.borderRadius.map((radius, index) => (
+                {(web.borderRadius || []).map((radius, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     {radius}
                   </Badge>

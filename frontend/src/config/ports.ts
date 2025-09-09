@@ -3,8 +3,21 @@
  * This ensures consistent port usage across the frontend application
  */
 
-// Default port for the backend server
+// Default port for the backend server (web app)
 export const DEFAULT_SERVER_PORT = 3007;
+
+// macOS app port
+export const MACOS_APP_PORT = 3007;
+
+// Function to detect if we're running in Electron (macOS app)
+export function isElectronApp(): boolean {
+  return typeof window !== 'undefined' && 
+         (window.navigator.userAgent.includes('Electron') || 
+          // @ts-ignore - Check for Electron APIs
+          window.require !== undefined ||
+          // @ts-ignore - Check for process in renderer
+          (window.process && window.process.type === 'renderer'));
+}
 
 // Type declaration for Vite's import.meta.env
 interface ImportMetaEnv {
@@ -32,8 +45,18 @@ export function getServerPort(): number {
   const env = import.meta.env;
   const envPort = env.VITE_SERVER_PORT;
   
+  // Auto-detect port based on environment
+  if (!definedPort && !envPort && isElectronApp()) {
+    console.log('🖥️ Detected Electron app, using macOS app port:', MACOS_APP_PORT);
+    return MACOS_APP_PORT;
+  }
+  
   // Parse the port from environment or use default
   const port = definedPort || (envPort ? parseInt(envPort, 10) : DEFAULT_SERVER_PORT);
+  
+  if (!definedPort && !envPort) {
+    console.log('🌐 Detected web app, using web app port:', port);
+  }
   
   return port;
 }

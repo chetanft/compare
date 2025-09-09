@@ -12,32 +12,31 @@ import rateLimit from 'express-rate-limit';
  * Configure security middleware
  */
 export function configureSecurityMiddleware(app, config) {
-  // Helmet for security headers
+  // Helmet for security headers - Permissive CSP for cross-platform compatibility
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'"],
-        // Allow inline styles *and* Google Fonts stylesheets
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        // Distinguish style sheets loaded via <link/ @import>
-        styleSrcElem: ["'self'", "https://fonts.googleapis.com"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
-        // Allow websocket connections to same origin
-        connectSrc: ["'self'", "ws:", "wss:"],
-        // Allow font files from Google Fonts CDN
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        defaultSrc: ["*", "'unsafe-inline'", "'unsafe-eval'", "data:", "blob:"],
+        styleSrc: ["*", "'unsafe-inline'"],
+        scriptSrc: ["*", "'unsafe-inline'", "'unsafe-eval'"],
+        imgSrc: ["*", "data:", "blob:", "'unsafe-inline'"],
+        connectSrc: ["*", "'unsafe-inline'"], // Allow all connections - fixes the CSP error
+        fontSrc: ["*", "data:", "'unsafe-inline'"],
+        frameSrc: ["*"],
+        mediaSrc: ["*"],
+        objectSrc: ["*"],
       },
     },
     crossOriginEmbedderPolicy: false, // Required for some Puppeteer operations
   }));
 
-  // CORS configuration
+  // CORS configuration - Permissive for cross-platform compatibility
   app.use(cors({
-    origin: config.cors.origins,
-    credentials: config.cors.credentials,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    origin: true, // Allow all origins for development and local apps
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['*'], // Allow all headers
+    exposedHeaders: ['*'], // Expose all headers
   }));
 
   // Body parsing
@@ -62,6 +61,19 @@ export function configureRateLimit(config) {
     legacyHeaders: false,
   });
 
+  // Lenient rate limit for health/status endpoints
+  const healthLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 200, // Allow 200 health checks per minute
+    message: {
+      success: false,
+      error: 'Too many health check requests, please slow down.',
+      timestamp: new Date().toISOString(),
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // Strict rate limit for extraction endpoints
   const extractionLimiter = rateLimit({
     windowMs: config.security.rateLimit.windowMs,
@@ -75,7 +87,7 @@ export function configureRateLimit(config) {
     legacyHeaders: false,
   });
 
-  return { generalLimiter, extractionLimiter };
+  return { generalLimiter, healthLimiter, extractionLimiter };
 }
 
 /**

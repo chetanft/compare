@@ -101,7 +101,7 @@ export function getBrowserConfig(options = {}) {
     executablePath,
     args,
     timeout: options.timeout || 90000,
-    protocolTimeout: options.protocolTimeout || 180000,
+    protocolTimeout: options.protocolTimeout || 300000, // 5 minutes for slow sites like FreightTiger
     ignoreDefaultArgs: ['--disable-extensions'],
     handleSIGINT: false,
     handleSIGTERM: false,

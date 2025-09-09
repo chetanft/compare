@@ -14,9 +14,9 @@ class BrowserPool {
     this.pages = new Map(); // pageId -> { browser, page, lastUsed }
     this.config = null;
     this.isShuttingDown = false;
-    this.maxBrowsers = 3;
-    this.maxPagesPerBrowser = 10;
-    this.maxIdleTime = 5 * 60 * 1000; // 5 minutes
+    this.maxBrowsers = 5; // Increased for concurrent extractions
+    this.maxPagesPerBrowser = 20; // Increased to prevent premature cleanup
+    this.maxIdleTime = 10 * 60 * 1000; // 10 minutes for long extractions
     this.resourceManager = getResourceManager();
     
     // Start cleanup interval
@@ -148,7 +148,8 @@ class BrowserPool {
       page,
       pageId,
       lastUsed: Date.now(),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      isActive: false // Track if page is actively being used
     });
 
     // Track page in resource manager
@@ -183,6 +184,28 @@ class BrowserPool {
   }
 
   /**
+   * Mark page as actively being used (protects from cleanup)
+   */
+  markPageActive(pageId) {
+    const pageInfo = this.pages.get(pageId);
+    if (pageInfo) {
+      pageInfo.isActive = true;
+      pageInfo.lastUsed = Date.now();
+    }
+  }
+
+  /**
+   * Mark page as inactive (allows cleanup)
+   */
+  markPageInactive(pageId) {
+    const pageInfo = this.pages.get(pageId);
+    if (pageInfo) {
+      pageInfo.isActive = false;
+      pageInfo.lastUsed = Date.now();
+    }
+  }
+
+  /**
    * Close a specific page
    */
   async closePage(pageId) {
@@ -207,11 +230,15 @@ class BrowserPool {
     const now = Date.now();
     const idlePages = Array.from(this.pages.entries())
       .filter(([pageId, pageInfo]) => 
+        !pageInfo.isActive && // Don't cleanup active pages
         now - pageInfo.lastUsed > this.maxIdleTime
       );
 
-    for (const [pageId] of idlePages) {
-      await this.closePage(pageId);
+    if (idlePages.length > 0) {
+      console.log(`🧹 Cleaning up ${idlePages.length} idle pages...`);
+      for (const [pageId] of idlePages) {
+        await this.closePage(pageId);
+      }
     }
   }
 

@@ -356,8 +356,8 @@ export class ServiceFactories {
    */
   static webExtractor(browserPool) {
     return async () => {
-      const { EnhancedWebExtractor } = await import('../../web/enhancedWebExtractor.js');
-      const extractor = new EnhancedWebExtractor();
+      const { default: UnifiedWebExtractor } = await import('../../web/UnifiedWebExtractor.js');
+      const extractor = new UnifiedWebExtractor();
       
       // Initialize the extractor properly
       try {
@@ -374,7 +374,7 @@ export class ServiceFactories {
       // Add health check method
       extractor.healthCheck = async () => {
         // Check if extractor is ready
-        if (!extractor.isReady()) {
+        if (!extractor.isReady || !extractor.isReady()) {
           throw new Error('Web extractor browser not initialized');
         }
         return { status: 'healthy', ready: true };

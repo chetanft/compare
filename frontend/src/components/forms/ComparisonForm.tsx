@@ -129,8 +129,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         // Use the compareUrls function from the API service
         const result = await compareUrls(payload);
         
-        // Handle Netlify function response format
-        const comparisonResult = (result.data || result) as ComparisonResult;
+        // The API now returns the comparison result directly
+        const comparisonResult = result as ComparisonResult;
         
         // If the result contains a comparisonId, notify the parent component
         if ((comparisonResult.comparisonId) && onComparisonStart) {
@@ -183,6 +183,12 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           setReportOpenAttempts(prev => prev + 1);
         }
       }
+      
+      // Debug the result structure before passing to parent
+      console.log('🔍 ComparisonForm: Raw result structure:', JSON.stringify(result, null, 2));
+      console.log('🔍 ComparisonForm: result.data exists?', !!result.data);
+      console.log('🔍 ComparisonForm: result.extractionDetails exists?', !!result.extractionDetails);
+      console.log('🔍 ComparisonForm: result.data?.extractionDetails exists?', !!result.data?.extractionDetails);
       
       onSuccess?.(result);
     },
