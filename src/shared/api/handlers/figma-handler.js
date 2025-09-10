@@ -389,12 +389,19 @@ export class FigmaHandler {
           processed.analysis = FigmaHandler.analyzeFigmaComponentsLight(figmaData.document);
         }
 
-        // Quick node analysis
+        // Quick node analysis with standardized fields
         if (figmaData.nodes) {
-          processed.nodeAnalysis = Object.keys(figmaData.nodes).map(nodeId => ({
+          const nodeAnalysis = Object.keys(figmaData.nodes).map(nodeId => ({
             nodeId,
             ...FigmaHandler.analyzeNodeLight(figmaData.nodes[nodeId])
           }));
+          
+          // STANDARDIZED FIELDS (preferred)
+          processed.components = nodeAnalysis; // Standard field name
+          processed.componentCount = nodeAnalysis.length; // Standard count
+          
+          // LEGACY FIELDS (maintained for backward compatibility)
+          processed.nodeAnalysis = nodeAnalysis; // Keep original field
         }
       } else {
         console.log('🔍 Running full analysis...');
@@ -405,10 +412,17 @@ export class FigmaHandler {
         }
 
         if (figmaData.nodes) {
-          processed.nodeAnalysis = Object.keys(figmaData.nodes).map(nodeId => ({
+          const nodeAnalysis = Object.keys(figmaData.nodes).map(nodeId => ({
             nodeId,
             ...FigmaHandler.analyzeNode(figmaData.nodes[nodeId])
           }));
+          
+          // STANDARDIZED FIELDS (preferred)
+          processed.components = nodeAnalysis; // Standard field name
+          processed.componentCount = nodeAnalysis.length; // Standard count
+          
+          // LEGACY FIELDS (maintained for backward compatibility)
+          processed.nodeAnalysis = nodeAnalysis; // Keep original field
         }
       }
 

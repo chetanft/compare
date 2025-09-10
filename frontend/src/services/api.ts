@@ -379,14 +379,26 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
     }
     
     // Transform the response to match the ComparisonResult interface
-    // The API returns figmaData.elements (not components) and webData.elements
-    // Also check extractionDetails for the counts
-    const figmaCount = response.data?.extractionDetails?.figma?.totalElements ||
-      (Array.isArray(response.data?.figmaData?.elements) ? response.data.figmaData.elements.length : 0) ||
+    // Support both new standardized fields and legacy fields for backward compatibility
+    const figmaCount = 
+      // NEW STANDARDIZED FIELDS (preferred)
+      response.data?.figmaData?.componentCount ||
+      response.data?.extractionDetails?.figma?.componentCount ||
+      
+      // LEGACY FIELDS (fallback for backward compatibility)
+      response.data?.extractionDetails?.figma?.totalElements ||
+      response.data?.figmaData?.componentsCount ||
       (Array.isArray(response.data?.figmaData?.components) ? response.data.figmaData.components.length : 0) ||
+      (Array.isArray(response.data?.figmaData?.elements) ? response.data.figmaData.elements.length : 0) ||
       response.data?.figmaData?.metadata?.totalElements || 0;
     
-    const webCount = response.data?.extractionDetails?.web?.elementCount ||
+    const webCount = 
+      // NEW STANDARDIZED FIELDS (preferred)
+      response.data?.webData?.elementCount ||
+      response.data?.extractionDetails?.web?.elementCount ||
+      
+      // LEGACY FIELDS (fallback for backward compatibility)
+      response.data?.webData?.elementsCount ||
       (Array.isArray(response.data?.webData?.elements) ? response.data.webData.elements.length : 0) ||
       response.data?.webData?.metadata?.elementCount || 0;
 
@@ -442,19 +454,26 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
     };
 
     // Backward-compatible fields expected by existing UI (top-level)
-    // These mirror canonical data above without changing the API contract
-    // - figmaData.componentsCount
-    // - webData.elementsCount
-    // - extractionDetails (top-level alias)
+    // Support both new standardized fields and legacy fields
     (comparisonResult as any).figmaData = { 
       ...(response.data?.figmaData || {}),
-      componentsCount: figmaCount,
-      components: response.data?.figmaData?.elements || response.data?.figmaData?.components || []
+      
+      // STANDARDIZED FIELDS (preferred)
+      componentCount: figmaCount, // Standard field name
+      components: response.data?.figmaData?.components || response.data?.figmaData?.elements || [],
+      
+      // LEGACY FIELDS (maintained for backward compatibility)
+      componentsCount: figmaCount, // Keep for compatibility
     };
     (comparisonResult as any).webData = { 
       ...(response.data?.webData || {}),
-      elementsCount: webCount,
-      elements: response.data?.webData?.elements || []
+      
+      // STANDARDIZED FIELDS (preferred)
+      elementCount: webCount, // Standard field name
+      elements: response.data?.webData?.elements || [],
+      
+      // LEGACY FIELDS (maintained for backward compatibility)
+      elementsCount: webCount, // Keep for compatibility
     };
     (comparisonResult as any).extractionDetails = comparisonResult.data?.extractionDetails;
     

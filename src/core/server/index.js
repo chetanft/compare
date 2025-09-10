@@ -1054,19 +1054,33 @@ export async function startServer() {
       const responseData = {
         figmaData: {
           ...figmaData,
-          componentsCount: figmaData?.components?.length || 0
+          // STANDARDIZED FIELDS (preferred)
+          componentCount: figmaData?.components?.length || 0, // Standard field name
+          
+          // LEGACY FIELDS (maintained for backward compatibility)
+          componentsCount: figmaData?.components?.length || 0 // Keep for compatibility
         },
         webData: {
           ...webData,
-          elementsCount: webData?.elements?.length || 0
+          // STANDARDIZED FIELDS (preferred)
+          elementCount: webData?.elements?.length || 0, // Standard field name
+          
+          // LEGACY FIELDS (maintained for backward compatibility)
+          elementsCount: webData?.elements?.length || 0 // Keep for compatibility
         },
         comparison,
         metadata: {
           comparedAt: new Date().toISOString(),
           includeVisual,
           version: '1.0.0',
-          figmaComponentCount: figmaData?.components?.length || 0,
-          webElementCount: webData?.elements?.length || 0
+          
+          // STANDARDIZED FIELDS (preferred)
+          figmaComponentCount: figmaData?.components?.length || 0, // Standard field name
+          webElementCount: webData?.elements?.length || 0, // Standard field name
+          
+          // LEGACY FIELDS (maintained for backward compatibility)
+          figmaComponentsCount: figmaData?.components?.length || 0, // Keep for compatibility
+          webElementsCount: webData?.elements?.length || 0 // Keep for compatibility
         },
         reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
         extractionDetails

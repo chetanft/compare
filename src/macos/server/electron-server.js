@@ -1282,9 +1282,16 @@ export class ElectronExpressServer {
         const rawData = capturedResponse.data;
         const nodeAnalysis = rawData.nodeAnalysis || [];
         
-        // Transform to frontend-expected structure
+        // Transform to frontend-expected structure with backward compatibility
         const transformedData = {
-          components: nodeAnalysis, // Rename nodeAnalysis to components
+          // NEW STANDARDIZED FIELDS (preferred)
+          components: nodeAnalysis, // Standard field name
+          componentCount: nodeAnalysis.length, // Standard count field
+          
+          // EXISTING FIELDS (maintained for backward compatibility)
+          nodeAnalysis: nodeAnalysis, // Keep original field
+          
+          // Additional standardized fields
           colors: this.extractColorsFromNodes(nodeAnalysis),
           typography: this.extractTypographyFromNodes(nodeAnalysis),
           styles: rawData.styles || {},
@@ -1300,9 +1307,14 @@ export class ElectronExpressServer {
             nodeId: nodeId,
             extractedAt: new Date().toISOString(),
             extractionMethod: 'figma-api',
-            totalComponents: nodeAnalysis.length,
+            
+            // STANDARDIZED COUNT FIELDS (preferred)
+            componentCount: nodeAnalysis.length, // Standard field name
             colorCount: this.extractColorsFromNodes(nodeAnalysis).length,
-            typographyCount: this.extractTypographyFromNodes(nodeAnalysis).length
+            typographyCount: this.extractTypographyFromNodes(nodeAnalysis).length,
+            
+            // LEGACY FIELDS (maintained for backward compatibility)
+            totalComponents: nodeAnalysis.length // Keep for compatibility
           },
           reportPath: `/api/reports/figma-${Date.now()}`
         };
