@@ -317,7 +317,7 @@ export default function Settings() {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+              <h1 className="text-2xl font-bold text-foreground">Settings</h1>
               <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
             </div>
             
@@ -524,7 +524,7 @@ export default function Settings() {
                   animate={{ opacity: 1, x: 0 }}
                   className="card"
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">MCP Integration</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-6">MCP Integration</h3>
                   <p className="text-muted-foreground mb-6">
                     Configure how the application connects to Figma using Model Context Protocol (MCP) or direct API access.
                   </p>
@@ -536,7 +536,7 @@ export default function Settings() {
                   
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Connection Method
                       </label>
                       <Controller
@@ -565,7 +565,7 @@ export default function Settings() {
                           {(methodField.value === 'mcp-server') && (
                             <div className="layout-grid-forms">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground mb-2">
                                   MCP Server URL
                                 </label>
                                 <Controller
@@ -583,7 +583,7 @@ export default function Settings() {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground mb-2">
                                   Endpoint Path
                                 </label>
                                 <Controller
@@ -604,7 +604,7 @@ export default function Settings() {
 
                           {(methodField.value === 'mcp-tools') && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-sm font-medium text-foreground mb-2">
                                 MCP Tools Environment
                               </label>
                               <Controller
@@ -626,16 +626,16 @@ export default function Settings() {
 
                     {/* Connection Method Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="bg-accent/10 p-4 rounded-lg">
                         <h4 className="font-medium text-blue-900 mb-2">🔑 Direct API</h4>
                         <p className="text-sm text-blue-700">
                           Uses your personal Figma access token. Simple and reliable for most use cases.
                         </p>
                       </div>
                       
-                      <div className="bg-yellow-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-yellow-900 mb-2">🖥️ MCP Server</h4>
-                        <p className="text-sm text-yellow-700">
+                      <div className="bg-secondary/10 p-4 rounded-lg">
+                        <h4 className="font-medium text-secondary-foreground mb-2">🖥️ MCP Server</h4>
+                        <p className="text-sm text-secondary-foreground/80">
                           Connects to Figma Desktop App's MCP server. Requires server to be running.
                         </p>
                       </div>
@@ -695,12 +695,12 @@ export default function Settings() {
                   animate={{ opacity: 1, x: 0 }}
                   className="card"
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Web Scraping Configuration</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-6">Web Scraping Configuration</h3>
                   
                   <div className="space-y-6">
                     <div className="layout-grid-forms">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Viewport Width
                         </label>
                         <Controller
@@ -719,7 +719,7 @@ export default function Settings() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Viewport Height
                         </label>
                         <Controller
@@ -739,7 +739,7 @@ export default function Settings() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         User Agent
                       </label>
                       <Controller
@@ -807,7 +807,7 @@ export default function Settings() {
                   
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Pixel Match Threshold (0-1)
                       </label>
                       <Controller
@@ -882,7 +882,7 @@ export default function Settings() {
                   
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-foreground mb-2">
                         Slack Webhook URL
                       </label>
                       <Controller
