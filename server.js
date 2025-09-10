@@ -5,17 +5,21 @@
  * Clean MCP-only implementation
  */
 
-import { startServer } from './src/core/server/index.js';
+import { startUnifiedServer, shutdownUnifiedServer } from './src/server/unified-server-starter.js';
 
 /**
  * Start the server
  */
 async function main() {
   try {
-    console.log('🚀 Starting Figma Web Comparison Tool (Clean MCP Edition)...');
+    console.log('🚀 Starting Figma Web Comparison Tool (Unified Cross-Platform)...');
     
-    // Start server
-    await startServer();
+    // Start unified server (auto-detects platform)
+    const server = await startUnifiedServer();
+    
+    // Store server reference for graceful shutdown
+    global.serverInstance = server;
+    
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     process.exit(1);
@@ -33,38 +37,40 @@ global.trackExtraction = {
   getActive: () => activeExtractions
 };
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('Received SIGTERM, waiting for active extractions to complete...');
   isShuttingDown = true;
   
-  const gracefulShutdown = () => {
+  const gracefulShutdown = async () => {
     if (activeExtractions > 0) {
       console.log(`⏳ Waiting for ${activeExtractions} active extraction(s) to complete...`);
       setTimeout(gracefulShutdown, 1000);
     } else {
       console.log('✅ All extractions completed, shutting down gracefully');
+      await shutdownUnifiedServer(global.serverInstance);
       process.exit(0);
     }
   };
   
-  gracefulShutdown();
+  await gracefulShutdown();
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('Received SIGINT, waiting for active extractions to complete...');
   isShuttingDown = true;
   
-  const gracefulShutdown = () => {
+  const gracefulShutdown = async () => {
     if (activeExtractions > 0) {
       console.log(`⏳ Waiting for ${activeExtractions} active extraction(s) to complete...`);
       setTimeout(gracefulShutdown, 1000);
     } else {
       console.log('✅ All extractions completed, shutting down gracefully');
+      await shutdownUnifiedServer(global.serverInstance);
       process.exit(0);
     }
   };
   
-  gracefulShutdown();
+  await gracefulShutdown();
 });
 
 // Start the server

@@ -744,7 +744,7 @@ async function handleWebExtract(req, res) {
           ...extractionOptions
         });
 
-        const extractedData = await extractor.extract(webUrl, {
+        const extractedData = await extractor.extractWebData(webUrl, {
           cssSelector: cssSelector || null,
           includeStyles: true,
           includeMetadata: true,

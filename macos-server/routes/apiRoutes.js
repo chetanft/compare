@@ -370,7 +370,7 @@ export class ApiRoutes {
         timeout: 30000
       });
 
-      const extractedData = await extractor.extract(webUrl, {
+      const extractedData = await extractor.extractWebData(webUrl, {
         cssSelector: cssSelector || null,
         includeStyles: true,
         includeMetadata: true,
