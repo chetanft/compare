@@ -345,7 +345,7 @@ export default function Settings() {
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="section-standard">
           <TabsList className="grid w-full grid-cols-7">
             {tabs.map((tab) => {
               const Icon = tab.icon
@@ -362,7 +362,7 @@ export default function Settings() {
             })}
           </TabsList>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={handleSubmit(onSubmit)} className="section-standard">
             <TabsContent value="general">
               <Card>
                 <CardHeader>

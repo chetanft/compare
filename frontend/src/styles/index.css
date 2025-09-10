@@ -142,6 +142,27 @@
     @apply gap-8;
   }
 
+  /* Standardized Vertical Spacing */
+  .space-y-standard-xs {
+    @apply space-y-2;
+  }
+  
+  .space-y-standard-sm {
+    @apply space-y-3;
+  }
+  
+  .space-y-standard-md {
+    @apply space-y-4;
+  }
+  
+  .space-y-standard-lg {
+    @apply space-y-6;
+  }
+  
+  .space-y-standard-xl {
+    @apply space-y-8;
+  }
+
   /* Standard Layout Components */
   .layout-grid-cards {
     @apply grid-standard-3 space-standard-lg;
@@ -153,6 +174,19 @@
   
   .layout-grid-data {
     @apply grid-standard-2 space-standard-md;
+  }
+
+  /* Standard Section Spacing */
+  .section-standard {
+    @apply space-y-standard-xl;
+  }
+  
+  .form-standard {
+    @apply space-y-standard-lg;
+  }
+  
+  .card-content-standard {
+    @apply space-y-standard-lg;
   }
 
   .upload-zone {
