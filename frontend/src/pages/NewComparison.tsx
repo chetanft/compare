@@ -143,13 +143,13 @@ export default function NewComparison() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="card text-center">
               <div className="text-2xl font-bold text-blue-600 mb-1">
-                {result.figmaData?.componentsCount || 0}
+                {result.figmaData?.componentCount || result.figmaData?.componentsCount || 0}
               </div>
               <div className="text-sm text-muted-foreground">Figma Components</div>
             </div>
             <div className="card text-center">
               <div className="text-2xl font-bold text-green-600 mb-1">
-                {result.webData?.elementsCount || 0}
+                {result.webData?.elementCount || result.webData?.elementsCount || 0}
               </div>
               <div className="text-sm text-muted-foreground">Web Elements</div>
             </div>
