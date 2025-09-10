@@ -453,8 +453,7 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       error: (response as any).error
     };
 
-    // Backward-compatible fields expected by existing UI (top-level)
-    // Support both new standardized fields and legacy fields
+    // Enhanced data with standardized fields (maintaining some compatibility)
     (comparisonResult as any).figmaData = { 
       ...(response.data?.figmaData || {}),
       
@@ -462,8 +461,8 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       componentCount: figmaCount, // Standard field name
       components: response.data?.figmaData?.components || response.data?.figmaData?.elements || [],
       
-      // LEGACY FIELDS (maintained for backward compatibility)
-      componentsCount: figmaCount, // Keep for compatibility
+      // LEGACY FIELDS (temporary compatibility - UI now supports both)
+      componentsCount: figmaCount, // Will be removed in next phase
     };
     (comparisonResult as any).webData = { 
       ...(response.data?.webData || {}),
@@ -472,8 +471,8 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       elementCount: webCount, // Standard field name
       elements: response.data?.webData?.elements || [],
       
-      // LEGACY FIELDS (maintained for backward compatibility)
-      elementsCount: webCount, // Keep for compatibility
+      // LEGACY FIELDS (temporary compatibility - UI now supports both)
+      elementsCount: webCount, // Will be removed in next phase
     };
     (comparisonResult as any).extractionDetails = comparisonResult.data?.extractionDetails;
     

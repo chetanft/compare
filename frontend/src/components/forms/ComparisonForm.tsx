@@ -434,8 +434,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <GlobeAltIcon className="w-6 h-6 text-blue-600" />
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <GlobeAltIcon className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Web Implementation</CardTitle>
@@ -523,7 +523,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             className="flex items-center justify-between w-full text-left"
           >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
                 <CogIcon className="w-6 h-6 text-muted-foreground" />
               </div>
               <div>
@@ -569,7 +569,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                         className={`p-3 rounded-lg border text-left transition-colors ${
                           authType === option.value
                             ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                            : 'border-gray-200 hover:border-gray-300'
+                            : 'border-border hover:border-border/80'
                         }`}
                       >
                         <div className="font-medium text-sm">{option.label}</div>
@@ -746,10 +746,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
               exit={{ opacity: 0, y: -10 }}
               className="flex items-center space-x-3 p-4 bg-red-50 border border-red-200 rounded-lg"
             >
-              <ExclamationTriangleIcon className="w-6 h-6 text-red-600 flex-shrink-0" />
+              <ExclamationTriangleIcon className="w-6 h-6 text-destructive flex-shrink-0" />
               <div>
-                <h4 className="font-medium text-red-800">Extraction Failed</h4>
-                <p className="text-sm text-red-600">
+                <h4 className="font-medium text-destructive">Extraction Failed</h4>
+                <p className="text-sm text-destructive/80">
                   {comparisonMutation.error instanceof Error 
                     ? comparisonMutation.error.message 
                     : 'An unexpected error occurred'}
@@ -763,12 +763,12 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg"
+              className="flex items-center space-x-3 p-4 bg-accent/10 border border-accent/20 rounded-lg"
             >
-              <CheckCircleIcon className="w-6 h-6 text-green-600 flex-shrink-0" />
+              <CheckCircleIcon className="w-6 h-6 text-accent-foreground flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-medium text-green-800">Extraction Complete!</h4>
-                <p className="text-sm text-green-600">
+                <h4 className="font-medium text-accent-foreground">Extraction Complete!</h4>
+                <p className="text-sm text-accent-foreground/80">
                   Your design and web data has been extracted successfully.
                   {reportOpenAttempts > 0 && (
                     <span className="block mt-1 text-amber-600">
