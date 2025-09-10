@@ -310,7 +310,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         </Alert>
       </div>
       
-      <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+      <form onSubmit={handleSubmit(onSubmit)} className="form-standard">
         
         {/* Main Form */}
         <div className="layout-grid-forms mb-8">
