@@ -140,7 +140,7 @@ export default function NewComparison() {
           </div>
 
           {/* Results Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="layout-grid-data mb-8">
             <div className="card text-center">
               <div className="text-2xl font-bold text-blue-600 mb-1">
                 {result.figmaData?.componentCount || result.figmaData?.componentsCount || 0}
@@ -161,7 +161,7 @@ export default function NewComparison() {
               <Card>
                 <CardContent className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Comparison Results</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid-standard-3 space-standard-lg">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-green-600 mb-2">
                         {result.extractionDetails.comparison.matches || 0}
@@ -299,7 +299,7 @@ export default function NewComparison() {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-8"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid-standard-4 space-standard-xl">
           {/* Main Form */}
           <div className="lg:col-span-3">
             {!showProgress ? (

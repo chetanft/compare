@@ -313,7 +313,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       <form onSubmit={handleSubmit(onSubmit)} className="form-section">
         
         {/* Main Form */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="layout-grid-forms mb-8">
           {/* Figma Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -555,7 +555,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Authentication Required?
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid-standard-4 space-standard-sm">
                     {[
                       { value: 'none', label: 'None', desc: 'Public page' },
                       { value: 'credentials', label: 'Login', desc: 'Username/Password' },

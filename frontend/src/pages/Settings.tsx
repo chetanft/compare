@@ -372,7 +372,7 @@ export default function Settings() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="layout-grid-forms">
                     <div className="space-y-2">
                       <Label htmlFor="defaultTimeout">Default Timeout (ms)</Label>
                       <Controller
@@ -472,7 +472,7 @@ export default function Settings() {
                     )}
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="layout-grid-forms">
                     <div className="space-y-2">
                       <Label htmlFor="defaultFigmaExportFormat">Default Export Format</Label>
                       <Controller
@@ -563,7 +563,7 @@ export default function Settings() {
                       render={({ field: methodField }) => (
                         <div className="space-y-4">
                           {(methodField.value === 'mcp-server') && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="layout-grid-forms">
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                   MCP Server URL
@@ -698,7 +698,7 @@ export default function Settings() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">Web Scraping Configuration</h3>
                   
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="layout-grid-forms">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Viewport Width

@@ -104,6 +104,57 @@
     @apply space-y-2;
   }
 
+  /* Standardized Grid System */
+  .grid-standard-1 {
+    @apply grid grid-cols-1;
+  }
+  
+  .grid-standard-2 {
+    @apply grid grid-cols-1 md:grid-cols-2;
+  }
+  
+  .grid-standard-3 {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+  
+  .grid-standard-4 {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4;
+  }
+
+  /* Standardized Spacing System */
+  .space-standard-xs {
+    @apply gap-2;
+  }
+  
+  .space-standard-sm {
+    @apply gap-3;
+  }
+  
+  .space-standard-md {
+    @apply gap-4;
+  }
+  
+  .space-standard-lg {
+    @apply gap-6;
+  }
+  
+  .space-standard-xl {
+    @apply gap-8;
+  }
+
+  /* Standard Layout Components */
+  .layout-grid-cards {
+    @apply grid-standard-3 space-standard-lg;
+  }
+  
+  .layout-grid-forms {
+    @apply grid-standard-2 space-standard-lg;
+  }
+  
+  .layout-grid-data {
+    @apply grid-standard-2 space-standard-md;
+  }
+
   .upload-zone {
     @apply border-2 border-dashed border-gray-300 hover:border-primary-500 
            rounded-lg p-8 text-center transition-colors duration-200
