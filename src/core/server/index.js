@@ -94,7 +94,7 @@ export async function startServer() {
   
   try {
     // Try enhanced service initialization
-    const { serviceManager: sm } = await import('../ServiceManager.js');
+    const { serviceManager: sm } = await import('../../services/core/ServiceManager.js');
     serviceManager = sm;
     
     const initResults = await serviceManager.initializeServices(config);
@@ -161,6 +161,18 @@ export async function startServer() {
   // Configure enhanced middleware
   configureSecurityMiddleware(app, config);
   
+  // Development cache control (prevent browser caching issues)
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      next();
+    });
+  }
+
   // Request logging
   app.use(requestLogger);
   
@@ -175,7 +187,7 @@ export async function startServer() {
   
   // Server Control Routes
   try {
-    const serverControlRoutes = await import('../../api/routes/server-control.js');
+    const serverControlRoutes = await import('../../routes/server-control.js');
     app.use('/api/server', serverControlRoutes.default);
     console.log('✅ Server control routes registered');
   } catch (error) {
@@ -184,12 +196,12 @@ export async function startServer() {
 
   // MCP Routes
   try {
-    const mcpRoutes = await import('../../api/routes/mcp-routes.js');
+    const mcpRoutes = await import('../../routes/mcp-routes.js');
     app.use('/api/mcp', mcpRoutes.default);
     console.log('✅ MCP routes registered');
     
     // MCP Test Routes
-    const mcpTestRoutes = await import('../../api/routes/mcp-test-routes.js');
+    const mcpTestRoutes = await import('../../routes/mcp-test-routes.js');
     app.use('/api/mcp', mcpTestRoutes.default);
     console.log('✅ MCP test routes registered');
   } catch (error) {
@@ -261,6 +273,34 @@ export async function startServer() {
         status: 'degraded',
         error: 'Health check error',
         timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Version endpoint for build tracking
+  app.get('/api/version', (req, res) => {
+    try {
+      const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+      res.json({
+        success: true,
+        data: {
+          version: packageJson.version,
+          name: packageJson.name,
+          buildTime: new Date().toISOString(),
+          phase: 'Phase 13 - Architectural Consolidation Complete',
+          architecture: {
+            servers: 1,
+            extractors: 1,
+            mcpClients: 1,
+            consolidated: true
+          }
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get version info',
+        details: error.message
       });
     }
   });

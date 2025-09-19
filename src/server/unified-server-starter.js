@@ -19,7 +19,8 @@ export async function startUnifiedServer() {
     if (platformConfig.isElectron()) {
       // Start Electron server
       console.log('🖥️ Starting Electron server...');
-      const { ElectronExpressServer } = await import('../macos/server/electron-server.js');
+      // Electron server removed - using web server instead
+      throw new Error('Electron server deprecated - use web server on port 3847');
       const server = new ElectronExpressServer();
       await server.start();
       return server;

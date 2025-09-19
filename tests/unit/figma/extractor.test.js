@@ -1,19 +1,19 @@
 /**
- * Unit Tests for FigmaExtractor
- * Tests the core Figma API integration and data extraction functionality
+ * Unit Tests for UnifiedFigmaExtractor
+ * Tests the unified Figma extraction with MCP and API fallback
  */
 
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import FigmaExtractor from '../../../src/figma/extractor.js';
+import { UnifiedFigmaExtractor } from '../../../src/shared/extractors/UnifiedFigmaExtractor.js';
 import { MockFigmaAPI, resetAllMocks } from '../../helpers/mockServices.js';
 
-describe('FigmaExtractor', () => {
+describe('UnifiedFigmaExtractor', () => {
   let figmaExtractor;
   let config;
 
   beforeEach(() => {
     config = global.testUtils.generateTestConfig();
-    figmaExtractor = new FigmaExtractor(config);
+    figmaExtractor = new UnifiedFigmaExtractor(config);
     MockFigmaAPI.setup();
   });
 
@@ -23,19 +23,19 @@ describe('FigmaExtractor', () => {
 
   describe('Constructor and Initialization', () => {
     test('should initialize with valid config', () => {
-      expect(figmaExtractor).toBeInstanceOf(FigmaExtractor);
+      expect(figmaExtractor).toBeInstanceOf(UnifiedFigmaExtractor);
       expect(figmaExtractor.config).toEqual(config);
     });
 
     test('should initialize with empty config', () => {
-      const extractor = new FigmaExtractor({});
-      expect(extractor).toBeInstanceOf(FigmaExtractor);
+      const extractor = new UnifiedFigmaExtractor({});
+      expect(extractor).toBeInstanceOf(UnifiedFigmaExtractor);
       expect(extractor.config).toEqual({});
     });
 
     test('should initialize with default values when config is partial', () => {
       const partialConfig = { figma: { accessToken: 'test-token' } };
-      const extractor = new FigmaExtractor(partialConfig);
+      const extractor = new UnifiedFigmaExtractor(partialConfig);
       expect(extractor.config.figma.accessToken).toBe('test-token');
     });
   });
@@ -46,13 +46,13 @@ describe('FigmaExtractor', () => {
         figma: { accessToken: 'test-token' },
         comparison: { thresholds: { fontSize: 2 } }
       };
-      const extractor = new FigmaExtractor(validConfig);
+      const extractor = new UnifiedFigmaExtractor(validConfig);
       expect(extractor.config).toEqual(validConfig);
     });
 
     test('should handle missing figma config', () => {
       const configWithoutFigma = { comparison: { thresholds: {} } };
-      const extractor = new FigmaExtractor(configWithoutFigma);
+      const extractor = new UnifiedFigmaExtractor(configWithoutFigma);
       expect(extractor.config).toEqual(configWithoutFigma);
     });
   });

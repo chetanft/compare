@@ -1,6 +1,6 @@
 {
   "name": "figma-web-comparison-tool",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Compare Figma designs with web implementations",
   "main": "electron/main.js",
   "type": "module",
@@ -14,7 +14,8 @@
     "build": "npm run build:frontend",
     "build:frontend": "cd frontend && npm run build",
     "rebuild:electron": "npx @electron/rebuild",
-    "build:mac": "npm run build:frontend && npm run rebuild:electron && electron-builder --mac",
+    "clean:dist": "rm -rf dist/mac* dist/*.dmg* dist/builder-debug.yml dist/latest-mac.yml",
+    "build:mac": "npm run clean:dist && npm run build:frontend && npm run rebuild:electron && electron-builder --mac",
     "dist": "npm run build:frontend && electron-builder --mac --publish=never",
     "dev:app": "./scripts/dev-app.sh",
     "dev:restart": "pkill -f 'Figma Comparison Tool' || true && npm run dev:app",
@@ -37,6 +38,8 @@
     "bundle-check": "cd frontend && npm run build && ls -lh dist/assets/*.js",
     "security-audit": "npm audit && cd frontend && npm audit",
     "prepare-production": "npm run lint && npm run type-check && npm run test && npm run build",
+    "ports:validate": "node scripts/validate-ports.mjs",
+    "ports:validate-build": "npm run build:frontend && npm run ports:validate",
     "sync:platforms": "node scripts/sync-platforms.js",
     "sync:check": "node scripts/sync-platforms.js --check-only",
     "dev:unified": "npm run sync:platforms && npm run electron:dev",
@@ -44,7 +47,11 @@
     "build:production": "node scripts/production-build.js",
     "deploy:check": "node scripts/production-build.js && npm run start:production",
     "start:production": "NODE_ENV=production node server.js",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "diagnose": "node scripts/quick-diagnose.cjs",
+    "fix:frontend": "npm run build:frontend && npm run diagnose",
+    "emergency:reset": "pkill -f \"PORT=3847\" || true && rm -rf frontend/dist && npm run build:frontend && npm start",
+    "dev:safe": "npm run fix:frontend && npm start"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",

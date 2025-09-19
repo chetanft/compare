@@ -4,8 +4,8 @@
  */
 
 import { Router } from 'express';
-import { serverControlService } from '../../services/ServerControlService.js';
-import { logger } from '../../utils/logger.js';
+import { serverControlService } from '../services/core/ServerControlService.js';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 

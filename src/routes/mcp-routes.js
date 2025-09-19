@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import FigmaMCPClient from '../../figma/mcpClient.js';
+import FigmaMCPClient from '../figma/mcpClient.js';
 
 const router = express.Router();
 
@@ -193,18 +193,7 @@ router.post('/figma/compare', async (req, res) => {
   }
 });
 
-// Cleanup on process exit
-process.on('exit', async () => {
-  if (mcpClient) {
-    await mcpClient.disconnect();
-  }
-});
-
-process.on('SIGINT', async () => {
-  if (mcpClient) {
-    await mcpClient.disconnect();
-  }
-  process.exit(0);
-});
+// Note: MCP clients are created per request, so no global cleanup needed
+// Each request handler manages its own client lifecycle
 
 export default router;

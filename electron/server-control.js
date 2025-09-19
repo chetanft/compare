@@ -6,6 +6,9 @@
 import electron from 'electron';
 const { ipcMain } = electron;
 
+// Static flag to prevent duplicate handler registration across all instances
+let handlersRegistered = false;
+
 export class ElectronServerControl {
   constructor() {
     this.server = null;
@@ -17,6 +20,12 @@ export class ElectronServerControl {
   }
 
   setupIPC() {
+    // Prevent duplicate handler registration across all instances
+    if (handlersRegistered) {
+      console.log('⚠️ IPC handlers already registered, skipping...');
+      return;
+    }
+
     // Handle server control requests from renderer
     ipcMain.handle('server-control:status', () => {
       return this.getStatus();
@@ -33,6 +42,9 @@ export class ElectronServerControl {
     ipcMain.handle('server-control:restart', async () => {
       return await this.restartServer();
     });
+
+    handlersRegistered = true;
+    console.log('✅ IPC handlers registered successfully');
   }
 
   getStatus() {
@@ -128,5 +140,21 @@ export class ElectronServerControl {
     this.port = port;
     this.status = 'running';
     this.startTime = Date.now();
+  }
+
+  // Initialize with port only (for web server connection)
+  initializeWithPort(port) {
+    this.port = port;
+    this.status = 'running';
+    this.startTime = Date.now();
+    
+    console.log(`✅ Server control initialized for web server on port ${port}`);
+  }
+
+  async cleanup() {
+    this.server = null;
+    this.status = 'stopped';
+    this.port = null;
+    this.startTime = null;
   }
 }

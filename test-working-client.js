@@ -2,7 +2,7 @@
  * Test the working MCP client
  */
 
-import WorkingFigmaMCPClient from './src/figma/workingMcpClient.js';
+import FigmaMCPClient from './src/figma/mcpClient.js';
 
 async function testWorkingClient() {
   console.log('🎯 Testing Working Figma MCP Client...\n');
@@ -14,7 +14,7 @@ async function testWorkingClient() {
   console.log('   5. MCP server is running on port 3845');
   console.log('');
 
-  const client = new WorkingFigmaMCPClient();
+  const client = new FigmaMCPClient();
 
   try {
     // Test connection

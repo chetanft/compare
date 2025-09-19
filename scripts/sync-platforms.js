@@ -18,7 +18,7 @@ class PlatformSyncer {
   constructor() {
     this.sharedPath = path.join(projectRoot, 'src/shared');
     this.webServerPath = path.join(projectRoot, 'src/core/server/index.js');
-    this.macosServerPath = path.join(projectRoot, 'src/macos/server/electron-server.js');
+    // this.macosServerPath = path.join(projectRoot, 'src/macos/server/electron-server.js'); // DEPRECATED
     this.syncLog = [];
   }
 
@@ -222,7 +222,7 @@ class PlatformSyncer {
       // Run basic syntax checks
       execSync('node --check src/shared/config/unified-config.js', { cwd: projectRoot });
       execSync('node --check src/shared/api/handlers/figma-handler.js', { cwd: projectRoot });
-      execSync('node --check src/macos/server/electron-server.js', { cwd: projectRoot });
+      // execSync('node --check src/macos/server/electron-server.js', { cwd: projectRoot }); // DEPRECATED
       
       this.syncLog.push('✅ Syntax validation passed');
       

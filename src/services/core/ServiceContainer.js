@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../../utils/logger.js';
-import { healthChecker } from '../health/HealthChecker.js';
+import { healthChecker } from '../../core/health/HealthChecker.js';
 
 export class ServiceContainer {
   constructor() {

@@ -4,11 +4,11 @@
  * Maintains backward compatibility while adding production-ready features
  */
 
-import { logger } from '../utils/logger.js';
-import { serviceContainer, ServiceFactories } from './container/ServiceContainer.js';
-import { healthChecker, HealthChecker } from './health/HealthChecker.js';
-import { circuitBreakerRegistry } from './resilience/CircuitBreaker.js';
-import { performanceMonitor } from '../monitoring/performanceMonitor.js';
+import { logger } from '../../utils/logger.js';
+import { serviceContainer, ServiceFactories } from './ServiceContainer.js';
+import { healthChecker, HealthChecker } from '../../core/health/HealthChecker.js';
+import { circuitBreakerRegistry } from '../../core/resilience/CircuitBreaker.js';
+import { performanceMonitor } from '../../monitoring/performanceMonitor.js';
 
 export class ServiceManager {
   constructor() {
@@ -209,10 +209,10 @@ export class ServiceManager {
 
     try {
       // Import and initialize services the old way
-      const { getBrowserPool } = await import('../browser/BrowserPool.js');
-      const { FigmaMCPClient } = await import('../figma/mcpClient.js');
-      const { default: UnifiedWebExtractor } = await import('../web/UnifiedWebExtractor.js');
-      const ComparisonEngine = (await import('../compare/comparisonEngine.js')).default;
+      const { getBrowserPool } = await import('../../browser/BrowserPool.js');
+      const { default: FigmaMCPClient } = await import('../../figma/mcpClient.js');
+      const { default: UnifiedWebExtractor } = await import('../../web/UnifiedWebExtractor.js');
+      const ComparisonEngine = (await import('../../compare/comparisonEngine.js')).default;
 
       // Initialize services
       const browserPool = getBrowserPool();

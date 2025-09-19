@@ -86,8 +86,8 @@ export default function ServerControlButton({
     if (hasError) {
       return {
         icon: ExclamationTriangleIcon,
-        text: 'Server Error',
-        variant: 'destructive' as const,
+        text: 'Connection Issue',
+        variant: 'outline' as const,
         disabled: false
       };
     }
@@ -96,7 +96,7 @@ export default function ServerControlButton({
       return {
         icon: StopIcon,
         text: 'Stop Server',
-        variant: 'destructive' as const,
+        variant: 'secondary' as const,
         disabled: false
       };
     }
@@ -204,30 +204,75 @@ export default function ServerControlButton({
     );
   }
 
-  // Default variant
+  // Default variant - Modern card design
   return (
-    <div className={cn("flex items-center justify-between p-3 bg-card rounded-lg border", className)}>
-      <div className="flex items-center space-x-3">
+    <div className={cn(
+      "relative overflow-hidden rounded-xl border bg-gradient-to-r from-card to-card/50 p-4 shadow-sm transition-all duration-200 hover:shadow-md",
+      hasError && "border-orange-200 bg-gradient-to-r from-orange-50 to-orange-50/30",
+      isServerRunning && "border-green-200 bg-gradient-to-r from-green-50 to-green-50/30",
+      className
+    )}>
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+      
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+              hasError && "bg-orange-100 text-orange-600",
+              isServerRunning && "bg-green-100 text-green-600",
+              !isServerRunning && !hasError && "bg-blue-100 text-blue-600"
+            )}>
+              <IconComponent className={cn(
+                "h-5 w-5",
+                buttonContent.disabled && "animate-spin"
+              )} />
+            </div>
+            
+            <div>
+              <div className="font-medium text-sm">
+                {hasError ? 'Server Connection' : isServerRunning ? 'Server Active' : 'Server Ready'}
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center space-x-2">
+                <span>Port {serverStatus?.port || 3847}</span>
+                <span>•</span>
+                <span className={cn(
+                  "flex items-center space-x-1",
+                  isServerRunning && "text-green-600",
+                  hasError && "text-orange-600"
+                )}>
+                  <div className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    isServerRunning && "bg-green-500",
+                    hasError && "bg-orange-500",
+                    !isServerRunning && !hasError && "bg-gray-400"
+                  )} />
+                  <span>{currentStatus}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <Button
           onClick={toggleServer}
           disabled={buttonContent.disabled}
           variant={buttonContent.variant}
           size="sm"
-          className="flex items-center space-x-2"
+          className={cn(
+            "flex items-center space-x-2 font-medium transition-all",
+            hasError && "border-orange-300 hover:bg-orange-50",
+            isServerRunning && "border-green-300 hover:bg-green-50"
+          )}
         >
+          <span>{buttonContent.text}</span>
           <IconComponent className={cn(
             "h-4 w-4",
             buttonContent.disabled && "animate-spin"
           )} />
-          <span>{buttonContent.text}</span>
         </Button>
-        
-        <div className="text-sm text-muted-foreground">
-          Port {serverStatus?.port || 3847}
-        </div>
       </div>
-      
-      {getStatusBadge()}
     </div>
   );
 }

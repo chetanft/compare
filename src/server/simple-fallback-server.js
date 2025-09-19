@@ -41,7 +41,7 @@ export async function startSimpleServer(port = APP_SERVER_PORT) {
 
   // Server Control Routes
   try {
-    const { default: serverControlRoutes } = await import('../api/routes/server-control.js');
+    const { default: serverControlRoutes } = await import('../routes/server-control.js');
     app.use('/api/server', serverControlRoutes);
     console.log('✅ Server control routes registered in fallback server');
   } catch (error) {

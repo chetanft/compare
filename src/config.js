@@ -3,10 +3,12 @@
  * Simple configuration for the application
  */
 
+import { PORTS } from './config/PORTS.js';
+
 export const config = {
   // Server configuration
   server: {
-    port: process.env.PORT || 3001,
+    port: process.env.PORT || PORTS.SERVER,
     host: process.env.HOST || 'localhost'
   },
 
@@ -21,9 +23,9 @@ export const config = {
   cors: {
     origin: [
       'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3007',
-      'http://localhost:5173'
+      `http://localhost:${PORTS.SERVER}`,
+      `http://localhost:${PORTS.WEB_DEV}`,
+      `http://localhost:${PORTS.PREVIEW}`
     ],
     credentials: true
   },

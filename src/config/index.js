@@ -6,6 +6,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { PORTS } from './PORTS.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,15 +29,15 @@ export async function loadConfig() {
   // Base configuration from environment
   const baseConfig = {
     server: {
-      port: parseInt(env.PORT || env.SERVER_PORT || '3847', 10),
+      port: parseInt(env.PORT || env.SERVER_PORT || PORTS.SERVER.toString(), 10),
       host: env.HOST || env.SERVER_HOST || 'localhost',
     },
     cors: {
       origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [
         'http://localhost:3000',
-        'http://localhost:3847',
-        'http://localhost:5173',
-        'http://localhost:5174',
+        `http://localhost:${PORTS.SERVER}`,
+        `http://localhost:${PORTS.WEB_DEV}`,
+        `http://localhost:${PORTS.PREVIEW}`,
       ],
       credentials: env.CORS_CREDENTIALS !== 'false',
     },

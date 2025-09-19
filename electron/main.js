@@ -15,9 +15,12 @@ app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('allow-running-insecure-content');
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
-// Import the new unified Express server
-import { ElectronExpressServer } from '../src/macos/server/electron-server.js';
+// Import server utilities
 import { ElectronServerControl } from './server-control.js';
+import { spawn } from 'child_process';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const axios = require('axios');
 
 // Note: We connect to existing Figma MCP server instead of starting our own
 
@@ -240,30 +243,80 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
+async function checkWebServerRunning(port) {
+  try {
+    const response = await axios.get(`http://localhost:${port}/api/health`, { timeout: 2000 });
+    return response.status === 200;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function startWebServer() {
+  return new Promise((resolve, reject) => {
+    console.log('🚀 Starting web server process...');
+    
+    const serverProcess = spawn('node', ['scripts/start-server.js'], {
+      cwd: path.join(__dirname, '..'),
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PORT: '3847' }
+    });
+    
+    let serverStarted = false;
+    
+    serverProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      console.log('📡 Server:', output.trim());
+      
+      if (output.includes('Server running on port') && !serverStarted) {
+        serverStarted = true;
+        resolve(serverProcess);
+      }
+    });
+    
+    serverProcess.stderr.on('data', (data) => {
+      console.error('❌ Server Error:', data.toString());
+    });
+    
+    serverProcess.on('error', (error) => {
+      if (!serverStarted) {
+        reject(error);
+      }
+    });
+    
+    // Timeout after 15 seconds
+    setTimeout(() => {
+      if (!serverStarted) {
+        serverProcess.kill();
+        reject(new Error('Server startup timeout'));
+      }
+    }, 15000);
+  });
+}
+
 async function startServer() {
   try {
     console.log('🚀 Starting Figma Comparison Tool...');
     console.log('📡 Will connect to existing Figma MCP server on port 3845');
-    console.log('🚀 Starting unified Express server...');
-
-    // Initialize server control
-    serverControl = new ElectronServerControl();
     
-    // Create and start the Express server
-    expressServer = new ElectronExpressServer();
-    const result = await expressServer.start();
+    // Check if web server is already running
+    const isRunning = await checkWebServerRunning(serverPort);
     
-    if (result.success) {
-      serverPort = result.port;
-      console.log(`✅ Express server running on port ${serverPort}`);
-      
-      // Initialize server control with the running server
-      serverControl.initializeWithServer(expressServer, serverPort);
-      
-      return true;
+    if (isRunning) {
+      console.log(`✅ Web server already running on port ${serverPort}`);
     } else {
-      throw new Error('Failed to start Express server');
+      console.log('🚀 Starting web server...');
+      expressServer = await startWebServer();
+      console.log(`✅ Web server started on port ${serverPort}`);
     }
+    
+    // Initialize server control (only if not already initialized)
+    if (!serverControl) {
+      serverControl = new ElectronServerControl();
+    }
+    serverControl.initializeWithPort(serverPort);
+    
+    return true;
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);
@@ -320,12 +373,19 @@ app.on('before-quit', async (event) => {
       console.log('🔄 Shutting down...');
     }
 
-    // Stop the Express server
-    if (expressServer) {
+    // Stop the web server process
+    if (expressServer && expressServer.kill) {
       if (process.stdout && process.stdout.writable) {
-        console.log('⏹️ Stopping Express server...');
+        console.log('⏹️ Stopping web server process...');
       }
-      await expressServer.stop();
+      expressServer.kill('SIGTERM');
+      expressServer = null;
+    }
+
+    // Clean up server control
+    if (serverControl) {
+      await serverControl.cleanup();
+      serverControl = null;
     }
 
   } catch (error) {

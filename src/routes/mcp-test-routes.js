@@ -5,7 +5,7 @@
 
 import express from 'express';
 import fetch from 'node-fetch';
-import FigmaMCPClient from '../../figma/mcpClient.js';
+import FigmaMCPClient from '../figma/mcpClient.js';
 
 const router = express.Router();
 

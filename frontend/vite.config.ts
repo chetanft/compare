@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
 
-// Fixed API port - like Figma's 3845 for consistency
+// Read version from package.json
+const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
+
+// SINGLE SOURCE OF TRUTH: API port (validated by scripts/validate-ports.mjs)
 const API_PORT = 3847;
 
 // printConfig function to log configuration
@@ -106,7 +110,9 @@ export default defineConfig({
   },
   define: {
     'process.env': {},
-    '__SERVER_PORT__': API_PORT,
-    'import.meta.env.VITE_SERVER_PORT': `"${API_PORT}"`
+    '__SERVER_PORT__': `${API_PORT}`,
+    'import.meta.env.VITE_SERVER_PORT': `"${API_PORT}"`,
+    'import.meta.env.VITE_API_URL': `"http://localhost:${API_PORT}"`,
+    'import.meta.env.PACKAGE_VERSION': `"${packageJson.version}"`
   }
 }); 

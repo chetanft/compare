@@ -5,8 +5,8 @@
 
 import { spawn, exec } from 'child_process';
 import { EventEmitter } from 'events';
-import { APP_SERVER_PORT, SERVER_CONFIG } from '../config/app-constants.js';
-import { logger } from '../utils/logger.js';
+import { APP_SERVER_PORT, SERVER_CONFIG } from '../../config/app-constants.js';
+import { logger } from '../../utils/logger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

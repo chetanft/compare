@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import ServerControlButton from '../ui/ServerControlButton'
+import { VersionBadge } from '../ui/VersionBadge'
 
 interface SidebarProps {
   isOpen: boolean
@@ -140,9 +141,7 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
               <p className="text-xs text-muted-foreground">Modern UI</p>
               <p className="text-xs text-muted-foreground/70">Built with React & Tailwind</p>
             </div>
-            <Badge variant="secondary" className="text-xs">
-              v2.0
-            </Badge>
+            <VersionBadge className="text-xs" />
           </div>
         </motion.div>
       )}

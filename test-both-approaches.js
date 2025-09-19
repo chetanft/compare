@@ -3,13 +3,12 @@
  * This will help us determine which session management approach works
  */
 
-import PersistentFigmaMCPClient from './src/figma/persistentMcpClient.js';
-import SessionAwareMCPClient from './src/figma/sessionMcpClient.js';
+import FigmaMCPClient from './src/figma/mcpClient.js';
 
 async function testPersistentApproach() {
   console.log('🔧 Testing Persistent Connection Approach...\n');
   
-  const client = new PersistentFigmaMCPClient();
+  const client = new FigmaMCPClient();
   
   try {
     console.log('📋 Step 1: Connecting...');
@@ -45,7 +44,7 @@ async function testPersistentApproach() {
 async function testSessionApproach() {
   console.log('🔧 Testing Session-Aware Approach...\n');
   
-  const client = new SessionAwareMCPClient();
+  const client = new FigmaMCPClient();
   
   try {
     console.log('📋 Step 1: Connecting...');
@@ -126,7 +125,7 @@ async function demonstrateWorkingSolution() {
     console.log(`\n🚀 Using ${workingApproach} approach for full demonstration...\n`);
     
     const ClientClass = workingApproach === 'persistent' ? 
-      PersistentFigmaMCPClient : SessionAwareMCPClient;
+      FigmaMCPClient;
     
     const client = new ClientClass();
     
