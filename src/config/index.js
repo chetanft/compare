@@ -28,13 +28,13 @@ export async function loadConfig() {
   // Base configuration from environment
   const baseConfig = {
     server: {
-      port: parseInt(env.PORT || env.SERVER_PORT || '47832', 10),
+      port: parseInt(env.PORT || env.SERVER_PORT || '3847', 10),
       host: env.HOST || env.SERVER_HOST || 'localhost',
     },
     cors: {
       origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [
         'http://localhost:3000',
-        'http://localhost:47832',
+        'http://localhost:3847',
         'http://localhost:5173',
         'http://localhost:5174',
       ],

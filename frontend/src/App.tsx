@@ -7,6 +7,7 @@ import NewComparison from './pages/NewComparison'
 import Settings from './pages/Settings'
 import SingleSourcePage from './pages/SingleSourcePage'
 import ScreenshotComparison from './pages/ScreenshotComparison'
+import Reports from './pages/Reports'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { ServerStartup } from './components/ServerStartup'
 import { Toaster } from '@/components/ui/toaster'
@@ -64,6 +65,7 @@ function AppContent() {
                 <Route path="/" element={<NewComparison />} />
                 <Route path="/new-comparison" element={<NewComparison />} />
                 <Route path="/screenshot-comparison" element={<ScreenshotComparison />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/single-source" element={<SingleSourcePage />} />
                 {/* Redirect any other routes to main comparison */}

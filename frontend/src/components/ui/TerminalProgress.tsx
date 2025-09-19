@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface TerminalCommand {
   id: string;
@@ -19,11 +20,22 @@ export default function TerminalProgress({ isVisible, onComplete }: TerminalProg
   const [currentIndex, setCurrentIndex] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
 
-  const initialCommands: Omit<TerminalCommand, 'id' | 'timestamp'>[] = [
+  // Detect if we're in Electron to show appropriate commands
+  const isElectron = typeof window !== 'undefined' && 
+                    (window.navigator.userAgent.includes('Electron') || 
+                     window.process?.type === 'renderer');
+
+  const initialCommands: Omit<TerminalCommand, 'id' | 'timestamp'>[] = isElectron ? [
+    { command: 'cd /Applications/Figma\\ Comparison\\ Tool.app', status: 'pending' },
+    { command: 'Starting Electron Express Server...', status: 'pending' },
+    { command: 'Server running on 127.0.0.1:3847', status: 'pending' },
+    { command: 'curl -s http://localhost:3847/api/health', status: 'pending' },
+    { command: 'macOS app ready!', status: 'pending' }
+  ] : [
     { command: 'cd /Users/user/Comparision\\ tool', status: 'pending' },
-    { command: 'PORT=3007 node server.js', status: 'pending' },
+    { command: 'PORT=3847 node server.js', status: 'pending' },
     { command: 'Checking server health...', status: 'pending' },
-    { command: 'curl -s http://localhost:3007/api/health', status: 'pending' },
+    { command: 'curl -s http://localhost:3847/api/health', status: 'pending' },
     { command: 'Frontend connection established', status: 'pending' }
   ];
 
@@ -55,19 +67,25 @@ export default function TerminalProgress({ isVisible, onComplete }: TerminalProg
         let output = '';
         switch (i) {
           case 0:
-            output = '~/Comparision tool';
+            output = isElectron ? '/Applications/Figma Comparison Tool.app' : '~/Comparision tool';
             break;
           case 1:
-            output = '🚀 Starting Figma Web Comparison Tool...\n✅ Enhanced service initialization successful\n🚀 Server running at http://localhost:3007';
+            output = isElectron ? 
+              '🚀 Starting Figma Comparison Tool...\n✅ Electron Express Server started\n🚀 Server running at http://127.0.0.1:3847' :
+              '🚀 Starting Figma Web Comparison Tool...\n✅ Enhanced service initialization successful\n🚀 Server running at http://localhost:3847';
             break;
           case 2:
-            output = 'Server health check initiated...';
+            output = isElectron ? 
+              '✅ Express server running on port 3847' :
+              'Server health check initiated...';
             break;
           case 3:
             output = '{"success": true, "data": {"status": "ok"}}';
             break;
           case 4:
-            output = '✅ Connection successful - Port 3007';
+            output = isElectron ? 
+              '✅ macOS app is ready!' :
+              '✅ Connection successful - Port 3847';
             break;
         }
 
@@ -149,9 +167,22 @@ export default function TerminalProgress({ isVisible, onComplete }: TerminalProg
           
           {/* Cursor */}
           {currentIndex >= commands.length && (
-            <div className="flex items-center space-x-2">
-              <span className="text-blue-400">user@system:~$</span>
-              <span className="inline-block w-2 h-4 bg-green-400 animate-pulse"></span>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-400">user@system:~$</span>
+                <span className="inline-block w-2 h-4 bg-green-400 animate-pulse"></span>
+              </div>
+              
+              {/* Continue Button */}
+              <div className="flex justify-center pt-4">
+                <Button 
+                  onClick={() => onComplete?.()}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
+                >
+                  Continue to App →
+                </Button>
+              </div>
             </div>
           )}
         </div>

@@ -27,7 +27,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Components:</span>
-              <Badge variant="outline">{figma.componentCount || 0}</Badge>
+              <Badge variant="outline">{figma.componentCount || extractionDetails?.figma?.componentCount || 0}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Colors:</span>

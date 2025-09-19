@@ -3,7 +3,8 @@
  * Complete rewrite to use Express.js for feature parity with web app
  */
 
-import { app, BrowserWindow, Menu, shell, dialog } from 'electron';
+import electron from 'electron';
+const { app, BrowserWindow, Menu, shell, dialog } = electron;
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,6 +17,7 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 
 // Import the new unified Express server
 import { ElectronExpressServer } from '../src/macos/server/electron-server.js';
+import { ElectronServerControl } from './server-control.js';
 
 // Note: We connect to existing Figma MCP server instead of starting our own
 
@@ -38,7 +40,8 @@ const __dirname = path.dirname(__filename);
 // Keep a global reference of the window object
 let mainWindow;
 let expressServer;
-let serverPort = 3007;
+let serverPort = 3847; // Use unified port matching APP_SERVER_PORT
+let serverControl;
 
 function createWindow() {
   // Create the browser window
@@ -55,7 +58,7 @@ function createWindow() {
       allowRunningInsecureContent: true, // Allow mixed content
       experimentalFeatures: true, // Enable experimental features
       sandbox: false, // Disable sandbox for full access
-      preload: path.join(__dirname, 'preload.cjs')
+      preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, '../assets/icon.png'), // Add app icon if available
     titleBarStyle: 'default',
@@ -243,6 +246,9 @@ async function startServer() {
     console.log('📡 Will connect to existing Figma MCP server on port 3845');
     console.log('🚀 Starting unified Express server...');
 
+    // Initialize server control
+    serverControl = new ElectronServerControl();
+    
     // Create and start the Express server
     expressServer = new ElectronExpressServer();
     const result = await expressServer.start();
@@ -250,6 +256,10 @@ async function startServer() {
     if (result.success) {
       serverPort = result.port;
       console.log(`✅ Express server running on port ${serverPort}`);
+      
+      // Initialize server control with the running server
+      serverControl.initializeWithServer(expressServer, serverPort);
+      
       return true;
     } else {
       throw new Error('Failed to start Express server');

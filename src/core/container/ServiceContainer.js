@@ -335,7 +335,7 @@ export class ServiceFactories {
    */
   static mcpClient() {
     return async () => {
-      const { FigmaMCPClient } = await import('../../figma/mcpClient.js');
+      const FigmaMCPClient = (await import('../../figma/mcpClient.js')).default;
       const client = new FigmaMCPClient();
       
       // Add health check method

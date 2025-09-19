@@ -69,7 +69,7 @@ export default function SingleSourcePage() {
   
   const handleFigmaSuccess = (data: FigmaOnlyResponse['data']) => {
     console.log('Figma data received:', {
-      componentCount: data.metadata?.totalComponents || data.components?.length || 0,
+      componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
       colorCount: data.metadata?.colorCount || data.colors?.length || 0,
       typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
       actualColorsLength: data.colors?.length || 0,
@@ -87,15 +87,18 @@ export default function SingleSourcePage() {
     // Clear any previous data first
     setWebData(null);
     
-    // Set new data with proper structure
+    // Set new data preserving the correct componentCount from API
     const processedData = {
       ...data,
       components: data.components || [],
       colors: data.colors || [],
       typography: data.typography || [],
+      // Preserve componentCount at root level from API response
+      componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
       metadata: {
         ...data.metadata,
-        totalComponents: data.metadata?.totalComponents || data.components?.length || 0,
+        // Don't override - preserve what API sent
+        componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
         colorCount: data.metadata?.colorCount || data.colors?.length || 0,
         typographyCount: data.metadata?.typographyCount || data.typography?.length || 0
       }
@@ -165,8 +168,8 @@ export default function SingleSourcePage() {
                   <Badge variant="secondary">{figmaData.metadata?.extractionMethod || 'figma-api'}</Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Components</p>
-                  <p className="font-medium">{figmaData.metadata?.totalComponents || figmaData.components?.length || 0}</p>
+                  <p className="text-sm text-muted-foreground">Node ID</p>
+                  <p className="font-mono text-sm">{figmaData.metadata?.nodeId || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Extracted</p>
@@ -174,6 +177,47 @@ export default function SingleSourcePage() {
                     {new Date(figmaData.extractedAt || figmaData.metadata?.extractedAt || Date.now()).toLocaleString()}
                   </p>
                 </div>
+              </div>
+
+              {/* Enhanced metadata section */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium text-sm">Extraction Summary</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Components:</span>
+                    <span className="font-medium">{figmaData.componentCount || figmaData.metadata?.componentCount || figmaData.components?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Colors:</span>
+                    <span className="font-medium">{figmaData.metadata?.colorCount || figmaData.colors?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Typography:</span>
+                    <span className="font-medium">{figmaData.metadata?.typographyCount || figmaData.typography?.length || 0}</span>
+                  </div>
+                </div>
+                
+                {/* Show component details if available */}
+                {figmaData.components && figmaData.components.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <p className="text-sm font-medium mb-2">Component Details:</p>
+                    {figmaData.components.map((comp, index) => (
+                      <div key={comp.nodeId || index} className="text-xs bg-background/50 rounded p-2 mb-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-mono">{comp.nodeId}</span>
+                          <span className="text-muted-foreground">
+                            {comp.name || 'Unnamed Component'}
+                          </span>
+                        </div>
+                        {comp.hasChildren && (
+                          <div className="text-muted-foreground mt-1">
+                            Children: {comp.childCount || 0}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             
             <div className="mt-6">

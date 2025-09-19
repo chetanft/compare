@@ -13,8 +13,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Random safe port - avoiding common ports and AI tools
-const SERVER_PORT = 47832;
+// Use PORT environment variable or fallback to safe port
+const SERVER_PORT = process.env.PORT || 47832;
 
 console.log('🚀 Starting Figma Comparison Tool Server...');
 console.log(`📡 Port: ${SERVER_PORT}`);

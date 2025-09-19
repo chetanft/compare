@@ -3,11 +3,14 @@
  * This ensures consistent port usage across the frontend application
  */
 
-// Default port for the backend server (web app)
-export const DEFAULT_SERVER_PORT = 3007;
+// Fixed application port - like Figma's 3845 for consistency
+export const APP_SERVER_PORT = 3847;
 
-// macOS app port
-export const MACOS_APP_PORT = 3007;
+// Default port for the backend server (web app) - Unified Architecture  
+export const DEFAULT_SERVER_PORT = APP_SERVER_PORT;
+
+// macOS app port - Uses same unified port
+export const MACOS_APP_PORT = APP_SERVER_PORT;
 
 // Function to detect if we're running in Electron (macOS app)
 export function isElectronApp(): boolean {
@@ -47,8 +50,8 @@ export function getServerPort(): number {
   
   // Auto-detect port based on environment
   if (!definedPort && !envPort && isElectronApp()) {
-    console.log('🖥️ Detected Electron app, using macOS app port:', MACOS_APP_PORT);
-    return MACOS_APP_PORT;
+    console.log('🖥️ Detected Electron app, using unified server port:', APP_SERVER_PORT);
+    return APP_SERVER_PORT; // Use unified port for consistency
   }
   
   // Parse the port from environment or use default

@@ -11,7 +11,7 @@ import fs from 'fs';
 import multer from 'multer';
 import fetch from 'node-fetch';
 import { v4 as uuidv4 } from 'uuid';
-import { FigmaMCPClient } from '../../figma/mcpClient.js';
+import FigmaMCPClient from '../../figma/mcpClient.js';
 import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
 import ComparisonEngine from '../../compare/comparisonEngine.js';
 import { ScreenshotComparisonService } from '../../compare/ScreenshotComparisonService.js';
@@ -172,6 +172,29 @@ export async function startServer() {
   app.use('/api/health', healthLimiter);
   app.use('/api/mcp/status', healthLimiter);
   app.use('/api', generalLimiter);
+  
+  // Server Control Routes
+  try {
+    const serverControlRoutes = await import('../../api/routes/server-control.js');
+    app.use('/api/server', serverControlRoutes.default);
+    console.log('✅ Server control routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load server control routes:', error.message);
+  }
+
+  // MCP Routes
+  try {
+    const mcpRoutes = await import('../../api/routes/mcp-routes.js');
+    app.use('/api/mcp', mcpRoutes.default);
+    console.log('✅ MCP routes registered');
+    
+    // MCP Test Routes
+    const mcpTestRoutes = await import('../../api/routes/mcp-test-routes.js');
+    app.use('/api/mcp', mcpTestRoutes.default);
+    console.log('✅ MCP test routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load MCP routes:', error.message);
+  }
   
   // Serve frontend static files (exclude report files)
   const frontendPath = path.join(__dirname, '../../../frontend/dist');
@@ -534,30 +557,31 @@ export async function startServer() {
   });
 
   /**
-   * Figma extraction endpoint
+   * Figma extraction endpoint using unified extractor
    */
   app.post('/api/figma-only/extract',
     extractionLimiter,
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
     try {
-      const { figmaUrl, extractionMode = 'both' } = req.body;
+      const { figmaUrl, extractionMode = 'both', preferredMethod = null } = req.body;
 
-      // Check MCP connection
-      if (!mcpConnected) {
-        // Try to reconnect
-        mcpConnected = await figmaClient.connect();
-        
-        if (!mcpConnected) {
-          return res.status(503).json({
-            success: false,
-            error: 'Figma Dev Mode MCP server not available. Please ensure Figma Desktop is running with Dev Mode MCP enabled.'
-          });
-        }
+      // Use unified extractor
+      const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
+      const extractor = new UnifiedFigmaExtractor(config);
+
+      // Extract data using best available method
+      const extractionResult = await extractor.extract(figmaUrl, {
+        preferredMethod,
+        timeout: 30000,
+        apiKey: loadFigmaApiKey()
+      });
+
+      if (!extractionResult.success) {
+        throw new Error(extractionResult.error || 'Extraction failed');
       }
 
-      // Extract data using MCP
-      const figmaData = await figmaClient.extractFigmaData(figmaUrl);
+      const standardizedData = extractionResult.data;
       
       // Generate HTML report for Figma extraction
       const reportGenerator = await import('../../reporting/index.js');
@@ -566,10 +590,10 @@ export async function startServer() {
       try {
         const reportData = {
           figmaData: {
-            fileName: figmaData.fileName || 'Figma Extraction',
-            extractedAt: new Date().toISOString(),
-            components: figmaData.components || [],
-            metadata: figmaData.metadata || {}
+            fileName: standardizedData.metadata.fileName,
+            extractedAt: standardizedData.extractedAt,
+            components: standardizedData.components,
+            metadata: standardizedData.metadata
           },
           webData: {
             url: '',
@@ -580,7 +604,7 @@ export async function startServer() {
           timestamp: new Date().toISOString(),
           metadata: {
             extractionType: 'figma-only',
-            componentsExtracted: figmaData.components?.length || 0,
+            componentsExtracted: standardizedData.components.length,
             timestamp: new Date().toISOString()
           }
         };
@@ -595,10 +619,32 @@ export async function startServer() {
         console.warn('Report Error Stack:', reportError.stack);
       }
       
+      // Count all components recursively
+      const countAllComponents = (components) => {
+        let count = 0;
+        components.forEach(component => {
+          count += 1;
+          if (component.children && component.children.length > 0) {
+            count += countAllComponents(component.children);
+          }
+        });
+        return count;
+      };
+
+      const totalComponentCount = countAllComponents(standardizedData.components);
+
       res.json({
         success: true,
         data: {
-          ...figmaData,
+          ...standardizedData,
+          componentCount: totalComponentCount, // Override with actual recursive count
+          extractionMethod: standardizedData.extractionMethod, // Ensure it's at root level
+          metadata: {
+            ...standardizedData.metadata,
+            componentCount: totalComponentCount, // Use actual count
+            colorCount: standardizedData.colors.length, // Use actual count
+            typographyCount: standardizedData.typography.length // Use actual count
+          },
           reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null
         }
       });
@@ -818,59 +864,53 @@ export async function startServer() {
       const figmaStartTime = Date.now();
       let figmaData = null;
       try {
-        console.log('🎨 Using FigmaHandler for comparison (same as single source)');
-        console.log('🔍 Config type:', typeof config);
-        console.log('🔍 Config has figma:', !!config.figma);
-        console.log('🔍 Figma API key set:', !!config.figma?.apiKey);
+        console.log('🎨 Using UnifiedFigmaExtractor for comparison (same as single source)');
         
-        // Import FigmaHandler - same method as single source
-        const { FigmaHandler } = await import('../../shared/api/handlers/figma-handler.js');
-        
-        // Create mock response object to capture the result
-        let figmaResult = null;
-        const mockRes = {
-          json: (data) => { figmaResult = data; },
-          status: (code) => ({ json: (data) => { figmaResult = { ...data, statusCode: code }; } })
-        };
-        
-        // Create config wrapper with get method for FigmaHandler compatibility
-        const configWrapper = {
-          get: (key, defaultValue) => {
-            // Handle nested keys like 'figma.apiKey'
-            const keys = key.split('.');
-            let value = config;
-            for (const k of keys) {
-              value = value?.[k];
-            }
-            console.log(`🔍 Config get: ${key} = ${value ? '[SET]' : '[NOT SET]'}`);
-            return value !== undefined ? value : defaultValue;
-          }
-        };
-        
-        // Extract using the same method as single source
-        await FigmaHandler.extract({
-          body: { 
-            figmaUrl, 
-            lightMode: true, 
-            skipAnalysis: false,
-            figmaPersonalAccessToken: process.env.FIGMA_API_KEY || process.env.FIGMA_PERSONAL_ACCESS_TOKEN
-          }
-        }, mockRes, configWrapper, null);
+        // Use unified extractor - SAME AS SINGLE SOURCE
+        const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
+        const extractor = new UnifiedFigmaExtractor(config);
 
-        if (figmaResult && figmaResult.success) {
-          figmaData = figmaResult.data;
-          console.log('✅ Figma extraction successful via FigmaHandler');
+        // Extract data using best available method (MCP first, API fallback)
+        const extractionResult = await extractor.extract(figmaUrl, {
+          preferredMethod: null,
+          timeout: 30000,
+          apiKey: loadFigmaApiKey()
+        });
+
+        if (!extractionResult.success) {
+          throw new Error(extractionResult.error || 'Extraction failed');
+        }
+
+        const standardizedData = extractionResult.data;
+
+        if (standardizedData && standardizedData.components) {
+          figmaData = {
+            components: standardizedData.components,
+            componentCount: standardizedData.componentCount || standardizedData.components.length,
+            componentsCount: standardizedData.componentCount || standardizedData.components.length,
+            colors: standardizedData.colors || [],
+            typography: standardizedData.typography || [],
+            metadata: standardizedData.metadata,
+            extractionMethod: standardizedData.extractionMethod
+          };
+          console.log('✅ Figma extraction successful via UnifiedFigmaExtractor');
           console.log('📊 Figma data summary:', {
             components: figmaData.components?.length || 0,
-            fileName: figmaData.fileName || 'Unknown',
-            hasMetadata: !!figmaData.metadata
+            componentCount: figmaData.componentCount,
+            extractionMethod: figmaData.extractionMethod,
+            fileName: standardizedData.metadata?.fileName || 'Unknown'
           });
         } else {
-          throw new Error(figmaResult?.error || 'Figma extraction failed');
+          throw new Error('Figma extraction returned no components');
         }
       } catch (figmaError) {
         console.log('⚠️ Figma extraction failed, continuing with web extraction only:', figmaError.message);
-        figmaData = { components: [], error: figmaError.message };
+        figmaData = { 
+          components: [], 
+          componentCount: 0,
+          componentsCount: 0,
+          error: figmaError.message 
+        };
       }
   const figmaDuration = Date.now() - figmaStartTime;
   performanceMonitor.trackExtraction('Figma', figmaDuration, { url: figmaUrl });

@@ -1,6 +1,6 @@
 # Platform Synchronization Report
 
-**Generated:** 2025-09-06T12:11:46.444Z
+**Generated:** 2025-09-17T06:08:48.731Z
 **Version:** 2.0.0
 **Platform:** unified
 
@@ -14,7 +14,7 @@
 ## Sync Log
 
 - ✅ All shared modules validated
-- ⚠️ macOS-only endpoints: 5
+- ⚠️ macOS-only endpoints: 10
 - ✅ Configuration schema validated
 - ✅ All required dependencies present
 - ✅ Syntax validation passed

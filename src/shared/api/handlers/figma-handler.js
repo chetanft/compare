@@ -142,7 +142,7 @@ export class FigmaHandler {
       console.log(`📋 Parsed node ID: ${parsedNodeId}`);
       
       if (!fileId) {
-        console.error(`❌ Failed to parse file ID from URL: ${url}`);
+        console.error(`❌ Failed to parse file ID from URL: ${figmaUrlToUse}`);
         return res.status(400).json({
           success: false,
           error: 'Invalid Figma URL format. Expected format: https://figma.com/design/FILE_ID or https://figma.com/file/FILE_ID'

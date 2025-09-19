@@ -71,7 +71,16 @@ export const ServerStartup: React.FC<ServerStartupProps> = ({ onServerReady }) =
     checkServerHealth().then(isRunning => {
       if (isRunning) {
         setServerStatus('running');
-        onServerReady();
+        // Always show terminal UI for better UX, even when server is already running
+        setShowTerminal(true);
+        // Keep terminal visible longer to show startup sequence
+        setTimeout(() => {
+          setShowTerminal(false);
+          onServerReady();
+        }, 3500); // Show terminal for 3.5 seconds
+      } else {
+        // Server not running, show stopped state initially
+        setServerStatus('stopped');
       }
     });
   }, [onServerReady]);
@@ -89,8 +98,8 @@ export const ServerStartup: React.FC<ServerStartupProps> = ({ onServerReady }) =
     }
   };
 
-  if (serverStatus === 'running') {
-    return null; // Don't show this component when server is running
+  if (serverStatus === 'running' && !showTerminal) {
+    return null; // Only hide when server is running AND terminal is not showing
   }
 
   return (
@@ -99,7 +108,11 @@ export const ServerStartup: React.FC<ServerStartupProps> = ({ onServerReady }) =
         <TerminalProgress 
           isVisible={showTerminal} 
           onComplete={() => {
-            // Terminal will auto-hide via the startServer timeout
+            // Auto-transition to main app after terminal completes
+            setTimeout(() => {
+              setShowTerminal(false);
+              onServerReady();
+            }, 1500);
           }} 
         />
       ) : (

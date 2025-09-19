@@ -14,6 +14,7 @@ import {
   GlobeAltIcon
 } from '@heroicons/react/24/outline'
 import { checkServerHealth } from '../services/serverStatus'
+import { getApiBaseUrl } from '../config/ports'
 import ServerStatus from '../components/ui/ServerStatus'
 import MCPStatus from '../components/ui/MCPStatus'
 import FigmaApiSettings from '../components/forms/FigmaApiSettings'
@@ -72,7 +73,7 @@ interface SettingsForm {
 const SETTINGS_PLACEHOLDERS = {
   figmaToken: 'figd_...',
   webhookUrl: 'https://hooks.slack.com/services/...',
-  mcpServerUrl: 'http://127.0.0.1:3845',
+  mcpServerUrl: 'http://127.0.0.1:3845/mcp',
   searchReports: 'Search reports by name, date, or status...'
 }
 
@@ -96,8 +97,8 @@ export default function Settings() {
       figmaPersonalAccessToken: '',
       defaultFigmaExportFormat: 'svg',
       figmaExportScale: 2,
-      mcpConnectionMethod: 'none',
-      mcpServerUrl: 'http://127.0.0.1:3845',
+      mcpConnectionMethod: 'direct_api',
+      mcpServerUrl: 'http://127.0.0.1:3845/mcp',
       mcpEndpoint: '/sse',
       mcpToolsEnvironment: 'auto',
       defaultViewport: {
@@ -211,7 +212,8 @@ export default function Settings() {
         figmaPersonalAccessToken: formData.figmaPersonalAccessToken
       };
 
-      const response = await fetch('/api/settings/test-connection', {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/mcp/test-connection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -289,8 +291,7 @@ export default function Settings() {
 
   const tabs = [
     { id: 'general', name: 'General', icon: CogIcon },
-    { id: 'figma', name: 'Figma', icon: DocumentTextIcon },
-    { id: 'mcp', name: 'MCP Integration', icon: ServerIcon },
+    { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
     { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
     { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
     { id: 'notifications', name: 'Notifications', icon: BellIcon },
@@ -346,7 +347,7 @@ export default function Settings() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="section-standard">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-6">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -452,204 +453,264 @@ export default function Settings() {
             </TabsContent>
 
             <TabsContent value="figma">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Figma API Settings</CardTitle>
-                  <CardDescription>
-                    Configure your Figma API integration for accessing design files
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <Controller
-                    name="figmaPersonalAccessToken"
-                    control={control}
-                    render={({ field }) => (
-                      <FigmaApiSettings
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                      />
-                    )}
-                  />
-
-                  <div className="layout-grid-forms">
-                    <div className="space-y-2">
-                      <Label htmlFor="defaultFigmaExportFormat">Default Export Format</Label>
-                      <Controller
-                        name="defaultFigmaExportFormat"
-                        control={control}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger id="defaultFigmaExportFormat">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="svg">SVG</SelectItem>
-                              <SelectItem value="png">PNG</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="figmaExportScale">PNG Export Scale</Label>
-                      <Controller
-                        name="figmaExportScale"
-                        control={control}
-                        render={({ field }) => (
-                          <Select value={field.value.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
-                            <SelectTrigger id="figmaExportScale">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1x</SelectItem>
-                              <SelectItem value="2">2x</SelectItem>
-                              <SelectItem value="3">3x</SelectItem>
-                              <SelectItem value="4">4x</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-              {/* MCP Integration Settings */}
-              {activeTab === 'mcp' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-foreground mb-6">MCP Integration</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Configure how the application connects to Figma using Model Context Protocol (MCP) or direct API access.
-                  </p>
-                  
-                  {/* MCP Status Component */}
-                  <div className="mb-6">
-                    <MCPStatus showDetails={true} />
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Connection Method
-                      </label>
+              <div className="space-y-6">
+                {/* Figma API Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Figma API Configuration</CardTitle>
+                    <CardDescription>
+                      Configure your Figma API integration and connection method
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Connection Method Selection */}
+                    <div className="space-y-4">
+                      <Label htmlFor="mcpConnectionMethod">Connection Method</Label>
                       <Controller
                         name="mcpConnectionMethod"
                         control={control}
                         render={({ field }) => (
-                          <select {...field} className="input-field">
-                            <option value="none">No Connection</option>
-                            <option value="api">Direct Figma API</option>
-                            <option value="mcp-server">MCP Server (Advanced)</option>
-                            <option value="mcp-tools">MCP Tools (Expert)</option>
-                          </select>
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger id="mcpConnectionMethod">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">No Connection</SelectItem>
+                              <SelectItem value="direct_api">Direct Figma API</SelectItem>
+                              <SelectItem value="mcp_server">MCP Server (Advanced)</SelectItem>
+                              <SelectItem value="mcp_tools">MCP Tools (Expert)</SelectItem>
+                            </SelectContent>
+                          </Select>
                         )}
                       />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Choose how to connect to Figma. API is recommended for most users.
+                      <p className="text-xs text-muted-foreground">
+                        Choose how to connect to Figma. Direct API is recommended for most users.
                       </p>
                     </div>
 
-                    {/* MCP Server Configuration - Conditional */}
-                    <Controller
-                      name="mcpConnectionMethod"
-                      control={control}
-                      render={({ field: methodField }) => (
-                        <div className="space-y-4">
-                          {(methodField.value === 'mcp-server') && (
-                            <div className="layout-grid-forms">
-                              <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                  MCP Server URL
-                                </label>
-                                <Controller
-                                  name="mcpServerUrl"
-                                  control={control}
-                                  render={({ field }) => (
-                                    <input
-                                      {...field}
-                                      type="url"
-                                      placeholder={SETTINGS_PLACEHOLDERS.mcpServerUrl}
-                                      className="input-field"
-                                    />
-                                  )}
-                                />
-                              </div>
+                    {/* MCP Status */}
+                    <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+                      <MCPStatus showDetails={true} />
+                    </div>
 
-                              <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">
-                                  Endpoint Path
-                                </label>
-                                <Controller
-                                  name="mcpEndpoint"
-                                  control={control}
-                                  render={({ field }) => (
-                                    <input
-                                      {...field}
-                                      type="text"
-                                      placeholder="/sse"
-                                      className="input-field"
-                                    />
-                                  )}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {(methodField.value === 'mcp-tools') && (
-                            <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">
-                                MCP Tools Environment
-                              </label>
-                              <Controller
-                                name="mcpToolsEnvironment"
-                                control={control}
-                                render={({ field }) => (
-                                  <select {...field} className="input-field">
-                                    <option value="auto">Auto-detect</option>
-                                    <option value="global">Global MCP Tools</option>
-                                    <option value="local">Local Installation</option>
-                                  </select>
-                                )}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    />
-
-                    {/* Connection Method Info */}
+                    {/* Connection Method Info Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-accent/10 p-4 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-2">🔑 Direct API</h4>
+                      <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                        <h4 className="font-medium text-blue-900 mb-2 flex items-center">
+                          🔑 Direct API
+                        </h4>
                         <p className="text-sm text-blue-700">
                           Uses your personal Figma access token. Simple and reliable for most use cases.
                         </p>
                       </div>
                       
-                      <div className="bg-secondary/10 p-4 rounded-lg">
-                        <h4 className="font-medium text-secondary-foreground mb-2">🖥️ MCP Server</h4>
-                        <p className="text-sm text-secondary-foreground/80">
+                      <div className="p-4 border rounded-lg bg-gray-50 border-gray-200">
+                        <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                          🖥️ MCP Server
+                        </h4>
+                        <p className="text-sm text-gray-700">
                           Connects to Figma Desktop App's MCP server. Requires server to be running.
                         </p>
                       </div>
                       
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-purple-900 mb-2">🔧 MCP Tools</h4>
+                      <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
+                        <h4 className="font-medium text-purple-900 mb-2 flex items-center">
+                          🔧 MCP Tools
+                        </h4>
                         <p className="text-sm text-purple-700">
                           Uses third-party MCP tools. For advanced users with custom MCP setups.
                         </p>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    {/* Test Connection Button */}
-                    <div className="flex space-x-4">
+                {/* API Token Settings (shown for direct_api method) */}
+                <Controller
+                  name="mcpConnectionMethod"
+                  control={control}
+                  render={({ field: methodField }) => (
+                    methodField.value === 'direct_api' && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Figma API Token</CardTitle>
+                          <CardDescription>
+                            Enter your personal Figma access token for direct API access
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <Controller
+                            name="figmaPersonalAccessToken"
+                            control={control}
+                            render={({ field }) => (
+                              <FigmaApiSettings
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                              />
+                            )}
+                          />
+                        </CardContent>
+                      </Card>
+                    )
+                  )}
+                />
+
+                {/* MCP Server Settings (shown for mcp_server method) */}
+                <Controller
+                  name="mcpConnectionMethod"
+                  control={control}
+                  render={({ field: methodField }) => (
+                    methodField.value === 'mcp_server' && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>MCP Server Configuration</CardTitle>
+                          <CardDescription>
+                            Configure connection to your MCP server
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="mcpServerUrl">MCP Server URL</Label>
+                              <Controller
+                                name="mcpServerUrl"
+                                control={control}
+                                render={({ field }) => (
+                                  <Input
+                                    {...field}
+                                    id="mcpServerUrl"
+                                    type="url"
+                                    placeholder={SETTINGS_PLACEHOLDERS.mcpServerUrl}
+                                  />
+                                )}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="mcpEndpoint">Endpoint Path</Label>
+                              <Controller
+                                name="mcpEndpoint"
+                                control={control}
+                                render={({ field }) => (
+                                  <Input
+                                    {...field}
+                                    id="mcpEndpoint"
+                                    type="text"
+                                    placeholder="/sse"
+                                  />
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  )}
+                />
+
+                {/* MCP Tools Settings (shown for mcp_tools method) */}
+                <Controller
+                  name="mcpConnectionMethod"
+                  control={control}
+                  render={({ field: methodField }) => (
+                    methodField.value === 'mcp_tools' && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>MCP Tools Configuration</CardTitle>
+                          <CardDescription>
+                            Configure third-party MCP tools environment
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="mcpToolsEnvironment">MCP Tools Environment</Label>
+                            <Controller
+                              name="mcpToolsEnvironment"
+                              control={control}
+                              render={({ field }) => (
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <SelectTrigger id="mcpToolsEnvironment">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="auto">Auto-detect</SelectItem>
+                                    <SelectItem value="global">Global MCP Tools</SelectItem>
+                                    <SelectItem value="local">Local Installation</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  )}
+                />
+
+                {/* Export Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Export Settings</CardTitle>
+                    <CardDescription>
+                      Configure default export formats and scaling
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="defaultFigmaExportFormat">Default Export Format</Label>
+                        <Controller
+                          name="defaultFigmaExportFormat"
+                          control={control}
+                          render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger id="defaultFigmaExportFormat">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="svg">SVG</SelectItem>
+                                <SelectItem value="png">PNG</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="figmaExportScale">PNG Export Scale</Label>
+                        <Controller
+                          name="figmaExportScale"
+                          control={control}
+                          render={({ field }) => (
+                            <Select value={field.value.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
+                              <SelectTrigger id="figmaExportScale">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1x</SelectItem>
+                                <SelectItem value="2">2x</SelectItem>
+                                <SelectItem value="3">3x</SelectItem>
+                                <SelectItem value="4">4x</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Test Connection */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Test Connection</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Verify your Figma connection is working properly
+                        </p>
+                      </div>
                       <Controller
                         name="mcpConnectionMethod"
                         control={control}
@@ -684,9 +745,11 @@ export default function Settings() {
                         )}
                       />
                     </div>
-                  </div>
-                </motion.div>
-              )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
 
               {/* Web Scraping Settings */}
               {activeTab === 'web' && (

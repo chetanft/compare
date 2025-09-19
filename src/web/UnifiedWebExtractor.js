@@ -38,9 +38,11 @@ export class UnifiedWebExtractor {
     const isFreightTiger = url.includes('freighttiger.com');
     const defaultTimeout = isFreightTiger ? 180000 : (this.config?.timeouts?.webExtraction || 30000); // 3 minutes for FreightTiger
     const actualTimeout = options.timeout || defaultTimeout;
-    const deadlineTs = startTime + actualTimeout;
-    // Propagate absolute deadline to downstream helpers
-    options._deadlineTs = deadlineTs;
+    // Don't propagate deadline for FreightTiger - it needs flexible timeouts
+    if (!isFreightTiger) {
+      const deadlineTs = startTime + actualTimeout;
+      options._deadlineTs = deadlineTs;
+    }
     
     console.log(`⏱️ Setting extraction timeout: ${actualTimeout}ms (FreightTiger: ${isFreightTiger})`);
     
@@ -70,6 +72,9 @@ export class UnifiedWebExtractor {
         }
       });
 
+      // CRITICAL: Mark page as active immediately to prevent cleanup race condition
+      this.browserPool.markPageActive(pageId);
+
       // Apply lightweight stealth to reduce automation detection
       await this.applyStealth(page);
 
@@ -85,14 +90,13 @@ export class UnifiedWebExtractor {
         console.log('🚛 Configuring for FreightTiger - allowing all resources (no interception)');
       }
 
-      // Track extraction and mark page as active
+      // Track extraction (page already marked active above)
       this.activeExtractions.set(extractionId, { 
         pageId, 
         controller, 
         startTime, 
         url 
       });
-      this.browserPool.markPageActive(pageId);
 
       // Track extraction in resource manager
       this.resourceManager.track(extractionId, controller, 'extraction', {
@@ -151,10 +155,9 @@ export class UnifiedWebExtractor {
       if (options.authentication) {
         if (url.includes('freighttiger.com')) {
           console.log('🚛 Using FreightTiger-specific authentication flow');
-          await Promise.race([
-            this.handleFreightTigerAuthentication(page, options.authentication, url),
-            abortPromise
-          ]);
+          // FreightTiger authentication can take a long time due to complex login flow
+          // Don't abort it with the timeout - let it complete naturally
+          await this.handleFreightTigerAuthentication(page, options.authentication, url);
         } else {
           await Promise.race([
             this.handleAuthentication(page, options.authentication),
@@ -326,11 +329,17 @@ export class UnifiedWebExtractor {
   async navigateToPage(page, url, options) {
     const maxRetries = 3;
     const baseTimeout = Math.max(this.config?.timeouts?.webExtraction || 30000, 45000);
-    const deadlineTs = options._deadlineTs;
-    const timeLeft = () => (deadlineTs ? Math.max(2000, deadlineTs - Date.now() - 500) : baseTimeout);
-    const mkTimeout = () => Math.min(baseTimeout, timeLeft());
-
     const isFreightTiger = url.includes('freighttiger.com');
+    // For FreightTiger, use fixed timeouts; for others, use deadline-aware timeouts
+    let mkTimeout;
+    if (isFreightTiger) {
+      mkTimeout = () => baseTimeout;
+    } else {
+      const deadlineTs = options._deadlineTs;
+      const timeLeft = () => (deadlineTs ? Math.max(2000, deadlineTs - Date.now() - 500) : baseTimeout);
+      mkTimeout = () => Math.min(baseTimeout, timeLeft());
+    }
+
     const strategies = isFreightTiger
       ? [
           { waitUntil: 'domcontentloaded', timeout: mkTimeout() },
@@ -565,7 +574,7 @@ export class UnifiedWebExtractor {
             const field = document.querySelector(sel);
             if (field) field.value = '';
           }, usernameField) : page.evaluate((sel) => { const field = document.querySelector(sel); if (field) field.value = ''; }, usernameField));
-          await (loginCtx.type ? loginCtx.type(usernameField, auth.username, { delay: 100 }) : page.type(usernameField, auth.username, { delay: 100 }));
+          await (loginCtx.type ? loginCtx.type(usernameField, String(auth.credentials?.username || auth.username || ''), { delay: 100 }) : page.type(usernameField, String(auth.credentials?.username || auth.username || ''), { delay: 100 }));
           console.log('✅ Username filled successfully');
         } catch (e) {
           console.log('⚠️ Failed to fill username field:', e.message);
@@ -624,7 +633,7 @@ export class UnifiedWebExtractor {
             const field = document.querySelector(sel);
             if (field) field.value = '';
           }, passwordField) : page.evaluate((sel) => { const field = document.querySelector(sel); if (field) field.value = ''; }, passwordField));
-          await (loginCtx.type ? loginCtx.type(passwordField, auth.password, { delay: 100 }) : page.type(passwordField, auth.password, { delay: 100 }));
+          await (loginCtx.type ? loginCtx.type(passwordField, String(auth.credentials?.password || auth.password || ''), { delay: 100 }) : page.type(passwordField, String(auth.credentials?.password || auth.password || ''), { delay: 100 }));
           console.log('✅ Password filled successfully');
         } catch (e) {
           console.log('⚠️ Failed to fill password field:', e.message);
@@ -1099,12 +1108,10 @@ export class UnifiedWebExtractor {
   async waitForPageStability(page, options) {
     // Increase timeout for FreightTiger due to complex SystemJS loading
     const isFreightTiger = page.url().includes('freighttiger.com');
-    // For JS-heavy apps, use short stability waits and rely on content heuristics
-    const defaultStabilityTimeout = isFreightTiger ? 12000 : 5000; // 12s for FT, 5s others
-    const stabilityTimeout = Math.min(
-      options.stabilityTimeout || defaultStabilityTimeout,
-      options._deadlineTs ? Math.max(2000, options._deadlineTs - Date.now() - 1000) : defaultStabilityTimeout
-    );
+    // FreightTiger needs longer stability timeout due to complex SystemJS loading
+    const defaultStabilityTimeout = isFreightTiger ? 30000 : 5000; // 30s for FreightTiger, 5s for others
+    // For FreightTiger, always use the longer timeout regardless of passed options
+    const stabilityTimeout = isFreightTiger ? 30000 : (options.stabilityTimeout || defaultStabilityTimeout);
     
     console.log(`⏱️ Using stability timeout: ${stabilityTimeout}ms (FreightTiger: ${isFreightTiger})`);
     

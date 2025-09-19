@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import ComparisonForm from '../components/forms/ComparisonForm'
 import ProgressTracker from '../components/ui/ProgressTracker'
 import { ComparisonResult } from '../types'
-import { DocumentTextIcon, EyeIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline'
 import { getApiBaseUrl } from '../utils/environment'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,30 +15,7 @@ export default function NewComparison() {
   const [showProgress, setShowProgress] = useState(false)
   const [result, setResult] = useState<ComparisonResult | null>(null)
   const [reportUrl, setReportUrl] = useState<string | null>(null)
-  const [recentReports, setRecentReports] = useState<string[]>([])
   const navigate = useNavigate()
-
-  // Load recent reports on component mount
-  useEffect(() => {
-    const loadRecentReports = async () => {
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/api/reports/list`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success && data.reports) {
-            // Get the 5 most recent HTML reports
-            const htmlReports = data.reports
-              .filter((report: any) => report.name.endsWith('.html'))
-              .slice(0, 5)
-            setRecentReports(htmlReports)
-          }
-        }
-      } catch (error) {
-        console.log('Could not load recent reports:', error)
-      }
-    }
-    loadRecentReports()
-  }, [])
 
   const handleComparisonStart = (comparisonId: string) => {
     setActiveComparison(comparisonId)
@@ -90,24 +67,6 @@ export default function NewComparison() {
   }
 
   // Function to open report in new tab
-  const openReportInNewTab = (url: string) => {
-    try {
-      window.open(url, '_blank');
-    } catch (error) {
-      console.error('Failed to open report:', error);
-    }
-  }
-
-  // Format report filename for display
-  const formatReportName = (filename: string) => {
-    const timestamp = filename.replace('comparison-', '').replace('.html', '')
-    try {
-      const date = new Date(timestamp.replace(/T/, ' ').replace(/-/g, ':'))
-      return date.toLocaleString()
-    } catch {
-      return filename.replace('comparison-', '').replace('.html', '')
-    }
-  }
 
   if (result) {
     return (
@@ -143,7 +102,7 @@ export default function NewComparison() {
           <div className="layout-grid-data mb-8">
             <div className="card text-center">
               <div className="text-2xl font-bold text-blue-600 mb-1">
-                {result.figmaData?.componentCount || result.figmaData?.componentsCount || 0}
+                {result.extractionDetails?.figma?.componentCount || result.figmaData?.componentCount || result.figmaData?.metadata?.componentCount || result.figmaData?.componentsCount || 0}
               </div>
               <div className="text-sm text-muted-foreground">Figma Components</div>
             </div>
@@ -299,87 +258,33 @@ export default function NewComparison() {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-8"
       >
-        <div className="grid-standard-4 space-standard-xl">
-          {/* Main Form */}
-          <div className="lg:col-span-3">
-            {!showProgress ? (
-              <ComparisonForm onComparisonStart={handleComparisonStart} onSuccess={handleSuccess} />
-            ) : (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                                      <Button
-                      onClick={() => {
-                        setShowProgress(false)
-                        setActiveComparison(null)
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                </div>
-                
-                {activeComparison && (
-                  <ProgressTracker
-                    comparisonId={activeComparison}
-                    onComplete={handleComparisonComplete}
-                    onError={handleComparisonError}
-                  />
-                )}
+        <div className="max-w-4xl mx-auto">
+          {!showProgress ? (
+            <ComparisonForm onComparisonStart={handleComparisonStart} onSuccess={handleSuccess} />
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <Button
+                  onClick={() => {
+                    setShowProgress(false)
+                    setActiveComparison(null)
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  Cancel
+                </Button>
               </div>
-            )}
-          </div>
-
-          {/* Recent Reports Sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <ClockIcon className="w-5 h-5 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">Recent Reports</h3>
-                </div>
               
-              {recentReports.length > 0 ? (
-                <div className="space-y-2">
-                  {recentReports.map((report: any, index) => (
-                    <motion.div
-                      key={report.name}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Button
-                        onClick={() => openReportInNewTab(`${getApiBaseUrl()}/reports/${report.name}`)}
-                        variant="outline"
-                        className="w-full h-auto p-3 justify-start"
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">
-                              Comparison Report
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {formatReportName(report.name)}
-                            </div>
-                          </div>
-                          <EyeIcon className="w-4 h-4 text-muted-foreground flex-shrink-0 ml-2" />
-                        </div>
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <DocumentTextIcon className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No reports yet</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">
-                    Run a comparison to generate your first report
-                  </p>
-                </div>
+              {activeComparison && (
+                <ProgressTracker
+                  comparisonId={activeComparison}
+                  onComplete={handleComparisonComplete}
+                  onError={handleComparisonError}
+                />
               )}
-              </CardContent>
-            </Card>
-          </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

@@ -306,34 +306,8 @@ export interface ExtractionDetails {
   };
 }
 
-// Extract Figma data
-export const extractFigmaData = async (figmaUrl: string): Promise<FigmaData> => {
-  try {
-    console.log('Extracting Figma data from URL:', figmaUrl);
-    
-    // Use the appropriate API endpoint based on environment
-    const endpoint = '/api/figma/extract';
-    
-    const response = await apiService.post<ApiResponse<FigmaData>>(endpoint, { figmaUrl });
-    
-    if (!response.success) {
-      throw new Error(response.error || 'Failed to extract Figma data');
-    }
-    
-    return response.data as FigmaData;
-  } catch (error) {
-    console.error('Error extracting Figma data:', error);
-    
-    // Provide more helpful error messages
-    if ((error as ApiError).status === 403) {
-      throw new Error('Access denied to Figma file. Please check your API token permissions.');
-    } else if ((error as ApiError).status === 404) {
-      throw new Error('Figma file not found. Please check the URL.');
-    }
-    
-    throw error;
-  }
-};
+// REMOVED: extractFigmaData function - unused legacy code that called old /api/figma/extract endpoint
+// All Figma extraction now uses extractFigmaOnly() -> /api/figma-only/extract (unified endpoint)
 
 // Extract Web data
 export const extractWebData = async (url: string): Promise<WebData> => {
@@ -517,6 +491,8 @@ export interface FigmaOnlyResponse {
     components: any[];
     colors: any[];
     typography: any[];
+    spacing?: any[];
+    borderRadius?: any[];
     styles?: any;
     fileName: string;
     fileId: string;

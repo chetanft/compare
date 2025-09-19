@@ -6,12 +6,14 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ArrowsRightLeftIcon,
-  CameraIcon
+  CameraIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import ServerControlButton from '../ui/ServerControlButton'
 
 interface SidebarProps {
   isOpen: boolean
@@ -22,6 +24,7 @@ const navigation = [
   { name: 'New Comparison', href: '/new-comparison', icon: BeakerIcon },
   { name: 'Screenshot Compare', href: '/screenshot-comparison', icon: CameraIcon },
   { name: 'Single Source', href: '/single-source', icon: ArrowsRightLeftIcon },
+  { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ]
 
@@ -104,6 +107,24 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
           )
         })}
       </nav>
+
+      {/* Server Control Section */}
+      <div className="p-4 border-t border-gray-200">
+        {isOpen ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <ServerControlButton variant="default" className="mb-4" />
+          </motion.div>
+        ) : (
+          <div className="flex justify-center">
+            <ServerControlButton variant="icon-only" />
+          </div>
+        )}
+      </div>
 
       {/* Footer */}
       {isOpen && (

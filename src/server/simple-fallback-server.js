@@ -7,11 +7,12 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { APP_SERVER_PORT } from '../config/app-constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function startSimpleServer(port = 3001) {
+export async function startSimpleServer(port = APP_SERVER_PORT) {
   const app = express();
   
   // Basic middleware
@@ -37,6 +38,15 @@ export async function startSimpleServer(port = 3001) {
       timestamp: new Date().toISOString()
     });
   });
+
+  // Server Control Routes
+  try {
+    const { default: serverControlRoutes } = await import('../api/routes/server-control.js');
+    app.use('/api/server', serverControlRoutes);
+    console.log('✅ Server control routes registered in fallback server');
+  } catch (error) {
+    console.warn('⚠️ Failed to load server control routes:', error.message);
+  }
   
   // Serve static files
   const staticPath = path.join(__dirname, '../../frontend/dist');

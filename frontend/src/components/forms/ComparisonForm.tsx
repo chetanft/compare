@@ -73,6 +73,15 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const comparisonMutation = useMutation({
     mutationFn: async (data: ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
       try {
+        // Initialize progress stages
+        setProgressStages([
+          { stage: 'validation', label: 'Validating URLs', progress: 0 },
+          { stage: 'figma-extraction', label: 'Extracting Figma Data', progress: 0 },
+          { stage: 'web-extraction', label: 'Extracting Web Data', progress: 0 },
+          { stage: 'comparison', label: 'Comparing Data', progress: 0 }
+        ]);
+        setCurrentStage('validation');
+
         // Parse and validate Figma URL
         let figmaUrl = data.figmaUrl;
         let nodeId: string | null = null;
@@ -126,8 +135,23 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         
         console.log('🚀 Sending comparison request:', payload);
         
+        // Update progress: validation complete
+        setProgressStages(prev => prev.map(stage => 
+          stage.stage === 'validation' 
+            ? { ...stage, progress: 100 }
+            : stage
+        ));
+        setCurrentStage('figma-extraction');
+        
         // Use the compareUrls function from the API service
         const result = await compareUrls(payload);
+        
+        // Update progress: extraction complete
+        setProgressStages(prev => prev.map(stage => 
+          stage.stage === 'comparison' 
+            ? { ...stage, progress: 100 }
+            : stage
+        ));
         
         // The API now returns the comparison result directly
         const comparisonResult = result as ComparisonResult;

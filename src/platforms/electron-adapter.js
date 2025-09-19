@@ -5,7 +5,8 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { app } from 'electron';
+import electron from 'electron';
+const { app } = electron;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -97,10 +98,10 @@ export class ElectronAdapter {
   getServerConfig() {
     return {
       host: '127.0.0.1', // Local only for security
-      port: 3007, // Fixed port for Electron
+      port: 3847, // Unified port for consistency across platforms
       staticFiles: true,
       cors: {
-        origin: ['http://localhost:3007', 'file://', 'app://'], // Electron-specific origins
+        origin: ['http://localhost:3847', 'file://', 'app://'], // Updated for unified port
         credentials: true
       },
       rateLimit: {

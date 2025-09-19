@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// Default API port - Random safe port to avoid conflicts
-const API_PORT = 47832;
+// Fixed API port - like Figma's 3845 for consistency
+const API_PORT = 3847;
 
 // printConfig function to log configuration
 function printConfig(config: any) {
@@ -105,6 +105,8 @@ export default defineConfig({
     host: true
   },
   define: {
-    'process.env': {}
+    'process.env': {},
+    '__SERVER_PORT__': API_PORT,
+    'import.meta.env.VITE_SERVER_PORT': `"${API_PORT}"`
   }
 }); 

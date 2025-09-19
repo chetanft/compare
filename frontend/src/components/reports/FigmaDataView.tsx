@@ -120,8 +120,8 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   const components = data.data?.components || [];
   const styles = data.data?.styles || [];
   
-  // Calculate stats
-  const totalComponents = components.length;
+  // Calculate stats - Use recursive count from API response, fallback to array length
+  const totalComponents = data.componentCount || data.metadata?.componentCount || components.length;
   const totalColors = colors.length;
   const totalTypography = typography.length;
   const totalStyles = styles.length;
@@ -614,7 +614,9 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Figma Design</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{data.data?.name || 'Unknown'}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.data?.name || data.metadata?.fileName || data.data?.fileName || 'Unknown'}
+                </p>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -632,13 +634,16 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
                     Design Tokens
                   </h4>
                   <p className="text-2xl font-semibold">
-                    {(
-                      (totalColors) +
-                      (totalTypography) +
-                      (data.data?.tokens?.spacing?.length || 0) +
-                      (data.data?.tokens?.borderRadius?.length || 0) +
-                      (data.data?.tokens?.shadows?.length || 0)
-                    )}
+                    {(() => {
+                      const colorCount = totalColors || data.metadata?.colorCount || 0;
+                      const typographyCount = totalTypography || data.metadata?.typographyCount || 0;
+                      const spacingCount = data.data?.tokens?.spacing?.length || 0;
+                      const borderRadiusCount = data.data?.tokens?.borderRadius?.length || 0;
+                      const shadowsCount = data.data?.tokens?.shadows?.length || 0;
+                      const totalTokens = colorCount + typographyCount + spacingCount + borderRadiusCount + shadowsCount;
+                      
+                      return totalTokens > 0 ? totalTokens : 'None extracted';
+                    })()}
                   </p>
                 </div>
               </div>

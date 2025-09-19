@@ -45,7 +45,7 @@ export async function startUnifiedServer() {
       } else {
         // Fallback to simple server for web
         const { startSimpleServer } = await import('./simple-fallback-server.js');
-        return await startSimpleServer();
+        return await startSimpleServer(serverConfig.port);
       }
     } catch (fallbackError) {
       logger.error('❌ Fallback server also failed:', fallbackError);

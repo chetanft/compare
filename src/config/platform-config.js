@@ -24,8 +24,8 @@ export class PlatformConfig {
       return 'electron';
     }
     
-    // Check if macOS
-    if (process.platform === 'darwin' && process.env.NODE_ENV !== 'test') {
+    // Check if explicitly set to macOS mode (for native macOS app)
+    if (process.env.PLATFORM_MODE === 'macos') {
       return 'macos';
     }
     
@@ -56,10 +56,10 @@ export class PlatformConfig {
     const platformSpecific = {
       web: {
         server: {
-          port: 3001, // Web app uses port 3001
+          port: 3847, // Web app uses fixed port 3847
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3000', 'http://localhost:3001'],
+            origin: ['http://localhost:3000', 'http://localhost:3847'],
             credentials: true
           }
         },
@@ -71,10 +71,10 @@ export class PlatformConfig {
       
       macos: {
         server: {
-          port: 3007, // macOS app uses port 3007  
+          port: 3847, // macOS app uses same fixed port  
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3007'],
+            origin: ['http://localhost:3847'],
             credentials: true
           }
         },
@@ -87,10 +87,10 @@ export class PlatformConfig {
       
       electron: {
         server: {
-          port: 3007,
+          port: 3847,
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3007'],
+            origin: ['http://localhost:3847'],
             credentials: true
           }
         },

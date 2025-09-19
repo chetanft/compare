@@ -334,12 +334,14 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
               </div>
             </div>
             
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
-              <p className="text-sm text-yellow-700">
-                <InformationCircleIcon className="inline-block w-5 h-5 mr-1 -mt-0.5" />
-                Make sure your Figma file is accessible with your API token.
-              </p>
-            </div>
+            {!figmaMutation.isSuccess && (
+              <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+                <p className="text-sm text-yellow-700">
+                  <InformationCircleIcon className="inline-block w-5 h-5 mr-1 -mt-0.5" />
+                  Make sure your Figma file is accessible with your API token.
+                </p>
+              </div>
+            )}
           </div>
         )}
         

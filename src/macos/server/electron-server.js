@@ -21,14 +21,16 @@ import { ElectronAdapter } from '../../platforms/electron-adapter.js';
 
 // Unified configuration
 import { UnifiedConfig } from '../../shared/config/unified-config.js';
+import { APP_SERVER_PORT } from '../../config/app-constants.js';
 
 // Unified handlers
 import { FigmaHandler } from '../../shared/api/handlers/figma-handler.js';
 
-// Unified services
-import { ScreenshotService } from '../../shared/services/ScreenshotService.js';
+// Unified services (ScreenshotService loaded conditionally to avoid Sharp startup issues)
+import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
+import FigmaMCPClient from '../../figma/mcpClient.js';
 
-// Services (lazy-loaded)
+// Services (lazy-loaded) - Updated to match web app architecture
 let webExtractor = null;
 let comparisonService = null;
 let screenshotService = null;
@@ -36,6 +38,8 @@ let screenshotComparisonService = null;
 let performanceMonitor = null;
 let circuitBreakerRegistry = null;
 let enhancedReportGenerator = null;
+let serviceManager = null;
+let figmaClient = null;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +50,7 @@ export class ElectronExpressServer {
     this.server = null;
     this.platformAdapter = new ElectronAdapter();
     this.config = new UnifiedConfig(this.platformAdapter);
-    this.port = 3007;
+    this.port = APP_SERVER_PORT;
   }
 
   /**
@@ -66,8 +70,15 @@ export class ElectronExpressServer {
       // Create Express app
       this.app = express();
 
-    // Initialize screenshot service
-    screenshotService = new ScreenshotService(this.platformAdapter, this.config);
+    // Initialize screenshot service (lazy loading to avoid Sharp startup issues)
+    try {
+      const { ScreenshotService } = await import('../../shared/services/ScreenshotService.js');
+      screenshotService = new ScreenshotService(this.platformAdapter, this.config);
+      console.log('✅ Screenshot service initialized');
+    } catch (error) {
+      console.warn('⚠️ Screenshot service not available (Sharp module issue):', error.message);
+      screenshotService = null;
+    }
     
     // Initialize screenshot comparison service
     try {
@@ -312,6 +323,25 @@ export class ElectronExpressServer {
   }
 
   /**
+   * Setup MCP routes
+   */
+  async setupMCPRoutes() {
+    try {
+      // Import and register MCP routes
+      const { default: mcpRoutes } = await import('../../api/routes/mcp-routes.js');
+      this.app.use('/api/mcp', mcpRoutes);
+      console.log('✅ MCP routes registered');
+      
+      // Import and register MCP test routes
+      const { default: mcpTestRoutes } = await import('../../api/routes/mcp-test-routes.js');
+      this.app.use('/api/mcp', mcpTestRoutes);
+      console.log('✅ MCP test routes registered');
+    } catch (error) {
+      console.warn('⚠️ Failed to load MCP routes:', error.message);
+    }
+  }
+
+  /**
    * Configure API routes
    */
   configureRoutes() {
@@ -336,6 +366,9 @@ export class ElectronExpressServer {
         services: this.getServicesStatus()
       });
     });
+
+    // MCP Routes
+    this.setupMCPRoutes();
 
     // Settings endpoints
     this.app.get('/api/settings', (req, res) => {
@@ -416,18 +449,91 @@ export class ElectronExpressServer {
       await FigmaHandler.testEndpoint(req, res, this.config);
     });
 
-    // MCP status endpoint (frontend compatibility)
-    this.app.get('/api/mcp/status', (req, res) => {
-      res.json({
-        success: true,
-        data: {
+    // MCP status endpoint (frontend compatibility) - Now uses same logic as web app
+    this.app.get('/api/mcp/status', async (req, res) => {
+      try {
+        // Use imported MCP client directly (matches web app architecture)
+        const mcpClient = new FigmaMCPClient();
+        
+        // Test connection to get current status
+        const isConnected = await mcpClient.connect();
+        
+        res.json({
+          success: true,
+          status: isConnected ? 'connected' : 'disconnected',
+          available: isConnected,
+          message: isConnected 
+            ? 'Figma Dev Mode MCP Server connected successfully'
+            : 'Figma Dev Mode MCP Server not available',
+          data: {
+            connected: isConnected,
+            serverUrl: 'http://127.0.0.1:3845/mcp',
+            tools: isConnected ? ['get_code', 'get_metadata', 'get_variable_defs'] : [],
+            toolsCount: isConnected ? 3 : 0,
+            platform: 'electron'
+          }
+        });
+      } catch (error) {
+        console.error('❌ MCP status error:', error);
+        res.json({
+          success: false,
+          status: 'error',
           available: false,
-          serverUrl: null,
-          status: 'unavailable',
-          message: 'MCP server not configured in macOS app',
+          message: `MCP connection failed: ${error.message}`,
+          error: error.message,
           platform: 'electron'
+        });
+      }
+    });
+
+    // MCP test connection endpoint (frontend compatibility)
+    this.app.post('/api/mcp/test-connection', async (req, res) => {
+      try {
+        const { method, serverUrl, endpoint, environment } = req.body;
+        
+        console.log('🔍 Testing MCP connection (Electron):', { method, serverUrl, endpoint });
+        
+        // For Electron, we primarily use the direct MCP connection
+        // Test the actual MCP client connection
+        const mcpClient = new FigmaMCPClient();
+        const isConnected = await mcpClient.connect();
+        
+        if (isConnected) {
+          // Test if we can actually use MCP tools
+          try {
+            await mcpClient.getMetadata();
+            res.json({
+              success: true,
+              message: 'MCP connection test successful! Figma Dev Mode MCP Server is working.',
+              data: {
+                method: 'figma_dev_mode_mcp',
+                serverUrl: 'http://127.0.0.1:3845/mcp',
+                tools: ['get_code', 'get_metadata', 'get_variable_defs'],
+                platform: 'electron'
+              }
+            });
+          } catch (toolError) {
+            res.json({
+              success: false,
+              error: `MCP connection established but tools failed: ${toolError.message}`,
+              details: 'Make sure you have a Figma file open and a frame selected in Figma Desktop.'
+            });
+          }
+        } else {
+          res.json({
+            success: false,
+            error: 'Cannot connect to Figma Dev Mode MCP Server',
+            details: 'Make sure Figma Desktop is running with Dev Mode enabled and MCP server is active.'
+          });
         }
-      });
+      } catch (error) {
+        console.error('❌ MCP test connection error (Electron):', error);
+        res.status(500).json({
+          success: false,
+          error: `MCP test failed: ${error.message}`,
+          platform: 'electron'
+        });
+      }
     });
 
     // Figma endpoints - Use MCP like web app
@@ -436,9 +542,8 @@ export class ElectronExpressServer {
       await this.handleFigmaExtractionViaMCP(req, res);
     });
 
-    this.app.post('/api/figma/extract', async (req, res) => {
-      await FigmaHandler.extract(req, res, this.config, null);
-    });
+    // REMOVED: Old /api/figma/extract endpoint - replaced with unified /api/figma-only/extract
+    // All Figma extraction now uses handleFigmaExtractionViaMCP for consistency
 
     this.app.get('/api/figma/metadata', async (req, res) => {
       await FigmaHandler.getFileMetadata(req, res, this.config);
@@ -636,30 +741,54 @@ export class ElectronExpressServer {
   }
 
   /**
-   * Lazy-load services to avoid startup dependency issues
+   * Enhanced service initialization with fallback - Updated to match web app architecture
    */
   async getServices() {
     if (!webExtractor || !comparisonService) {
       try {
-        // Dynamic imports to avoid loading heavy dependencies at startup
-        const UnifiedWebExtractorModule = await import('../../web/UnifiedWebExtractor.js');
-        const ComparisonServiceModule = await import('../../compare/ComparisonService.js');
-
-        // Handle both default and named exports
-        const UnifiedWebExtractor = UnifiedWebExtractorModule.default || UnifiedWebExtractorModule.UnifiedWebExtractor;
-        const ComparisonService = ComparisonServiceModule.ComparisonService || ComparisonServiceModule.default;
-
+        // Try enhanced service initialization (matches web app)
+        if (!serviceManager) {
+          try {
+            const { serviceManager: sm } = await import('../../core/ServiceManager.js');
+            serviceManager = sm;
+            
+            const initResults = await serviceManager.initializeServices(this.config.getAll());
+            if (initResults.success) {
+              console.log('✅ Enhanced service initialization successful (Electron)');
+              
+              // Get services from enhanced service manager
+              figmaClient = serviceManager.getService('mcpClient');
+              comparisonService = serviceManager.getService('comparisonEngine');
+              
+              // Initialize unified extractor
+              webExtractor = new UnifiedWebExtractor();
+              
+              return { webExtractor, comparisonService, figmaClient };
+            } else {
+              throw new Error('Enhanced initialization failed, using fallback');
+            }
+          } catch (enhancedError) {
+            console.warn('⚠️ Enhanced service initialization failed, using legacy mode:', enhancedError.message);
+          }
+        }
+        
+        // Fallback to legacy initialization (preserve existing functionality)
         webExtractor = new UnifiedWebExtractor();
-        comparisonService = new ComparisonService();
+        figmaClient = new FigmaMCPClient();
+        
+        // Import ComparisonEngine (matches web app)
+        const ComparisonEngineModule = await import('../../compare/comparisonEngine.js');
+        const ComparisonEngine = ComparisonEngineModule.default || ComparisonEngineModule.ComparisonEngine;
+        comparisonService = new ComparisonEngine();
 
-        console.log('✅ Services lazy-loaded successfully');
+        console.log('✅ Services initialized successfully (legacy mode - Electron)');
       } catch (error) {
-        console.error('❌ Failed to lazy-load services:', error);
+        console.error('❌ Failed to initialize services:', error);
         throw error;
       }
     }
 
-    return { webExtractor, comparisonService };
+    return { webExtractor, comparisonService, figmaClient };
   }
 
   /**
@@ -764,8 +893,8 @@ export class ElectronExpressServer {
       const { FigmaHandler } = await import('../../shared/api/handlers/figma-handler.js');
       const { UnifiedWebExtractor } = await import('../../web/UnifiedWebExtractor.js');
       
-      // Step 1: Extract Figma data
-      console.log('🎨 Extracting Figma data...');
+      // Step 1: Extract Figma data using our fixed unified extraction
+      console.log('🎨 Extracting Figma data using unified extractor...');
       
       // Create mock response object to capture the result
       let figmaResult = null;
@@ -774,14 +903,22 @@ export class ElectronExpressServer {
         status: (code) => ({ json: (data) => { figmaResult = { ...data, statusCode: code }; } })
       };
       
-      await FigmaHandler.extract({
-        body: { figmaUrl, lightMode: true, skipAnalysis: false }
-      }, mockRes, this.config, null);
+      // Use our fixed extraction method instead of old FigmaHandler
+      await this.handleFigmaExtractionViaMCP({
+        body: { figmaUrl, extractionMode: 'both' }
+      }, mockRes);
 
-      if (!figmaResult.success) {
+      console.log('🔍 Figma result captured:', {
+        success: figmaResult?.success,
+        hasData: !!figmaResult?.data,
+        componentCount: figmaResult?.data?.componentCount,
+        actualComponents: figmaResult?.data?.components?.length
+      });
+
+      if (!figmaResult?.success) {
         return res.status(500).json({
           success: false,
-          error: `Figma extraction failed: ${figmaResult.error}`,
+          error: `Figma extraction failed: ${figmaResult?.error || 'No result captured'}`,
           step: 'figma_extraction'
         });
       }
@@ -810,7 +947,8 @@ export class ElectronExpressServer {
       console.log('🔍 Web result structure:', Object.keys(webResult || {}));
       
       // Extract component counts from the actual data structures
-      const figmaComponents = figmaResult?.data?.nodeAnalysis || figmaResult?.nodeAnalysis || [];
+      // Use the correct field names from our unified extraction
+      const figmaComponents = figmaResult?.data?.components || [];
       const webElements = webResult?.elements || [];  // UnifiedWebExtractor returns elements directly
       
       // Get metadata from the results
@@ -1250,12 +1388,12 @@ export class ElectronExpressServer {
   }
 
   /**
-   * Handle Figma extraction via MCP (SAME AS WEB APP)
+   * Handle Figma extraction using unified extractor system
    */
   async handleFigmaExtractionViaMCP(req, res) {
     try {
-      console.log('🔄 Using MCP-based extraction (same as web app)');
-      const { figmaUrl, extractionMode = 'both' } = req.body;
+      console.log('🔄 Using unified Figma extraction system');
+      const { figmaUrl, extractionMode = 'both', preferredMethod = null } = req.body;
 
       if (!figmaUrl) {
         return res.status(400).json({
@@ -1264,79 +1402,120 @@ export class ElectronExpressServer {
         });
       }
 
-      // For now, skip MCP and use direct API (MCP server not available)
-      console.log('🔄 Using direct API (MCP server not available)');
-      
-      // Create a mock response object to capture FigmaHandler output
-      let capturedResponse = null;
-      const mockRes = {
-        json: (data) => { capturedResponse = data; },
-        status: (code) => ({ json: (data) => { capturedResponse = { ...data, statusCode: code }; } })
-      };
+      // Use unified extractor
+      const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
+      const extractor = new UnifiedFigmaExtractor(this.config);
 
-      // Call FigmaHandler and capture response
-      await FigmaHandler.extract(req, mockRes, this.config, null);
+      // Extract data using best available method
+      const extractionResult = await extractor.extract(figmaUrl, {
+        preferredMethod,
+        timeout: 30000,
+        apiKey: this.config.get('figmaApiKey')
+      });
 
-      // Transform response to match frontend expectations
-      if (capturedResponse && capturedResponse.success && capturedResponse.data) {
-        const rawData = capturedResponse.data;
-        const nodeAnalysis = rawData.nodeAnalysis || [];
-        
-        // Transform to frontend-expected structure with backward compatibility
-        const transformedData = {
-          // NEW STANDARDIZED FIELDS (preferred)
-          components: nodeAnalysis, // Standard field name
-          componentCount: nodeAnalysis.length, // Standard count field
-          
-          // EXISTING FIELDS (maintained for backward compatibility)
-          nodeAnalysis: nodeAnalysis, // Keep original field
-          
-          // Additional standardized fields
-          colors: this.extractColorsFromNodes(nodeAnalysis),
-          typography: this.extractTypographyFromNodes(nodeAnalysis),
-          styles: rawData.styles || {},
-          tokens: {
-            colors: this.extractColorsFromNodes(nodeAnalysis),
-            typography: this.extractTypographyFromNodes(nodeAnalysis),
-            spacing: [],
-            borderRadius: []
-          },
-          metadata: {
-            fileName: rawData.name || 'Unknown',
-            fileKey: fileId,
-            nodeId: nodeId,
-            extractedAt: new Date().toISOString(),
-            extractionMethod: 'figma-api',
-            
-            // STANDARDIZED COUNT FIELDS (preferred)
-            componentCount: nodeAnalysis.length, // Standard field name
-            colorCount: this.extractColorsFromNodes(nodeAnalysis).length,
-            typographyCount: this.extractTypographyFromNodes(nodeAnalysis).length,
-            
-            // LEGACY FIELDS (maintained for backward compatibility)
-            totalComponents: nodeAnalysis.length // Keep for compatibility
-          },
-          reportPath: `/api/reports/figma-${Date.now()}`
-        };
-
-        return res.json({
-          success: true,
-          data: transformedData
-        });
+      if (!extractionResult.success) {
+        throw new Error(extractionResult.error || 'Extraction failed');
       }
 
-      // If no valid response, return error
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to extract Figma data'
+      const standardizedData = extractionResult.data;
+
+      // Count all components recursively
+      const countAllComponents = (components) => {
+        let count = 0;
+        components.forEach(component => {
+          count += 1;
+          if (component.children && component.children.length > 0) {
+            count += countAllComponents(component.children);
+          }
+        });
+        return count;
+      };
+
+      const totalComponentCount = countAllComponents(standardizedData.components);
+      const actualColorCount = standardizedData.colors.length;
+      const actualTypographyCount = standardizedData.typography.length;
+
+      // Transform to expected response format with correct field mapping
+      const responseData = {
+        components: standardizedData.components,
+        componentCount: totalComponentCount, // Use actual recursive count
+        colors: standardizedData.colors,
+        typography: standardizedData.typography,
+        styles: {},
+        tokens: {
+          colors: standardizedData.colors,
+          typography: standardizedData.typography,
+          spacing: [],
+          borderRadius: []
+        },
+        // UI expects extractionMethod at root level
+        extractionMethod: standardizedData.extractionMethod,
+        metadata: {
+          fileName: standardizedData.metadata.fileName,
+          fileKey: standardizedData.fileId,
+          nodeId: standardizedData.nodeId,
+          extractedAt: standardizedData.extractedAt,
+          extractionMethod: standardizedData.extractionMethod,
+          componentCount: totalComponentCount, // Use actual count
+          colorCount: actualColorCount, // Use actual count
+          typographyCount: actualTypographyCount, // Use actual count
+          source: standardizedData.metadata.source || standardizedData.extractionMethod
+        },
+        reportPath: `/api/reports/figma-${standardizedData.extractionMethod}-${Date.now()}`
+      };
+
+      console.log('✅ Unified extraction successful:', {
+        method: standardizedData.extractionMethod,
+        components: responseData.componentCount,
+        colors: responseData.metadata.colorCount,
+        typography: responseData.metadata.typographyCount
+      });
+
+      return res.json({
+        success: true,
+        data: responseData
       });
 
     } catch (error) {
-      console.error('❌ MCP extraction failed:', error.message);
+      console.error('❌ Unified extraction failed:', error.message);
       return res.status(500).json({
         success: false,
-        error: error.message
+        error: `Extraction failed: ${error.message}`
       });
+    }
+  }
+
+  /**
+   * Parse Figma file ID from URL
+   */
+  parseFileId(url) {
+    try {
+      const urlObj = new URL(url);
+      const pathMatch = urlObj.pathname.match(/\/(?:file|design)\/([a-zA-Z0-9]+)/);
+      if (pathMatch) {
+        return pathMatch[1];
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ URL parsing error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse node ID from URL
+   */
+  parseNodeId(url) {
+    try {
+      const urlObj = new URL(url);
+      let nodeId = urlObj.searchParams.get('node-id');
+      if (nodeId) {
+        return decodeURIComponent(nodeId);
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ URL parsing error:', error);
+      return null;
     }
   }
 

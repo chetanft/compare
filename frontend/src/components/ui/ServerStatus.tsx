@@ -29,7 +29,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
       const urlObj = new URL(url);
       return urlObj.port || (urlObj.protocol === 'https:' ? '443' : '80');
     } catch {
-      return '3007'; // Default port
+      return '3847'; // APP_SERVER_PORT from config
     }
   };
   
@@ -56,10 +56,10 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
   useEffect(() => {
     if (isLoading) {
       onStatusChange?.('checking');
-    } else if (error || !data || !data.success) {
+    } else if (error || !data) {
       onStatusChange?.('offline');
     } else {
-      const isOnline = data.data.status === 'healthy' || data.data.status === 'ok' || data.data.status === 'online';
+      const isOnline = data.data?.status === 'healthy' || data.data?.status === 'ok' || data.data?.status === 'online' || data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
       onStatusChange?.(isOnline ? 'online' : 'offline');
     }
   }, [data, isLoading, error, onStatusChange]);
@@ -73,7 +73,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
     );
   }
   
-  if (error || !data || !data.success) {
+  if (error || !data) {
     return (
       <div className={`flex items-center ${className}`}>
         <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
@@ -82,7 +82,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
     );
   }
   
-  const isOnline = data.data.status === 'healthy' || data.data.status === 'ok' || data.data.status === 'online';
+  const isOnline = data.data?.status === 'healthy' || data.data?.status === 'ok' || data.data?.status === 'online' || data.status === 'healthy' || data.status === 'ok' || data.status === 'online';
   
   return (
     <div className={`flex items-center ${className}`}>
