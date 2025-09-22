@@ -14,6 +14,7 @@ import {
 import { ScreenshotComparisonResult, Discrepancy } from '../../types';
 import VisualDiffViewer from './VisualDiffViewer';
 import SmartAnalysisView from './SmartAnalysisView';
+import ColorPalette from '../ui/ColorPalette';
 
 interface ScreenshotComparisonViewProps {
   result: ScreenshotComparisonResult;
@@ -24,12 +25,13 @@ export default function ScreenshotComparisonView({
   result, 
   className = '' 
 }: ScreenshotComparisonViewProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'visual' | 'discrepancies' | 'metrics' | 'smart-analysis'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'visual' | 'colors' | 'discrepancies' | 'metrics' | 'smart-analysis'>('overview');
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<Discrepancy | null>(null);
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: InformationCircleIcon },
     { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
+    ...(result.colorPalettes ? [{ id: 'colors', name: 'Color Palettes', icon: AdjustmentsHorizontalIcon }] : []),
     { id: 'discrepancies', name: 'Discrepancies', icon: ExclamationTriangleIcon },
     { id: 'metrics', name: 'Metrics', icon: ChartBarIcon },
     ...(result.enhancedAnalysis ? [{ id: 'smart-analysis', name: 'Smart Analysis', icon: SparklesIcon }] : [])
@@ -236,6 +238,15 @@ export default function ScreenshotComparisonView({
               diffImagePath={`/api/screenshots/images/${result.id}/pixel-diff`}
               sideBySidePath={result.sideBySidePath ? `/api/screenshots/images/${result.id}/side-by-side` : undefined}
               discrepancies={result.discrepancies}
+            />
+          )}
+
+          {/* Color Palettes Tab */}
+          {activeTab === 'colors' && result.colorPalettes && (
+            <ColorPalette
+              figmaColors={result.colorPalettes.figma}
+              developedColors={result.colorPalettes.developed}
+              comparison={result.colorPalettes.comparison}
             />
           )}
 

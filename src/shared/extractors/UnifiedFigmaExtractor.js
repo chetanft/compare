@@ -124,7 +124,7 @@ export class UnifiedFigmaExtractor {
       throw new Error('Cannot connect to Figma Dev Mode MCP server');
     }
 
-    // Extract data
+    // Extract data - let MCP client handle nodeId parsing from URL
     const mcpData = await mcpClient.extractFigmaData(figmaUrl);
     
     if (!mcpData || !mcpData.metadata) {
@@ -147,7 +147,7 @@ export class UnifiedFigmaExtractor {
     }
 
     const fileId = this.parseFileId(figmaUrl);
-    const nodeId = this.parseNodeId(figmaUrl);
+    const nodeId = options.nodeId || this.parseNodeId(figmaUrl);
 
     if (!fileId) {
       throw new Error('Cannot extract file ID from Figma URL');
@@ -173,7 +173,7 @@ export class UnifiedFigmaExtractor {
    */
   async extractViaAPI(figmaUrl, options = {}) {
     const fileId = this.parseFileId(figmaUrl);
-    const nodeId = this.parseNodeId(figmaUrl);
+    const nodeId = options.nodeId || this.parseNodeId(figmaUrl);
 
     if (!fileId) {
       throw new Error('Cannot extract file ID from Figma URL');
@@ -259,7 +259,12 @@ export class UnifiedFigmaExtractor {
     try {
       const urlObj = new URL(url);
       let nodeId = urlObj.searchParams.get('node-id');
-      return nodeId ? decodeURIComponent(nodeId) : null;
+      if (nodeId) {
+        nodeId = decodeURIComponent(nodeId);
+        // Convert hyphen format (5607-29953) to colon format (5607:29953) for Figma API
+        return nodeId.replace('-', ':');
+      }
+      return null;
     } catch {
       return null;
     }

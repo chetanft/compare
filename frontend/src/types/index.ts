@@ -249,9 +249,48 @@ export interface ScreenshotComparisonResult {
   }
   discrepancies: Discrepancy[]
   enhancedAnalysis?: EnhancedAnalysis
+  colorPalettes?: {
+    figma: ColorExtraction[]
+    developed: ColorExtraction[]
+    comparison: ColorComparison
+  }
   reportPath: string
   createdAt: string
   processingTime: number
+}
+
+export interface ColorExtraction {
+  hex: string
+  rgb: { r: number; g: number; b: number }
+  count: number
+  frequency: number
+  source: string
+  location: { x: number; y: number; width: number; height: number }
+}
+
+export interface ColorComparison {
+  totalFigmaColors: number
+  totalDevelopedColors: number
+  matchedColors: Array<{
+    figmaColor: string
+    developedColor: string
+    similarity: number
+    figmaFrequency: number
+    developedFrequency: number
+  }>
+  missingColors: Array<{
+    color: string
+    frequency: number
+    closestMatch: string
+    distance: number
+  }>
+  extraColors: Array<{
+    color: string
+    frequency: number
+    closestFigmaMatch: string
+    distance: number
+  }>
+  colorSimilarity: number
 }
 
 export interface Discrepancy {

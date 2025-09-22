@@ -119,7 +119,12 @@ export class BaseDataAdapter {
     try {
       const urlObj = new URL(url);
       let nodeId = urlObj.searchParams.get('node-id');
-      return nodeId ? decodeURIComponent(nodeId) : null;
+      if (nodeId) {
+        nodeId = decodeURIComponent(nodeId);
+        // Convert hyphen format (5607-29953) to colon format (5607:29953) for Figma API
+        return nodeId.replace('-', ':');
+      }
+      return null;
     } catch {
       return null;
     }

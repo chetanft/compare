@@ -563,7 +563,12 @@ class FigmaMCPClient {
    */
   parseNodeId(url) {
     const match = url.match(/node-id=([^&]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
+    if (match) {
+      const nodeId = decodeURIComponent(match[1]);
+      // Convert hyphen format (5607-29953) to colon format (5607:29953) for Figma API
+      return nodeId.replace('-', ':');
+    }
+    return null;
   }
 }
 

@@ -173,7 +173,7 @@ export default function Settings() {
           mcpServerUrl: settings.mcpServer?.url || 'http://127.0.0.1:3845',
           mcpEndpoint: settings.mcpServer?.endpoint || '/sse',
           mcpToolsEnvironment: settings.mcpTools?.environment || 'auto',
-          figmaPersonalAccessToken: settings.figmaApi?.hasToken ? '••••••••' : '',
+          figmaPersonalAccessToken: settings.hasApiKey ? '••••••••' : '',
           defaultTimeout: settings.defaultTimeout || 30000,
           maxConcurrentComparisons: settings.maxConcurrentComparisons || 3,
           autoDeleteOldReports: settings.autoDeleteOldReports || false,

@@ -171,6 +171,17 @@ export class ScreenshotComparisonService {
         comparisonSettings
       );
 
+      // Extract color palettes from both images
+      console.log('🎨 Extracting color palettes...');
+      const figmaColors = await this.extractDominantColors(
+        processedImages.figmaProcessed,
+        'figma'
+      );
+      const developedColors = await this.extractDominantColors(
+        processedImages.developedProcessed,
+        'developed'
+      );
+
       // Analyze design discrepancies (simplified for macOS)
       console.log('🎨 Analyzing design discrepancies...');
       const discrepancies = await this.analyzeDiscrepancies(
@@ -229,6 +240,11 @@ export class ScreenshotComparisonService {
         metrics,
         discrepancies,
         enhancedAnalysis: this.createBasicEnhancedAnalysis(metrics, discrepancies),
+        colorPalettes: {
+          figma: figmaColors,
+          developed: developedColors,
+          comparison: this.generateColorComparison(figmaColors, developedColors)
+        },
         reportPath: `/api/screenshots/reports/${comparisonId}`,
         createdAt: new Date().toISOString(),
         processingTime
@@ -811,6 +827,194 @@ export class ScreenshotComparisonService {
       console.error(`Failed to delete comparison: ${comparisonId}`, error);
       throw error;
     }
+  }
+
+  /**
+   * Extract dominant colors from an image with better sampling
+   */
+  async extractDominantColors(imagePath, source) {
+    try {
+      const image = sharp(imagePath);
+      const { data, info } = await image
+        .resize(200, 200, { fit: 'inside' })
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const colors = new Map();
+      const colorClusters = new Map();
+      
+      // Sample colors from the image with better clustering
+      for (let i = 0; i < data.length; i += 3) {
+        const r = data[i] || 0;
+        const g = data[i + 1] || 0;
+        const b = data[i + 2] || 0;
+        
+        // Skip near-white and near-black colors (likely background/text)
+        if ((r > 245 && g > 245 && b > 245) || (r < 10 && g < 10 && b < 10)) continue;
+        
+        // Group similar colors together (tolerance of 20)
+        const tolerance = 20;
+        let foundCluster = false;
+        
+        for (const [clusterColor, clusterData] of colorClusters) {
+          const [cr, cg, cb] = clusterColor.split(',').map(Number);
+          if (Math.abs(r - cr) < tolerance && Math.abs(g - cg) < tolerance && Math.abs(b - cb) < tolerance) {
+            clusterData.count++;
+            clusterData.totalR += r;
+            clusterData.totalG += g;
+            clusterData.totalB += b;
+            foundCluster = true;
+            break;
+          }
+        }
+        
+        if (!foundCluster) {
+          colorClusters.set(`${r},${g},${b}`, {
+            count: 1,
+            totalR: r,
+            totalG: g,
+            totalB: b
+          });
+        }
+      }
+
+      // Convert clusters to colors and sort by frequency
+      const dominantColors = Array.from(colorClusters.entries())
+        .map(([key, data]) => {
+          const avgR = Math.round(data.totalR / data.count);
+          const avgG = Math.round(data.totalG / data.count);
+          const avgB = Math.round(data.totalB / data.count);
+          
+          const hex = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
+          
+          return {
+            hex,
+            rgb: { r: avgR, g: avgG, b: avgB },
+            count: data.count,
+            frequency: (data.count / (data.length / 3)) * 100,
+            source,
+            location: { x: 0, y: 0, width: info.width, height: info.height }
+          };
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 15); // Get top 15 colors
+
+      return dominantColors;
+    } catch (error) {
+      console.error(`Failed to extract colors from ${imagePath}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Find the closest color in a color array
+   */
+  findClosestColor(targetColor, colors) {
+    if (colors.length === 0) {
+      return { hex: '#000000', count: 0, source: 'unknown', location: { x: 0, y: 0, width: 0, height: 0 } };
+    }
+
+    let closestColor = colors[0];
+    let smallestDistance = this.calculateColorDistance(targetColor, colors[0]);
+
+    for (const color of colors.slice(1)) {
+      const distance = this.calculateColorDistance(targetColor, color);
+      if (distance < smallestDistance) {
+        smallestDistance = distance;
+        closestColor = color;
+      }
+    }
+
+    return closestColor;
+  }
+
+  /**
+   * Calculate distance between two colors
+   */
+  calculateColorDistance(color1, color2) {
+    const rgb1 = color1.rgb || this.hexToRgb(color1.hex);
+    const rgb2 = color2.rgb || this.hexToRgb(color2.hex);
+    
+    if (!rgb1 || !rgb2) return 100; // Max distance if conversion fails
+    
+    // Use weighted Euclidean distance (more perceptually accurate)
+    const rDiff = rgb1.r - rgb2.r;
+    const gDiff = rgb1.g - rgb2.g;
+    const bDiff = rgb1.b - rgb2.b;
+    
+    return Math.sqrt(0.3 * rDiff * rDiff + 0.59 * gDiff * gDiff + 0.11 * bDiff * bDiff);
+  }
+
+  /**
+   * Convert hex color to RGB
+   */
+  hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  }
+
+  /**
+   * Generate color comparison analysis between two color palettes
+   */
+  generateColorComparison(figmaColors, developedColors) {
+    const comparison = {
+      totalFigmaColors: figmaColors.length,
+      totalDevelopedColors: developedColors.length,
+      matchedColors: [],
+      missingColors: [],
+      extraColors: [],
+      colorSimilarity: 0
+    };
+
+    // Find matched and missing colors
+    for (const figmaColor of figmaColors.slice(0, 10)) { // Compare top 10 colors
+      const closestMatch = this.findClosestColor(figmaColor, developedColors);
+      const distance = this.calculateColorDistance(figmaColor, closestMatch);
+      
+      if (distance < 30) { // Colors are similar enough
+        comparison.matchedColors.push({
+          figmaColor: figmaColor.hex,
+          developedColor: closestMatch.hex,
+          similarity: Math.max(0, 100 - distance),
+          figmaFrequency: figmaColor.frequency || 0,
+          developedFrequency: closestMatch.frequency || 0
+        });
+      } else {
+        comparison.missingColors.push({
+          color: figmaColor.hex,
+          frequency: figmaColor.frequency || 0,
+          closestMatch: closestMatch.hex,
+          distance
+        });
+      }
+    }
+
+    // Find extra colors in developed that don't exist in Figma
+    for (const devColor of developedColors.slice(0, 10)) {
+      const closestFigmaMatch = this.findClosestColor(devColor, figmaColors);
+      const distance = this.calculateColorDistance(devColor, closestFigmaMatch);
+      
+      if (distance >= 30) { // This color doesn't exist in Figma
+        comparison.extraColors.push({
+          color: devColor.hex,
+          frequency: devColor.frequency || 0,
+          closestFigmaMatch: closestFigmaMatch.hex,
+          distance
+        });
+      }
+    }
+
+    // Calculate overall color similarity
+    const totalColors = Math.max(figmaColors.length, developedColors.length);
+    comparison.colorSimilarity = totalColors > 0 
+      ? Math.round((comparison.matchedColors.length / totalColors) * 100)
+      : 0;
+
+    return comparison;
   }
 }
 

@@ -436,51 +436,70 @@ export async function startServer() {
   });
 
   /**
-   * Reports listing endpoint
+   * Reports listing endpoint with parsed metadata
    */
   app.get('/api/reports/list', async (req, res) => {
     try {
-      const fs = await import('fs');
+      // Import the reports data adapter
+      const { default: ReportsDataAdapter } = await import('../../services/reports/ReportsDataAdapter.js');
       const reportsPath = path.join(__dirname, '../../../output/reports');
       
-      // Ensure reports directory exists
-      if (!fs.existsSync(reportsPath)) {
-        return res.json({
-          success: true,
-          reports: []
-        });
-      }
-
-      // Read directory and get file stats
-      const files = fs.readdirSync(reportsPath);
-      const reports = [];
-
-      for (const file of files) {
-        if (file.endsWith('.html')) {
-          const filePath = path.join(reportsPath, file);
-          const stats = fs.statSync(filePath);
-          reports.push({
-            name: file,
-            size: stats.size,
-            created: stats.birthtime,
-            modified: stats.mtime,
-            url: `/reports/${file}`
-          });
-        }
-      }
-
-      // Sort by creation date (newest first)
-      reports.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+      const adapter = new ReportsDataAdapter(reportsPath);
+      const reports = await adapter.getAllReports();
 
       res.json({
         success: true,
-        reports
+        reports,
+        total: reports.length,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       logger.error('Failed to list reports', { error: error.message });
       res.status(500).json({
         success: false,
-        error: 'Failed to list reports'
+        error: 'Failed to list reports',
+        message: error.message
+      });
+    }
+  });
+
+  /**
+   * Delete report endpoint
+   */
+  app.delete('/api/reports/:id', async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const { id } = req.params;
+      const reportsPath = path.join(__dirname, '../../../output/reports');
+      
+      // Find the report file
+      const files = fs.readdirSync(reportsPath);
+      const reportFile = files.find(file => 
+        file.includes(id) && file.endsWith('.html')
+      );
+      
+      if (!reportFile) {
+        return res.status(404).json({
+          success: false,
+          error: 'Report not found'
+        });
+      }
+      
+      const filePath = path.join(reportsPath, reportFile);
+      fs.unlinkSync(filePath);
+      
+      logger.info(`Report deleted: ${reportFile}`);
+      
+      res.json({
+        success: true,
+        message: 'Report deleted successfully'
+      });
+    } catch (error) {
+      logger.error('Failed to delete report', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete report',
+        message: error.message
       });
     }
   });
@@ -488,7 +507,7 @@ export async function startServer() {
   /**
    * Settings endpoints
    */
-  app.get('/api/settings', (req, res) => {
+  app.get('/api/settings', healthLimiter, (req, res) => {
     const apiKey = loadFigmaApiKey();
     res.json({
       success: true,
@@ -504,7 +523,7 @@ export async function startServer() {
     });
   });
 
-  app.post('/api/settings/save', (req, res) => {
+  app.post('/api/settings/save', healthLimiter, (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
       
@@ -535,7 +554,7 @@ export async function startServer() {
     }
   });
 
-  app.post('/api/settings/test-connection', async (req, res) => {
+  app.post('/api/settings/test-connection', healthLimiter, async (req, res) => {
     try {
       const { figmaPersonalAccessToken } = req.body;
       
@@ -887,7 +906,7 @@ export async function startServer() {
     console.log('🔍 Authentication in body:', !!req.body.authentication);
     
     try {
-      const { figmaUrl, webUrl, includeVisual = false } = req.body;
+      const { figmaUrl, webUrl, includeVisual = false, nodeId } = req.body;
       
       if (!figmaUrl || !webUrl) {
         return res.status(400).json({
@@ -905,6 +924,7 @@ export async function startServer() {
       let figmaData = null;
       try {
         console.log('🎨 Using UnifiedFigmaExtractor for comparison (same as single source)');
+        console.log('🎯 NodeId from request:', nodeId || 'No nodeId - extracting full file');
         
         // Use unified extractor - SAME AS SINGLE SOURCE
         const { UnifiedFigmaExtractor } = await import('../../shared/extractors/UnifiedFigmaExtractor.js');
@@ -914,7 +934,8 @@ export async function startServer() {
         const extractionResult = await extractor.extract(figmaUrl, {
           preferredMethod: null,
           timeout: 30000,
-          apiKey: loadFigmaApiKey()
+          apiKey: loadFigmaApiKey(),
+          nodeId: nodeId  // Pass nodeId for specific component extraction
         });
 
         if (!extractionResult.success) {

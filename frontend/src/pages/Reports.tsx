@@ -24,6 +24,7 @@ interface ComparisonReport {
   duration: number;
   score?: number;
   issues?: number;
+  url?: string; // URL to the actual report file
 }
 
 export default function Reports() {
@@ -40,43 +41,27 @@ export default function Reports() {
     try {
       const response = await fetch('/api/reports/list');
       const data = await response.json();
-      setReports(data.reports || []);
+      
+      if (data.success && data.reports) {
+        console.log(`✅ Loaded ${data.reports.length} real reports from backend`);
+        setReports(data.reports);
+      } else {
+        console.warn('⚠️ No reports data in API response:', data);
+        setReports([]);
+      }
     } catch (error) {
-      console.error('Failed to fetch reports:', error);
-      // Show mock data for now
-      setReports([
-        {
-          id: '1',
-          title: 'Homepage Comparison',
-          figmaUrl: 'https://figma.com/file/abc123',
-          webUrl: 'https://example.com',
-          status: 'completed',
-          createdAt: '2025-01-15T10:30:00Z',
-          duration: 45000,
-          score: 85,
-          issues: 3
-        },
-        {
-          id: '2', 
-          title: 'Product Page Analysis',
-          figmaUrl: 'https://figma.com/file/def456',
-          webUrl: 'https://example.com/product',
-          status: 'completed',
-          createdAt: '2025-01-14T14:20:00Z',
-          duration: 62000,
-          score: 92,
-          issues: 1
-        }
-      ]);
+      console.error('❌ Failed to fetch reports:', error);
+      // Show empty state instead of mock data
+      setReports([]);
     } finally {
       setLoading(false);
     }
   };
 
   const filteredReports = reports.filter(report => {
-    const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.figmaUrl.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.webUrl.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (report.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (report.figmaUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                         (report.webUrl?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'all' || report.status === filter;
     return matchesSearch && matchesFilter;
   });
@@ -115,6 +100,56 @@ export default function Reports() {
     if (score >= 90) return 'text-green-600';
     if (score >= 70) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const handleViewReport = (report: ComparisonReport) => {
+    // Open the report file in a new tab using the URL from the API
+    const reportUrl = report.url || `/reports/report_${report.id}.html`;
+    window.open(reportUrl, '_blank');
+  };
+
+  const handleExportReport = async (report: ComparisonReport) => {
+    try {
+      // Download the report file using the URL from the API
+      const reportUrl = report.url || `/reports/report_${report.id}.html`;
+      const response = await fetch(reportUrl);
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${report.title.replace(/[^a-zA-Z0-9]/g, '_')}_${report.id}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export report:', error);
+      alert('Failed to export report. Please try again.');
+    }
+  };
+
+  const handleDeleteReport = async (report: ComparisonReport) => {
+    if (!confirm(`Are you sure you want to delete "${report.title}"?`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/reports/${report.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        // Remove from local state
+        setReports(reports.filter(r => r.id !== report.id));
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Failed to delete report:', error);
+      alert('Failed to delete report. Please try again.');
+    }
   };
 
   if (loading) {
@@ -243,15 +278,31 @@ export default function Reports() {
                     </div>
                     
                     <div className="flex items-center gap-2 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewReport(report)}
+                        title="View report in new tab"
+                      >
                         <EyeIcon className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleExportReport(report)}
+                        title="Download report file"
+                      >
                         <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
                         Export
                       </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteReport(report)}
+                        title="Delete report"
+                      >
                         <TrashIcon className="h-4 w-4" />
                       </Button>
                     </div>

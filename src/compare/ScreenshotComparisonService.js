@@ -60,6 +60,17 @@ export class ScreenshotComparisonService {
         settings
       );
 
+      // Extract color palettes from both images
+      console.log('🎨 Extracting color palettes...');
+      const figmaColors = await this.discrepancyAnalyzer.extractDominantColors(
+        processedImages.figmaProcessed,
+        'figma'
+      );
+      const developedColors = await this.discrepancyAnalyzer.extractDominantColors(
+        processedImages.developedProcessed,
+        'developed'
+      );
+
       // Analyze design discrepancies
       console.log('🎨 Analyzing design discrepancies...');
       const discrepancies = await this.discrepancyAnalyzer.analyzeScreenshots(
@@ -125,6 +136,11 @@ export class ScreenshotComparisonService {
         metrics,
         discrepancies,
         enhancedAnalysis,
+        colorPalettes: {
+          figma: figmaColors,
+          developed: developedColors,
+          comparison: this.generateColorComparison(figmaColors, developedColors)
+        },
         reportPath: `/api/screenshots/reports/${comparisonId}`,
         createdAt: new Date().toISOString(),
         processingTime
@@ -659,6 +675,66 @@ export class ScreenshotComparisonService {
   extractNumericDifference(description) {
     const match = description.match(/(\d+(?:\.\d+)?)/);
     return match ? parseFloat(match[1]) : 0;
+  }
+
+  /**
+   * Generate color comparison analysis between two color palettes
+   */
+  generateColorComparison(figmaColors, developedColors) {
+    const comparison = {
+      totalFigmaColors: figmaColors.length,
+      totalDevelopedColors: developedColors.length,
+      matchedColors: [],
+      missingColors: [],
+      extraColors: [],
+      colorSimilarity: 0
+    };
+
+    // Find matched and missing colors
+    for (const figmaColor of figmaColors.slice(0, 10)) { // Compare top 10 colors
+      const closestMatch = this.discrepancyAnalyzer.findClosestColor(figmaColor, developedColors);
+      const distance = this.discrepancyAnalyzer.calculateColorDistance(figmaColor, closestMatch);
+      
+      if (distance < 30) { // Colors are similar enough
+        comparison.matchedColors.push({
+          figmaColor: figmaColor.hex,
+          developedColor: closestMatch.hex,
+          similarity: Math.max(0, 100 - distance),
+          figmaFrequency: figmaColor.frequency || 0,
+          developedFrequency: closestMatch.frequency || 0
+        });
+      } else {
+        comparison.missingColors.push({
+          color: figmaColor.hex,
+          frequency: figmaColor.frequency || 0,
+          closestMatch: closestMatch.hex,
+          distance
+        });
+      }
+    }
+
+    // Find extra colors in developed that don't exist in Figma
+    for (const devColor of developedColors.slice(0, 10)) {
+      const closestFigmaMatch = this.discrepancyAnalyzer.findClosestColor(devColor, figmaColors);
+      const distance = this.discrepancyAnalyzer.calculateColorDistance(devColor, closestFigmaMatch);
+      
+      if (distance >= 30) { // This color doesn't exist in Figma
+        comparison.extraColors.push({
+          color: devColor.hex,
+          frequency: devColor.frequency || 0,
+          closestFigmaMatch: closestFigmaMatch.hex,
+          distance
+        });
+      }
+    }
+
+    // Calculate overall color similarity
+    const totalColors = Math.max(figmaColors.length, developedColors.length);
+    comparison.colorSimilarity = totalColors > 0 
+      ? Math.round((comparison.matchedColors.length / totalColors) * 100)
+      : 0;
+
+    return comparison;
   }
 }
 
