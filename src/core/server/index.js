@@ -183,7 +183,20 @@ export async function startServer() {
   const { generalLimiter, healthLimiter, extractionLimiter } = configureRateLimit(config);
   app.use('/api/health', healthLimiter);
   app.use('/api/mcp/status', healthLimiter);
-  app.use('/api', generalLimiter);
+  
+  // Apply extraction rate limiting to specific endpoints that call external APIs
+  app.use('/api/figma-only/extract', extractionLimiter);
+  app.use('/api/compare', extractionLimiter);
+  app.use('/api/web/extract*', extractionLimiter);
+  
+  // Apply general rate limiting to remaining API endpoints (excludes screenshots)
+  app.use('/api', (req, res, next) => {
+    // Skip rate limiting for screenshot processing endpoints
+    if (req.path.startsWith('/api/screenshots/')) {
+      return next();
+    }
+    return generalLimiter(req, res, next);
+  });
   
   // Server Control Routes
   try {
