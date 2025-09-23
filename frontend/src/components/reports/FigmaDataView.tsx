@@ -10,6 +10,7 @@ import {
 import { Tab } from '@headlessui/react';
 import { classNames } from '../../utils/classNames';
 import { FigmaData } from '../../../../src/types/extractor';
+// import ColorUsageSection from '../ui/ColorUsageSection';
 
 interface DesignToken {
   name?: string;
@@ -121,7 +122,7 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   const styles = data.data?.styles || [];
   
   // Calculate stats - Use recursive count from API response, fallback to array length
-  const totalComponents = data.componentCount || data.metadata?.componentCount || components.length;
+  const totalComponents = (data as any).componentCount || data.metadata?.componentCount || components.length;
   const totalColors = colors.length;
   const totalTypography = typography.length;
   const totalStyles = styles.length;
@@ -154,10 +155,19 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
             return (
               <div className="flex items-center space-x-2">
                 <div 
-                  className="w-4 h-4 rounded border" 
+                  className="w-4 h-4 rounded border cursor-pointer hover:ring-2 hover:ring-blue-500" 
                   style={{ backgroundColor: value }}
+                  title={`Click to see all elements using ${value}`}
+                  onClick={() => {
+                    // Navigate to color analytics with selected color
+                    window.open(`/color-analytics?color=${encodeURIComponent(value)}`, '_blank');
+                  }}
                 />
                 <span className="font-mono text-sm">{value}</span>
+                <span className="text-xs text-gray-500 hover:text-blue-500 cursor-pointer"
+                      onClick={() => window.open(`/color-analytics?color=${encodeURIComponent(value)}`, '_blank')}>
+                  (view usage)
+                </span>
               </div>
             );
           }
@@ -588,27 +598,28 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
   ];
 
   return (
-    <div className="bg-card rounded-lg border overflow-hidden">
-      <Tab.Group>
-        <Tab.List className="flex border-b">
-          {tabs.map((tab) => (
-            <Tab
-              key={tab.name}
-              className={({ selected }) =>
-                classNames(
-                  'flex items-center py-3 px-4 text-sm font-medium focus:outline-none',
-                  selected
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )
-              }
-            >
-              <tab.icon className="w-5 h-5 mr-2" />
-              {tab.name}
-            </Tab>
-          ))}
-        </Tab.List>
-        <Tab.Panels className="p-4">
+    <div className="space-y-6">
+      <div className="bg-card rounded-lg border overflow-hidden">
+        <Tab.Group>
+          <Tab.List className="flex border-b">
+            {tabs.map((tab) => (
+              <Tab
+                key={tab.name}
+                className={({ selected }) =>
+                  classNames(
+                    'flex items-center py-3 px-4 text-sm font-medium focus:outline-none',
+                    selected
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )
+                }
+              >
+                <tab.icon className="w-5 h-5 mr-2" />
+                {tab.name}
+              </Tab>
+            ))}
+          </Tab.List>
+          <Tab.Panels className="p-4">
           {/* Overview Panel */}
           <Tab.Panel>
             <div className="space-y-4">
@@ -791,6 +802,14 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>
+      </div>
+      
+      {/* Color Usage Analysis Section */}
+      {/* <ColorUsageSection 
+        data={data} 
+        source="figma" 
+        className="bg-card rounded-lg border"
+      /> */}
     </div>
   );
 };

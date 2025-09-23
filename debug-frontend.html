@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .error { color: red; background: #fee; padding: 10px; margin: 10px 0; }
+        .success { color: green; background: #efe; padding: 10px; margin: 10px 0; }
+        .info { color: blue; background: #eef; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Frontend Debug Test</h1>
+    <div id="status">Testing...</div>
+    
+    <script>
+        console.log('=== FRONTEND DEBUG TEST START ===');
+        
+        // Test 1: Basic JavaScript
+        try {
+            console.log('✓ Basic JavaScript working');
+            document.getElementById('status').innerHTML += '<div class="success">✓ Basic JavaScript working</div>';
+        } catch (e) {
+            console.error('✗ Basic JavaScript failed:', e);
+            document.getElementById('status').innerHTML += '<div class="error">✗ Basic JavaScript failed: ' + e.message + '</div>';
+        }
+        
+        // Test 2: Fetch API
+        fetch('/api/health')
+            .then(response => {
+                console.log('✓ API Health Response:', response.status);
+                document.getElementById('status').innerHTML += '<div class="success">✓ API Health: ' + response.status + '</div>';
+                return response.json();
+            })
+            .then(data => {
+                console.log('✓ API Health Data:', data);
+                document.getElementById('status').innerHTML += '<div class="success">✓ API Data received</div>';
+            })
+            .catch(error => {
+                console.error('✗ API Health failed:', error);
+                document.getElementById('status').innerHTML += '<div class="error">✗ API Health failed: ' + error.message + '</div>';
+            });
+        
+        // Test 3: Main app assets
+        const assets = [
+            '/assets/index-CWZ1vRbT.js',
+            '/assets/index-DlcamJZX.css',
+            '/assets/vendor-Cz0RdtZN.js',
+            '/assets/ui-DDJRTisd.js'
+        ];
+        
+        assets.forEach(asset => {
+            fetch(asset)
+                .then(response => {
+                    if (response.ok) {
+                        console.log('✓ Asset loaded:', asset);
+                        document.getElementById('status').innerHTML += '<div class="success">✓ Asset: ' + asset + '</div>';
+                    } else {
+                        console.error('✗ Asset failed:', asset, response.status);
+                        document.getElementById('status').innerHTML += '<div class="error">✗ Asset failed: ' + asset + ' (' + response.status + ')</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('✗ Asset error:', asset, error);
+                    document.getElementById('status').innerHTML += '<div class="error">✗ Asset error: ' + asset + ' - ' + error.message + '</div>';
+                });
+        });
+        
+        // Test 4: Error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global Error:', event.error);
+            document.getElementById('status').innerHTML += '<div class="error">Global Error: ' + event.error.message + '</div>';
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('Unhandled Rejection:', event.reason);
+            document.getElementById('status').innerHTML += '<div class="error">Unhandled Rejection: ' + event.reason + '</div>';
+        });
+        
+        console.log('=== FRONTEND DEBUG TEST COMPLETE ===');
+    </script>
+</body>
+</html>

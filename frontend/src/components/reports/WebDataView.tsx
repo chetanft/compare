@@ -8,6 +8,7 @@ import {
   Square3Stack3DIcon,
   PaintBrushIcon
 } from '@heroicons/react/24/outline';
+// import ColorUsageSection from '../ui/ColorUsageSection';
 
 interface WebDataViewProps {
   data: WebData;
@@ -45,10 +46,19 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
             return (
               <div className="flex items-center space-x-2">
                 <div 
-                  className="w-4 h-4 rounded border" 
+                  className="w-4 h-4 rounded border cursor-pointer hover:ring-2 hover:ring-blue-500" 
                   style={{ backgroundColor: value }}
+                  title={`Click to see all elements using ${value}`}
+                  onClick={() => {
+                    // Navigate to color analytics with selected color
+                    window.open(`/color-analytics?color=${encodeURIComponent(value)}`, '_blank');
+                  }}
                 />
                 <span className="font-mono text-sm">{value}</span>
+                <span className="text-xs text-gray-500 hover:text-blue-500 cursor-pointer"
+                      onClick={() => window.open(`/color-analytics?color=${encodeURIComponent(value)}`, '_blank')}>
+                  (view usage)
+                </span>
               </div>
             );
           }
@@ -228,13 +238,14 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-2">Web Implementation Details</h2>
-        <div className="text-sm text-muted-foreground">
-          Extracted at: {new Date(data.timestamp).toLocaleString()}
+    <div className="space-y-6">
+      <div className="p-4">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold mb-2">Web Implementation Details</h2>
+          <div className="text-sm text-muted-foreground">
+            Extracted at: {new Date(data.timestamp).toLocaleString()}
+          </div>
         </div>
-      </div>
 
       {/* CSS Elements Section */}
       {data.data.elements && data.data.elements.length > 0 && (
@@ -244,7 +255,7 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
             CSS Elements ({data.data.elements.length})
           </h3>
           <div className="space-y-2">
-            {data.data.elements.map((element, index) => renderElement(element, index))}
+            {data.data.elements.map((element: any, index: number) => renderElement(element, index))}
           </div>
         </div>
       )}
@@ -270,21 +281,29 @@ const WebDataView: React.FC<WebDataViewProps> = ({ data }) => {
         </div>
       )}
 
-      {/* Metadata */}
-      <div className="bg-card rounded-lg shadow p-4">
-        <h3 className="font-medium mb-2">Metadata</h3>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>Version: {data.metadata.version}</div>
-          <div>Extractor: {data.metadata.extractorType}</div>
-          {Object.entries(data.metadata)
-            .filter(([key]) => !['version', 'extractorType'].includes(key))
-            .map(([key, value]) => (
-              <div key={key} className="col-span-2">
-                {key}: {JSON.stringify(value)}
-              </div>
-            ))}
+        {/* Metadata */}
+        <div className="bg-card rounded-lg shadow p-4">
+          <h3 className="font-medium mb-2">Metadata</h3>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>Version: {data.metadata.version}</div>
+            <div>Extractor: {data.metadata.extractorType}</div>
+            {Object.entries(data.metadata)
+              .filter(([key]) => !['version', 'extractorType'].includes(key))
+              .map(([key, value]) => (
+                <div key={key} className="col-span-2">
+                  {key}: {JSON.stringify(value)}
+                </div>
+              ))}
+          </div>
         </div>
       </div>
+      
+      {/* Color Usage Analysis Section */}
+      {/* <ColorUsageSection 
+        data={data} 
+        source="web" 
+        className="bg-card rounded-lg border"
+      /> */}
     </div>
   );
 };

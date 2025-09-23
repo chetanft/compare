@@ -126,7 +126,7 @@ export class UnifiedConfig {
       reportCompressionEnabled: true,
       
       // Server Configuration
-      serverPort: 47832,
+      serverPort: 3847,
       enableCORS: true,
       enableRateLimit: true,
       rateLimitWindow: 900000, // 15 minutes

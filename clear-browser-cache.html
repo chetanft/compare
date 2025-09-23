@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Force Cache Clear - Figma Comparison Tool</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 800px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .error { 
+            color: #d32f2f; 
+            background: #ffebee; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin: 15px 0;
+            border-left: 4px solid #d32f2f;
+        }
+        .success { 
+            color: #2e7d32; 
+            background: #e8f5e8; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin: 15px 0;
+            border-left: 4px solid #2e7d32;
+        }
+        .info { 
+            color: #1976d2; 
+            background: #e3f2fd; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin: 15px 0;
+            border-left: 4px solid #1976d2;
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .danger {
+            background: #dc3545;
+        }
+        .danger:hover {
+            background: #c82333;
+        }
+        code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Browser Cache Clear - Figma Comparison Tool</h1>
+        
+        <div class="error">
+            <h3>⚠️ Problem Identified</h3>
+            <p><strong>Root Cause:</strong> Browser is loading multiple asset versions simultaneously:</p>
+            <ul>
+                <li><strong>Old Assets:</strong> index-CWZ1vRbT.js, ui-DDJRTisd.js, forms-D9n5pq4-.js</li>
+                <li><strong>New Assets:</strong> index-BKdmVRfT.js, ui-DCgtVDRm.js, forms-BBOgW5EU.js</li>
+            </ul>
+            <p>This creates JavaScript module conflicts leading to "Something went wrong" errors.</p>
+        </div>
+
+        <div class="info">
+            <h3>💡 Solution Steps</h3>
+            <p>Follow these steps <strong>in order</strong> to resolve the cache conflict:</p>
+        </div>
+
+        <div class="step">
+            <h4>Step 1: Nuclear Cache Clear</h4>
+            <p>Press <code>Cmd+Shift+Delete</code> (Mac) or <code>Ctrl+Shift+Delete</code> (Windows)</p>
+            <p>Select: <strong>All time</strong> and check ALL boxes</p>
+            <button onclick="clearAllData()">Open Chrome Clear Data</button>
+        </div>
+
+        <div class="step">
+            <h4>Step 2: Hard Refresh</h4>
+            <p>Press <code>Cmd+Shift+R</code> (Mac) or <code>Ctrl+Shift+F5</code> (Windows)</p>
+            <button onclick="hardRefresh()">Hard Refresh Now</button>
+        </div>
+
+        <div class="step">
+            <h4>Step 3: Incognito Test</h4>
+            <p>Press <code>Cmd+Shift+N</code> (Mac) or <code>Ctrl+Shift+N</code> (Windows)</p>
+            <button onclick="openIncognito()">Test in Incognito</button>
+        </div>
+
+        <div class="step">
+            <h4>Step 4: Force Reload Assets</h4>
+            <button onclick="forceReloadAssets()" class="danger">Force Reload All Assets</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="success" style="display: none;" id="successMsg">
+            <h3>✅ Cache Cleared Successfully</h3>
+            <p>Now navigate to: <a href="http://localhost:47832" target="_blank">http://localhost:47832</a></p>
+        </div>
+    </div>
+
+    <script>
+        function clearAllData() {
+            // This will prompt Chrome to open the clear data dialog
+            if (confirm('This will open Chrome settings to clear all browsing data. Continue?')) {
+                window.open('chrome://settings/clearBrowserData', '_blank');
+            }
+        }
+
+        function hardRefresh() {
+            location.reload(true);
+        }
+
+        function openIncognito() {
+            // Open the main app in incognito mode
+            window.open('http://localhost:47832', '_blank');
+        }
+
+        function forceReloadAssets() {
+            const status = document.getElementById('status');
+            const successMsg = document.getElementById('successMsg');
+            
+            status.innerHTML = '<div class="info">🔄 Force reloading all assets...</div>';
+            
+            // Clear all caches
+            if ('caches' in window) {
+                caches.keys().then(function(names) {
+                    for (let name of names) {
+                        caches.delete(name);
+                    }
+                });
+            }
+            
+            // Clear localStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Force reload with cache bypass
+            setTimeout(() => {
+                status.innerHTML = '<div class="success">✅ Assets cleared! Redirecting...</div>';
+                successMsg.style.display = 'block';
+                
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:47832?' + Date.now();
+                }, 2000);
+            }, 1000);
+        }
+
+        // Auto-detect if we're having cache issues
+        window.addEventListener('load', function() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<div class="info">🔍 Checking for cache conflicts...</div>';
+            
+            // Check if we can detect the asset conflict
+            fetch('/assets/index-BKdmVRfT.js', { cache: 'no-cache' })
+                .then(response => {
+                    if (response.ok) {
+                        status.innerHTML = '<div class="success">✅ New assets are available on server</div>';
+                    }
+                })
+                .catch(err => {
+                    status.innerHTML = '<div class="error">❌ Cannot reach new assets</div>';
+                });
+        });
+    </script>
+</body>
+</html>

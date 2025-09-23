@@ -4,6 +4,7 @@
  */
 
 import fetch from 'node-fetch';
+import { colorElementMapping } from '../../src/services/ColorElementMappingService.js';
 
 export class FigmaApiService {
   constructor(configService) {
@@ -335,6 +336,15 @@ export class FigmaApiService {
           const hexColor = this.rgbaToHex(fill.color);
           // Add to color palette
           colorSet.add(hexColor);
+          
+          // Add to color-element mapping
+            colorElementMapping.addColorElementAssociation(
+              hexColor,
+              component,
+              'fill',
+              'figma'
+            );
+          
           return {
             type: fill.type,
             color: hexColor,
@@ -352,6 +362,14 @@ export class FigmaApiService {
         validStrokes.forEach(stroke => {
           const hexColor = this.rgbaToHex(stroke.color);
           colorSet.add(hexColor);
+          
+          // Add to color-element mapping
+          colorElementMapping.addColorElementAssociation(
+            hexColor,
+            component,
+            'stroke',
+            'figma'
+          );
         });
         component.properties.borderColor = this.rgbaToHex(validStrokes[0].color);
       }
@@ -364,6 +382,24 @@ export class FigmaApiService {
         component.properties.fontSize = node.style.fontSize;
         component.properties.fontFamily = node.style.fontFamily;
         component.properties.fontWeight = node.style.fontWeight;
+        
+        // Extract text color if available
+        if (node.fills && Array.isArray(node.fills) && node.fills.length > 0) {
+          const textFill = node.fills.find(fill => fill.visible !== false && fill.color);
+          if (textFill) {
+            const hexColor = this.rgbaToHex(textFill.color);
+            component.properties.color = hexColor;
+            colorSet.add(hexColor);
+            
+            // Add to color-element mapping
+            colorElementMapping.addColorElementAssociation(
+              hexColor,
+              component,
+              'text',
+              'figma'
+            );
+          }
+        }
         
         // Add to typography collections
         if (node.style.fontFamily) {

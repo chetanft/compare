@@ -6,6 +6,7 @@
 import { parseFigmaUrl } from '../utils/urlParser.js';
 import fs from 'fs';
 import path from 'path';
+import { colorElementMapping } from '../../src/services/ColorElementMappingService.js';
 
 export class ApiRoutes {
   constructor(services) {
@@ -95,7 +96,27 @@ export class ApiRoutes {
           this.handleTest(req, res);
           break;
           
+        // Color Analytics endpoints
+        case '/api/colors/analytics':
+          await this.handleColorAnalytics(req, res);
+          break;
+        case '/api/colors/recommendations':
+          await this.handleColorRecommendations(req, res);
+          break;
+        case '/api/colors/stats':
+          await this.handleColorStats(req, res);
+          break;
+        case '/api/colors/palette':
+          await this.handleColorPalette(req, res);
+          break;
+          
         default:
+          // Handle dynamic color routes
+          if (pathname.startsWith('/api/colors/') && pathname.includes('/elements')) {
+            await this.handleColorElementsRoute(pathname, req, res);
+            break;
+          }
+          
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ 
             error: 'API endpoint not found', 
@@ -103,7 +124,8 @@ export class ApiRoutes {
               '/api/health', '/api/status', '/api/settings/test-connection', 
               '/api/settings/save', '/api/figma/parse', '/api/figma/extract', 
               '/api/figma-only/extract', '/api/web/extract', '/api/web/extract-v3', 
-              '/api/compare', '/api/mcp/status', '/api/reports/list'
+              '/api/compare', '/api/mcp/status', '/api/reports/list',
+              '/api/colors/analytics', '/api/colors/recommendations', '/api/colors/stats', '/api/colors/palette'
             ] 
           }));
       }
@@ -669,6 +691,206 @@ export class ApiRoutes {
         success: true,
         message: 'Test endpoint is working',
         method: req.method,
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * Handle color analytics request
+   */
+  async handleColorAnalytics(req, res) {
+    try {
+      const urlParams = new URL(req.url, 'http://localhost').searchParams;
+      const color = urlParams.get('color');
+      
+      const analytics = colorElementMapping.getColorAnalytics(color);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        data: analytics,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('❌ Color analytics error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: {
+          message: 'Failed to get color analytics',
+          code: 'COLOR_ANALYTICS_ERROR',
+          details: error.message
+        },
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * Handle color recommendations request
+   */
+  async handleColorRecommendations(req, res) {
+    try {
+      const recommendations = colorElementMapping.getColorRecommendations();
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        data: recommendations,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('❌ Color recommendations error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: {
+          message: 'Failed to get color recommendations',
+          code: 'COLOR_RECOMMENDATIONS_ERROR',
+          details: error.message
+        },
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * Handle color stats request
+   */
+  async handleColorStats(req, res) {
+    try {
+      const stats = colorElementMapping.getStats();
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        data: stats,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('❌ Color stats error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: {
+          message: 'Failed to get color statistics',
+          code: 'COLOR_STATS_ERROR',
+          details: error.message
+        },
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * Handle color palette request
+   */
+  async handleColorPalette(req, res) {
+    try {
+      const urlParams = new URL(req.url, 'http://localhost').searchParams;
+      const limit = parseInt(urlParams.get('limit')) || 50;
+      const sortBy = urlParams.get('sortBy') || 'usage';
+      
+      const analytics = colorElementMapping.getColorAnalytics();
+      
+      let palette = analytics.colorBreakdown || [];
+      
+      // Sort by usage (elementCount) or alphabetically
+      if (sortBy === 'usage') {
+        palette = palette.sort((a, b) => b.elementCount - a.elementCount);
+      } else if (sortBy === 'color') {
+        palette = palette.sort((a, b) => a.color.localeCompare(b.color));
+      }
+      
+      // Apply limit
+      palette = palette.slice(0, limit);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        data: {
+          totalColors: analytics.totalColors,
+          palette,
+          sortBy,
+          limit
+        },
+        timestamp: new Date().toISOString()
+      }));
+    } catch (error) {
+      console.error('❌ Color palette error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: {
+          message: 'Failed to get color palette',
+          code: 'COLOR_PALETTE_ERROR',
+          details: error.message
+        },
+        timestamp: new Date().toISOString()
+      }));
+    }
+  }
+
+  /**
+   * Handle dynamic color-element routes
+   */
+  async handleColorElementsRoute(pathname, req, res) {
+    try {
+      // Parse routes like /api/colors/[color]/elements or /api/colors/elements/[elementId]/colors
+      const parts = pathname.split('/');
+      
+      if (parts.length >= 5 && parts[4] === 'elements') {
+        // /api/colors/[color]/elements
+        const color = decodeURIComponent(parts[3]);
+        const elements = colorElementMapping.getElementsByColor(color);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            color,
+            elementCount: elements.length,
+            elements
+          },
+          timestamp: new Date().toISOString()
+        }));
+      } else if (parts.length >= 6 && parts[3] === 'elements' && parts[5] === 'colors') {
+        // /api/colors/elements/[elementId]/colors
+        const elementId = decodeURIComponent(parts[4]);
+        const colors = colorElementMapping.getColorsByElement(elementId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          data: {
+            elementId,
+            colorCount: colors.length,
+            colors
+          },
+          timestamp: new Date().toISOString()
+        }));
+      } else {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: {
+            message: 'Invalid color-element route',
+            code: 'INVALID_ROUTE'
+          },
+          timestamp: new Date().toISOString()
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Color elements route error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: {
+          message: 'Failed to handle color-element route',
+          code: 'COLOR_ELEMENTS_ROUTE_ERROR',
+          details: error.message
+        },
         timestamp: new Date().toISOString()
       }));
     }

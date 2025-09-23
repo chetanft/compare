@@ -113,9 +113,9 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                   <div key={index} className="flex items-center gap-2">
                     <div 
                       className="w-4 h-4 rounded border"
-                      style={{ backgroundColor: color }}
+                      style={{ backgroundColor: typeof color === 'string' ? color : color.value }}
                     />
-                    <span className="text-xs">{color}</span>
+                    <span className="text-xs">{typeof color === 'string' ? color : color.value}</span>
                   </div>
                 ))}
               </div>
@@ -130,7 +130,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                 <div>
                   <span className="text-xs text-muted-foreground">Font Families:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {(figma.typography?.fontFamilies || []).map((font, index) => (
+                    {(figma.typography?.fontFamilies || []).map((font: any, index: number) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {font}
                       </Badge>
@@ -143,7 +143,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                 <div>
                   <span className="text-xs text-muted-foreground">Font Sizes:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {(figma.typography?.fontSizes || []).map((size, index) => (
+                    {(figma.typography?.fontSizes || []).map((size: any, index: number) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {size}
                       </Badge>
@@ -156,7 +156,7 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
                 <div>
                   <span className="text-xs text-muted-foreground">Font Weights:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {(figma.typography?.fontWeights || []).map((weight, index) => (
+                    {(figma.typography?.fontWeights || []).map((weight: any, index: number) => (
                       <Badge key={index} variant="secondary" className="text-xs">
                         {weight}
                       </Badge>
@@ -168,11 +168,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           </div>
 
           {/* Spacing */}
-          {(figma.spacing?.length || 0) > 0 && (
+          {((figma as any).spacing?.length || 0) > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">Spacing ({figma.spacing?.length || 0})</h4>
+              <h4 className="text-sm font-medium mb-2">Spacing ({(figma as any).spacing?.length || 0})</h4>
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                {(figma.spacing || []).map((space, index) => (
+                {((figma as any).spacing || []).map((space: any, index: number) => (
                   <Badge key={index} variant="outline" className="text-xs">
                     {space}
                   </Badge>
@@ -182,11 +182,11 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
           )}
 
           {/* Border Radius */}
-          {(figma.borderRadius?.length || 0) > 0 && (
+          {((figma as any).borderRadius?.length || 0) > 0 && (
             <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2">Border Radius ({figma.borderRadius?.length || 0})</h4>
+              <h4 className="text-sm font-medium mb-2">Border Radius ({(figma as any).borderRadius?.length || 0})</h4>
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                {(figma.borderRadius || []).map((radius, index) => (
+                {((figma as any).borderRadius || []).map((radius: any, index: number) => (
                   <Badge key={index} variant="outline" className="text-xs">
                     {radius}
                   </Badge>

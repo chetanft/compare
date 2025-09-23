@@ -179,24 +179,15 @@ export async function startServer() {
   // Response formatting
   app.use(responseFormatter);
   
-  // Rate limiting
+  // Rate limiting - ONLY for Figma API calls (external API that needs protection)
   const { generalLimiter, healthLimiter, extractionLimiter } = configureRateLimit(config);
-  app.use('/api/health', healthLimiter);
-  app.use('/api/mcp/status', healthLimiter);
   
-  // Apply extraction rate limiting to specific endpoints that call external APIs
+  // Apply extraction rate limiting ONLY to Figma API endpoints
   app.use('/api/figma-only/extract', extractionLimiter);
-  app.use('/api/compare', extractionLimiter);
-  app.use('/api/web/extract*', extractionLimiter);
+  // Note: /api/compare and /api/web/extract* should NOT be rate limited
+  // They are internal operations, not external API calls
   
-  // Apply general rate limiting to remaining API endpoints (excludes screenshots)
-  app.use('/api', (req, res, next) => {
-    // Skip rate limiting for screenshot processing endpoints
-    if (req.path.startsWith('/api/screenshots/')) {
-      return next();
-    }
-    return generalLimiter(req, res, next);
-  });
+  // NO rate limiting for any other endpoints - all operations should be unlimited except Figma API
   
   // Server Control Routes
   try {
@@ -220,6 +211,15 @@ export async function startServer() {
   } catch (error) {
     console.warn('⚠️ Failed to load MCP routes:', error.message);
   }
+
+  // Color Analytics Routes
+  try {
+    const colorAnalyticsRoutes = await import('../../routes/color-analytics-routes.js');
+    app.use('/api/colors', colorAnalyticsRoutes.default);
+    console.log('✅ Color analytics routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load color analytics routes:', error.message);
+  }
   
   // Serve frontend static files (exclude report files)
   const frontendPath = path.join(__dirname, '../../../frontend/dist');
@@ -229,6 +229,14 @@ export async function startServer() {
     if (req.path.startsWith('/report_') && req.path.endsWith('.html')) {
       return next(); // Skip static middleware for report files
     }
+    
+    // Add cache-busting headers for JS/CSS assets to prevent cache conflicts
+    if (req.path.match(/\.(js|css|html)$/)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    
     express.static(frontendPath)(req, res, next);
   });
   
@@ -958,19 +966,27 @@ export async function startServer() {
         const standardizedData = extractionResult.data;
 
         if (standardizedData && standardizedData.components) {
+          // Use the SAME structure as single extraction endpoint
           figmaData = {
-            components: standardizedData.components,
+            ...standardizedData,  // Include ALL standardized data fields
             componentCount: standardizedData.componentCount || standardizedData.components.length,
-            componentsCount: standardizedData.componentCount || standardizedData.components.length,
+            componentsCount: standardizedData.componentCount || standardizedData.components.length, // Legacy compatibility
+            // Ensure these fields are explicitly available
+            components: standardizedData.components,
             colors: standardizedData.colors || [],
             typography: standardizedData.typography || [],
             metadata: standardizedData.metadata,
             extractionMethod: standardizedData.extractionMethod
           };
+          
+          // Colors extracted successfully
+          
           console.log('✅ Figma extraction successful via UnifiedFigmaExtractor');
           console.log('📊 Figma data summary:', {
             components: figmaData.components?.length || 0,
             componentCount: figmaData.componentCount,
+            colors: figmaData.colors?.length || 0,
+            typography: figmaData.typography?.length || 0,
             extractionMethod: figmaData.extractionMethod,
             fileName: standardizedData.metadata?.fileName || 'Unknown'
           });
@@ -1127,6 +1143,8 @@ export async function startServer() {
         console.warn('⚠️ HTML report generation failed:', reportError.message);
         console.warn('Report Error Stack:', reportError.stack);
       }
+
+      // Figma extraction completed successfully
 
       // Prepare extraction details for frontend
       const extractionDetails = {

@@ -8,6 +8,7 @@ import { getBrowserPool } from '../browser/BrowserPool.js';
 import { getResourceManager } from '../utils/ResourceManager.js';
 import { loadConfig } from '../config/index.js';
 import { EnhancedAuthentication } from './EnhancedAuthentication.js';
+import { colorElementMapping } from '../services/ColorElementMappingService.js';
 
 export class UnifiedWebExtractor {
   constructor() {
@@ -1298,8 +1299,9 @@ export class UnifiedWebExtractor {
         const isInteractive = ['button', 'a', 'input', 'select', 'textarea'].includes(tag);
 
         if (hasText || hasBackground || hasBorder || isLarge || isImage || isInteractive) {
-          elements.push({
+          const elementData = {
             id: `element-${selectorIndex}-${elemIndex}`,
+            name: element.className ? `.${element.className.split(' ')[0]}` : tag,
             type: tag,
             text: textContent.slice(0, 200),
             className: element.className || '',
@@ -1345,8 +1347,46 @@ export class UnifiedWebExtractor {
               src: element.src || '',
               role: element.getAttribute('role') || ''
             },
-            source: 'unified-extractor'
-          });
+            source: 'unified-extractor',
+            // Add CSS selector for easier identification
+            selector: this.generateCSSSelector ? this.generateCSSSelector(element) : `${tag}${element.id ? '#' + element.id : ''}${element.className ? '.' + element.className.split(' ')[0] : ''}`
+          };
+          
+          // Add color-element associations for web extraction
+          // Note: This runs in browser context, so we'll need to collect this data and process it outside
+          if (typeof window !== 'undefined') {
+            // Store color mapping data for later processing
+            if (!window._colorMappingData) window._colorMappingData = [];
+            
+            if (styles.color && styles.color !== 'rgba(0, 0, 0, 0)' && styles.color !== 'transparent') {
+              window._colorMappingData.push({
+                color: styles.color,
+                elementId: elementData.id,
+                colorType: 'text',
+                elementData: elementData
+              });
+            }
+            
+            if (styles.backgroundColor && styles.backgroundColor !== 'rgba(0, 0, 0, 0)' && styles.backgroundColor !== 'transparent') {
+              window._colorMappingData.push({
+                color: styles.backgroundColor,
+                elementId: elementData.id,
+                colorType: 'background',
+                elementData: elementData
+              });
+            }
+            
+            if (styles.borderColor && styles.borderColor !== 'rgba(0, 0, 0, 0)' && styles.borderColor !== 'transparent') {
+              window._colorMappingData.push({
+                color: styles.borderColor,
+                elementId: elementData.id,
+                colorType: 'border',
+                elementData: elementData
+              });
+            }
+          }
+          
+          elements.push(elementData);
           elementCount++;
         }
       };
@@ -1410,6 +1450,20 @@ export class UnifiedWebExtractor {
     try {
       const top = await page.evaluate(extractorFn, url);
       results.push(top);
+      
+      // Collect color mapping data from browser context
+      try {
+        const colorMappingData = await page.evaluate(() => {
+          const data = window._colorMappingData || [];
+          delete window._colorMappingData; // Clean up
+          return data;
+        });
+        
+        // Process color mapping data in Node.js context
+        this.processColorMappingData(colorMappingData);
+      } catch (e) {
+        console.warn('⚠️ Color mapping data collection failed:', e.message);
+      }
     } catch (e) {
       console.warn('⚠️ Top-level extraction failed:', e.message);
     }
@@ -1582,6 +1636,82 @@ export class UnifiedWebExtractor {
     await Promise.allSettled(
       extractionIds.map(id => this.cancelExtraction(id))
     );
+  }
+
+  /**
+   * Process color mapping data collected from browser context
+   * @param {Array} colorMappingData - Array of color-element associations
+   */
+  processColorMappingData(colorMappingData) {
+    if (!Array.isArray(colorMappingData)) return;
+    
+    console.log(`🎨 Processing ${colorMappingData.length} color-element associations`);
+    
+    colorMappingData.forEach(({ color, elementId, colorType, elementData }) => {
+      try {
+        // Convert RGB colors to hex for consistency
+        const normalizedColor = this.normalizeColor(color);
+        
+        colorElementMapping.addColorElementAssociation(
+          normalizedColor,
+          elementData,
+          colorType,
+          'web'
+        );
+      } catch (error) {
+        console.warn('⚠️ Failed to process color mapping:', error.message);
+      }
+    });
+  }
+
+  /**
+   * Normalize color values to hex format
+   * @param {string} color - Color value in any CSS format
+   * @returns {string} Hex color value
+   */
+  normalizeColor(color) {
+    if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+      return '#000000';
+    }
+    
+    // If already hex, return as is
+    if (color.startsWith('#')) {
+      return color.toLowerCase();
+    }
+    
+    // Handle rgb/rgba format
+    if (color.startsWith('rgb')) {
+      return this.rgbToHex(color);
+    }
+    
+    // Handle named colors (basic support)
+    const namedColors = {
+      'black': '#000000',
+      'white': '#ffffff',
+      'red': '#ff0000',
+      'green': '#008000',
+      'blue': '#0000ff',
+      'yellow': '#ffff00',
+      'orange': '#ffa500',
+      'purple': '#800080',
+      'gray': '#808080',
+      'grey': '#808080'
+    };
+    
+    return namedColors[color.toLowerCase()] || '#000000';
+  }
+
+  /**
+   * Convert RGB/RGBA to hex
+   * @param {string} rgb - RGB/RGBA color string
+   * @returns {string} Hex color
+   */
+  rgbToHex(rgb) {
+    const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (!match) return '#000000';
+    
+    const [, r, g, b] = match;
+    return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`;
   }
 
   /**

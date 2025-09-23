@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   Info
 } from 'lucide-react';
+// import ColorUsageSection from '../ui/ColorUsageSection';
+// import ColorComparisonSection from '../ui/ColorComparisonSection';
 
 interface UnifiedResultsViewProps {
   result: ComparisonResult;
@@ -274,6 +276,34 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
           </CardContent>
         </Card>
       )}
+
+      {/* Color Analysis Section */}
+      {/* {result.data.figmaData && result.data.webData && (
+        <ColorComparisonSection 
+          figmaData={result.data.figmaData} 
+          webData={result.data.webData}
+          className="bg-card rounded-lg border"
+        />
+      )} */}
+
+      {/* Individual Color Usage Sections */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {result.data.figmaData && (
+          <ColorUsageSection 
+            data={result.data.figmaData} 
+            source="figma" 
+            className="bg-card rounded-lg border"
+          />
+        )}
+        
+        {result.data.webData && (
+          <ColorUsageSection 
+            data={result.data.webData} 
+            source="web" 
+            className="bg-card rounded-lg border"
+          />
+        )}
+      </div> */}
 
       {/* Actions */}
       {result.data.reportPath && (

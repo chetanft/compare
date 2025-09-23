@@ -3,7 +3,7 @@
  * Toggle button for starting/stopping the server with real-time status
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlayIcon, 
   StopIcon, 
@@ -67,6 +67,30 @@ export default function ServerControlButton({
     isLoading,
     error
   } = control;
+
+  // Rate limiting data
+  const [rateLimitData, setRateLimitData] = useState<any>(null);
+
+  // Fetch rate limiting data when server is running
+  useEffect(() => {
+    if (isServerRunning && serverStatus?.port) {
+      const fetchRateLimitData = async () => {
+        try {
+          const response = await fetch(`http://localhost:${serverStatus.port}/api/health`);
+          if (response.ok) {
+            const data = await response.json();
+            setRateLimitData(data.data?.enhanced?.circuitBreakers || null);
+          }
+        } catch (error) {
+          console.warn('Failed to fetch rate limit data:', error);
+        }
+      };
+
+      fetchRateLimitData();
+      const interval = setInterval(fetchRateLimitData, 30000); // Update every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isServerRunning, serverStatus?.port]);
 
   // Button content based on server status
   const getButtonContent = () => {
@@ -204,7 +228,7 @@ export default function ServerControlButton({
     );
   }
 
-  // Default variant - Modern card design
+  // Default variant - Modern card design with vertical layout
   return (
     <div className={cn(
       "relative overflow-hidden rounded-xl border bg-gradient-to-r from-card to-card/50 p-4 shadow-sm transition-all duration-200 hover:shadow-md",
@@ -215,8 +239,9 @@ export default function ServerControlButton({
       {/* Background decoration */}
       <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
       
-      <div className="relative flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="relative flex flex-col space-y-3">
+        {/* Server Status */}
+        <div className="flex items-center justify-center">
           <div className="flex items-center space-x-3">
             <div className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition-colors",
@@ -230,48 +255,81 @@ export default function ServerControlButton({
               )} />
             </div>
             
-            <div>
+            <div className="text-center">
               <div className="font-medium text-sm">
                 {hasError ? 'Server Connection' : isServerRunning ? 'Server Active' : 'Server Ready'}
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center space-x-2">
-                <span>Port {serverStatus?.port || 3847}</span>
-                <span>•</span>
-                <span className={cn(
-                  "flex items-center space-x-1",
-                  isServerRunning && "text-green-600",
-                  hasError && "text-orange-600"
-                )}>
-                  <div className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    isServerRunning && "bg-green-500",
-                    hasError && "bg-orange-500",
-                    !isServerRunning && !hasError && "bg-gray-400"
-                  )} />
-                  <span>{currentStatus}</span>
-                </span>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Status Badge */}
+        <div className="flex justify-center">
+          <span className={cn(
+            "inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium",
+            isServerRunning && "bg-green-100 text-green-700 border border-green-200",
+            hasError && "bg-orange-100 text-orange-700 border border-orange-200",
+            !isServerRunning && !hasError && "bg-gray-100 text-gray-700 border border-gray-200"
+          )}>
+            <div className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              isServerRunning && "bg-green-500",
+              hasError && "bg-orange-500",
+              !isServerRunning && !hasError && "bg-gray-400"
+            )} />
+            <span>{currentStatus}</span>
+          </span>
+        </div>
+
+        {/* Port Information */}
+        <div className="text-center">
+          <div className="text-sm font-medium text-gray-700">
+            Port {serverStatus?.port || 3847}
+          </div>
+        </div>
+
+        {/* Rate Limiting Info */}
+        {isServerRunning && (
+          <div className="text-center border-t pt-2">
+            <div className="text-xs text-muted-foreground">
+              Rate Limits: API 100/15min • Extraction 10/15min
+            </div>
+            {rateLimitData ? (
+              <div className={cn(
+                "text-xs mt-1",
+                rateLimitData.healthy ? "text-green-600" : "text-orange-600"
+              )}>
+                {rateLimitData.healthy ? "✓" : "⚠"} Circuit Breakers: {rateLimitData.closed}/{rateLimitData.total} OK
+                {rateLimitData.open > 0 && ` • ${rateLimitData.open} Open`}
+              </div>
+            ) : (
+              <div className="text-xs text-green-600 mt-1">
+                ✓ All limits available
+              </div>
+            )}
+          </div>
+        )}
         
-        <Button
-          onClick={toggleServer}
-          disabled={buttonContent.disabled}
-          variant={buttonContent.variant}
-          size="sm"
-          className={cn(
-            "flex items-center space-x-2 font-medium transition-all",
-            hasError && "border-orange-300 hover:bg-orange-50",
-            isServerRunning && "border-green-300 hover:bg-green-50"
-          )}
-        >
-          <span>{buttonContent.text}</span>
-          <IconComponent className={cn(
-            "h-4 w-4",
-            buttonContent.disabled && "animate-spin"
-          )} />
-        </Button>
+        {/* Control Button */}
+        <div className="flex justify-center pt-2">
+          <Button
+            onClick={toggleServer}
+            disabled={buttonContent.disabled}
+            variant={buttonContent.variant}
+            size="sm"
+            className={cn(
+              "flex items-center space-x-2 font-medium transition-all min-w-[100px]",
+              hasError && "border-orange-300 hover:bg-orange-50",
+              isServerRunning && "border-green-300 hover:bg-green-50"
+            )}
+          >
+            <span>{buttonContent.text}</span>
+            <IconComponent className={cn(
+              "h-4 w-4",
+              buttonContent.disabled && "animate-spin"
+            )} />
+          </Button>
+        </div>
       </div>
     </div>
   );

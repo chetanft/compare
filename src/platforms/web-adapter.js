@@ -56,7 +56,7 @@ export class WebAdapter {
   getServerConfig() {
     return {
       host: '0.0.0.0', // Allow external connections
-      port: process.env.PORT || 47832,
+      port: process.env.PORT || 3847,
       staticFiles: true,
       cors: {
         origin: true, // Allow all origins in development
