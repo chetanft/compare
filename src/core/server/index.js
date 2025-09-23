@@ -1250,20 +1250,8 @@ export async function startServer() {
     }
   });
 
-  // Upload rate limiter
-  const uploadRateLimit = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // 10 uploads per window
-    message: {
-      success: false,
-      error: 'Too many upload attempts. Please try again later.',
-      code: 'UPLOAD_RATE_LIMIT'
-    }
-  });
-
-  // Screenshot upload endpoint
-  app.post('/api/screenshots/upload', 
-    uploadRateLimit,
+  // Screenshot upload endpoint (NO rate limiting - internal file processing)
+  app.post('/api/screenshots/upload',
     (req, res, next) => {
       upload.fields([
         { name: 'figmaScreenshot', maxCount: 1 },
