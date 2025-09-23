@@ -1,15 +1,35 @@
 /**
- * ColorElementMapping Service
+ * ColorElementMapping Service (Array-Based Implementation)
  * Provides bidirectional mapping between colors and elements/components
  * Enables color-based element discovery and analytics
+ * 
+ * REDESIGNED: Uses Arrays consistently to prevent JSON serialization corruption
+ * No more Set objects that get corrupted to Arrays through JSON.stringify()
  */
 
 export class ColorElementMappingService {
   constructor() {
-    this.colorToElements = new Map(); // color -> Set of element references
-    this.elementToColors = new Map(); // elementId -> Set of colors
-    this.colorStats = new Map(); // color -> usage statistics
+    // All data structures use Arrays to prevent JSON serialization issues
+    this.colorToElements = new Map(); // color -> Array of element references
+    this.elementToColors = new Map(); // elementId -> Array of colors
+    this.colorStats = new Map(); // color -> { sources: Array, colorTypes: Array, ... }
     this.elementDetails = new Map(); // elementId -> element details
+  }
+
+  /**
+   * Utility method to add unique items to array (prevents duplicates)
+   */
+  addUniqueToArray(array, item) {
+    if (!array.includes(item)) {
+      array.push(item);
+    }
+  }
+
+  /**
+   * Utility method to remove duplicates from array
+   */
+  deduplicateArray(array) {
+    return [...new Set(array)];
   }
 
   /**
@@ -20,73 +40,94 @@ export class ColorElementMappingService {
    * @param {string} source - Source of extraction (figma, web)
    */
   addColorElementAssociation(color, element, colorType, source) {
-    const normalizedColor = this.normalizeColor(color);
-    const elementId = element.id || `${source}-${element.name || 'unnamed'}-${Date.now()}`;
-    
-    // Store element details
-    this.elementDetails.set(elementId, {
-      ...element,
-      id: elementId,
-      source,
-      extractedAt: new Date().toISOString()
-    });
-
-    // Color to elements mapping
-    if (!this.colorToElements.has(normalizedColor)) {
-      this.colorToElements.set(normalizedColor, new Set());
-    }
-    
-    const elementRef = {
-      elementId,
-      colorType,
-      source,
-      elementName: element.name,
-      elementType: element.type,
-      timestamp: new Date().toISOString()
-    };
-    
-    this.colorToElements.get(normalizedColor).add(JSON.stringify(elementRef));
-
-    // Element to colors mapping
-    if (!this.elementToColors.has(elementId)) {
-      this.elementToColors.set(elementId, new Set());
-    }
-    this.elementToColors.get(elementId).add(normalizedColor);
-
-    // Update color statistics
-    this.updateColorStats(normalizedColor, colorType, source);
-  }
-
-  /**
-   * Get all elements using a specific color
-   * @param {string} color - Hex color value
-   * @returns {Array} Array of element references with details
-   */
-  getElementsByColor(color) {
-    const normalizedColor = this.normalizeColor(color);
-    const elementRefs = this.colorToElements.get(normalizedColor);
-    
-    if (!elementRefs) return [];
-
-    return Array.from(elementRefs).map(refStr => {
-      const ref = JSON.parse(refStr);
-      const elementDetails = this.elementDetails.get(ref.elementId);
+    try {
+      const normalizedColor = this.normalizeColor(color);
+      const elementId = element.id || `${source}-${element.name || 'unnamed'}-${Date.now()}`;
       
-      return {
-        ...ref,
-        elementDetails,
-        colorUsage: {
-          type: ref.colorType,
-          color: normalizedColor
-        }
+      // Store element details
+      this.elementDetails.set(elementId, {
+        ...element,
+        id: elementId,
+        source,
+        extractedAt: new Date().toISOString()
+      });
+
+      // Color to elements mapping (Array-based)
+      if (!this.colorToElements.has(normalizedColor)) {
+        this.colorToElements.set(normalizedColor, []);
+      }
+      
+      const elementRef = {
+        elementId,
+        colorType,
+        source,
+        elementName: element.name,
+        elementType: element.type,
+        timestamp: new Date().toISOString()
       };
-    });
+      
+      // Add to array if not already present (prevent duplicates)
+      const elementsArray = this.colorToElements.get(normalizedColor);
+      const refString = JSON.stringify(elementRef);
+      if (!elementsArray.find(ref => JSON.stringify(ref) === refString)) {
+        elementsArray.push(elementRef);
+      }
+
+      // Element to colors mapping (Array-based)
+      if (!this.elementToColors.has(elementId)) {
+        this.elementToColors.set(elementId, []);
+      }
+      
+      const colorsArray = this.elementToColors.get(elementId);
+      const colorEntry = {
+        color: normalizedColor,
+        colorType,
+        source,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Add to array if not already present
+      const colorString = JSON.stringify(colorEntry);
+      if (!colorsArray.find(entry => JSON.stringify(entry) === colorString)) {
+        colorsArray.push(colorEntry);
+      }
+
+      // Update color statistics (Array-based)
+      this.updateColorStats(normalizedColor, colorType, source);
+      
+    } catch (error) {
+      console.error('⚠️ Error adding color-element association:', error.message);
+      // Graceful degradation - don't crash the entire extraction
+    }
   }
 
   /**
-   * Get all colors used by a specific element
-   * @param {string} elementId - Element identifier
-   * @returns {Array} Array of colors with usage details
+   * Update color usage statistics (Array-based implementation)
+   */
+  updateColorStats(color, colorType, source) {
+    if (!this.colorStats.has(color)) {
+      this.colorStats.set(color, {
+        totalUsage: 0,
+        sources: [],      // Array instead of Set
+        colorTypes: [],   // Array instead of Set
+        firstSeen: new Date().toISOString(),
+        lastSeen: new Date().toISOString()
+      });
+    }
+
+    const stats = this.colorStats.get(color);
+    stats.totalUsage++;
+    
+    // Add to arrays if not already present (Array-based deduplication)
+    this.addUniqueToArray(stats.sources, source);
+    this.addUniqueToArray(stats.colorTypes, colorType);
+    stats.lastSeen = new Date().toISOString();
+
+    // No need to set back - stats is already a reference to the Map object
+  }
+
+  /**
+   * Get all colors used by a specific element (returns Array)
    */
   getColorsByElement(elementId) {
     const colors = this.elementToColors.get(elementId);
@@ -94,55 +135,68 @@ export class ColorElementMappingService {
     
     if (!colors || !elementDetails) return [];
 
-    return Array.from(colors).map(color => {
-      const stats = this.colorStats.get(color);
+    return colors.map(colorEntry => {
+      const stats = this.colorStats.get(colorEntry.color);
       return {
-        color,
+        color: colorEntry.color,
+        colorType: colorEntry.colorType,
         elementId,
         elementName: elementDetails.name,
         elementType: elementDetails.type,
         source: elementDetails.source,
         stats: stats ? {
           totalUsage: stats.totalUsage,
+          sources: [...stats.sources],      // Return copy of Array
+          colorTypes: [...stats.colorTypes], // Return copy of Array
           firstSeen: stats.firstSeen,
-          lastSeen: stats.lastSeen,
-          sources: Array.from(stats.sources || []),
-          colorTypes: Array.from(stats.colorTypes || [])
+          lastSeen: stats.lastSeen
         } : null
       };
     });
   }
 
   /**
-   * Get comprehensive color analytics
-   * @param {string} color - Optional specific color to analyze
-   * @returns {Object} Color analytics data
+   * Get all elements using a specific color (returns Array)
    */
-  getColorAnalytics(color = null) {
-    if (color) {
-      return this.getSingleColorAnalytics(this.normalizeColor(color));
-    }
+  getElementsByColor(color) {
+    const normalizedColor = this.normalizeColor(color);
+    const elementRefs = this.colorToElements.get(normalizedColor);
+    
+    if (!elementRefs) return [];
 
-    // Get all colors analytics
+    return elementRefs.map(ref => {
+      const elementDetails = this.elementDetails.get(ref.elementId);
+      return {
+        ...ref,
+        elementDetails: elementDetails || null
+      };
+    });
+  }
+
+  /**
+   * Get comprehensive color analytics (Array-based)
+   */
+  getColorAnalytics() {
     const allColors = Array.from(this.colorToElements.keys());
     
     return {
       totalColors: allColors.length,
       totalElements: this.elementDetails.size,
       totalAssociations: Array.from(this.colorToElements.values())
-        .reduce((sum, elements) => sum + elements.size, 0),
+        .reduce((sum, elements) => sum + elements.length, 0),
       
       colorBreakdown: allColors.map(color => {
+        const elements = this.colorToElements.get(color);
         const stats = this.colorStats.get(color);
         return {
           color,
-          elementCount: this.colorToElements.get(color).size,
+          elementCount: elements ? elements.length : 0,
           stats: stats ? {
             totalUsage: stats.totalUsage,
+            sources: [...stats.sources],      // Return copy of Array
+            colorTypes: [...stats.colorTypes], // Return copy of Array
             firstSeen: stats.firstSeen,
-            lastSeen: stats.lastSeen,
-            sources: Array.from(stats.sources || []),
-            colorTypes: Array.from(stats.colorTypes || [])
+            lastSeen: stats.lastSeen
           } : null,
           elements: this.getElementsByColor(color)
         };
@@ -154,9 +208,7 @@ export class ColorElementMappingService {
   }
 
   /**
-   * Get analytics for a single color
-   * @param {string} color - Normalized hex color
-   * @returns {Object} Single color analytics
+   * Get analytics for a single color (Array-based)
    */
   getSingleColorAnalytics(color) {
     const elements = this.getElementsByColor(color);
@@ -166,11 +218,11 @@ export class ColorElementMappingService {
       color,
       totalElements: elements.length,
       stats: {
-        totalUsage: stats.totalUsage,
-        firstSeen: stats.firstSeen,
-        lastSeen: stats.lastSeen,
-        sources: Array.from(stats.sources || []),
-        colorTypes: Array.from(stats.colorTypes || [])
+        totalUsage: stats.totalUsage || 0,
+        sources: stats.sources ? [...stats.sources] : [],      // Return copy of Array
+        colorTypes: stats.colorTypes ? [...stats.colorTypes] : [], // Return copy of Array
+        firstSeen: stats.firstSeen || null,
+        lastSeen: stats.lastSeen || null
       },
       elements,
       usageBreakdown: {
@@ -182,305 +234,115 @@ export class ColorElementMappingService {
   }
 
   /**
-   * Search colors by criteria
-   * @param {Object} criteria - Search criteria
-   * @returns {Array} Matching colors with analytics
+   * Get source breakdown (Array-based)
    */
-  searchColors(criteria = {}) {
-    const {
-      colorRange, // { from: "#000000", to: "#ffffff" }
-      minElementCount = 0,
-      maxElementCount = Infinity,
-      source = null, // 'figma' | 'web'
-      colorType = null, // 'fill' | 'stroke' | 'background' | 'text' | 'border'
-      elementType = null // specific element types
-    } = criteria;
-
-    let colors = Array.from(this.colorToElements.keys());
-
-    // Filter by color range
-    if (colorRange) {
-      colors = colors.filter(color => 
-        this.isColorInRange(color, colorRange.from, colorRange.to)
-      );
-    }
-
-    // Filter by element count
-    colors = colors.filter(color => {
-      const elementCount = this.colorToElements.get(color).size;
-      return elementCount >= minElementCount && elementCount <= maxElementCount;
-    });
-
-    // Filter by source, colorType, elementType
-    if (source || colorType || elementType) {
-      colors = colors.filter(color => {
-        const elements = this.getElementsByColor(color);
-        return elements.some(element => {
-          return (!source || element.source === source) &&
-                 (!colorType || element.colorType === colorType) &&
-                 (!elementType || element.elementType === elementType);
-        });
-      });
-    }
-
-    return colors.map(color => this.getSingleColorAnalytics(color));
-  }
-
-  /**
-   * Get color usage recommendations
-   * @returns {Object} Recommendations for color usage optimization
-   */
-  getColorRecommendations() {
-    const analytics = this.getColorAnalytics();
-    const recommendations = [];
-
-    // Find overused colors
-    const overusedColors = analytics.colorBreakdown
-      .filter(item => item.elementCount > 10)
-      .slice(0, 5);
-
-    if (overusedColors.length > 0) {
-      recommendations.push({
-        type: 'overuse',
-        severity: 'medium',
-        title: 'Colors Used Extensively',
-        description: `${overusedColors.length} colors are used in more than 10 elements`,
-        colors: overusedColors.map(item => item.color),
-        suggestion: 'Consider creating design tokens for these frequently used colors'
-      });
-    }
-
-    // Find similar colors that could be consolidated
-    const similarColors = this.findSimilarColors();
-    if (similarColors.length > 0) {
-      recommendations.push({
-        type: 'consolidation',
-        severity: 'low',
-        title: 'Similar Colors Detected',
-        description: `Found ${similarColors.length} groups of similar colors`,
-        colorGroups: similarColors,
-        suggestion: 'Consider consolidating similar colors to reduce design complexity'
-      });
-    }
-
-    // Find single-use colors
-    const singleUseColors = analytics.colorBreakdown
-      .filter(item => item.elementCount === 1);
-
-    if (singleUseColors.length > analytics.totalColors * 0.3) {
-      recommendations.push({
-        type: 'single-use',
-        severity: 'low',
-        title: 'Many Single-Use Colors',
-        description: `${singleUseColors.length} colors are used only once`,
-        suggestion: 'Review if these unique colors are necessary or can be replaced with existing palette colors'
-      });
-    }
-
-    return {
-      recommendations,
-      summary: {
-        totalRecommendations: recommendations.length,
-        highSeverity: recommendations.filter(r => r.severity === 'high').length,
-        mediumSeverity: recommendations.filter(r => r.severity === 'medium').length,
-        lowSeverity: recommendations.filter(r => r.severity === 'low').length
-      }
-    };
-  }
-
-  /**
-   * Export color-element mapping data
-   * @param {string} format - Export format ('json' | 'csv')
-   * @returns {string} Exported data
-   */
-  exportData(format = 'json') {
-    const data = {
-      metadata: {
-        exportedAt: new Date().toISOString(),
-        totalColors: this.colorToElements.size,
-        totalElements: this.elementDetails.size,
-        version: '1.0.0'
-      },
-      analytics: this.getColorAnalytics(),
-      recommendations: this.getColorRecommendations()
-    };
-
-    if (format === 'csv') {
-      return this.convertToCSV(data);
-    }
-
-    return JSON.stringify(data, null, 2);
-  }
-
-  // Private helper methods
-  normalizeColor(color) {
-    if (!color) return '#000000';
-    
-    // Handle different color formats
-    if (color.startsWith('rgb')) {
-      return this.rgbToHex(color);
-    }
-    
-    // Ensure hex format with #
-    return color.startsWith('#') ? color.toLowerCase() : `#${color.toLowerCase()}`;
-  }
-
-  rgbToHex(rgb) {
-    const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-    if (!match) return '#000000';
-    
-    const [, r, g, b] = match;
-    return `#${[r, g, b].map(x => parseInt(x).toString(16).padStart(2, '0')).join('')}`;
-  }
-
-  updateColorStats(color, colorType, source) {
-    if (!this.colorStats.has(color)) {
-      this.colorStats.set(color, {
-        totalUsage: 0,
-        sources: new Set(),
-        colorTypes: new Set(),
-        firstSeen: new Date().toISOString(),
-        lastSeen: new Date().toISOString()
-      });
-    }
-
-    const stats = this.colorStats.get(color);
-    stats.totalUsage++;
-    
-    // Ensure sources and colorTypes are Sets (restore from Array if needed)
-    if (!stats.sources || !stats.sources.add) {
-      stats.sources = new Set(Array.isArray(stats.sources) ? stats.sources : []);
-    }
-    if (!stats.colorTypes || !stats.colorTypes.add) {
-      stats.colorTypes = new Set(Array.isArray(stats.colorTypes) ? stats.colorTypes : []);
-    }
-    
-    try {
-      stats.sources.add(source);
-      stats.colorTypes.add(colorType);
-      stats.lastSeen = new Date().toISOString();
-    } catch (error) {
-      console.error('⚠️ Error updating color stats:', error.message);
-      // Recreate the stats object if it's corrupted
-      this.colorStats.set(color, {
-        totalUsage: stats.totalUsage || 1,
-        sources: new Set([source]),
-        colorTypes: new Set([colorType]),
-        firstSeen: stats.firstSeen || new Date().toISOString(),
-        lastSeen: new Date().toISOString()
-      });
-    }
-
-    // No need to set the stats back - it's already a reference to the Map object
-  }
-
   getSourceBreakdown() {
     const breakdown = { figma: 0, web: 0 };
     
     for (const [, elements] of this.colorToElements) {
-      for (const elementRefStr of elements) {
-        const ref = JSON.parse(elementRefStr);
-        breakdown[ref.source] = (breakdown[ref.source] || 0) + 1;
+      for (const element of elements) {
+        if (element.source === 'figma') breakdown.figma++;
+        else if (element.source === 'web') breakdown.web++;
       }
     }
     
     return breakdown;
   }
 
+  /**
+   * Get color type breakdown (Array-based)
+   */
   getColorTypeBreakdown() {
     const breakdown = {};
     
     for (const [, elements] of this.colorToElements) {
-      for (const elementRefStr of elements) {
-        const ref = JSON.parse(elementRefStr);
-        breakdown[ref.colorType] = (breakdown[ref.colorType] || 0) + 1;
+      for (const element of elements) {
+        breakdown[element.colorType] = (breakdown[element.colorType] || 0) + 1;
       }
     }
     
     return breakdown;
   }
 
-  groupBy(array, key) {
-    return array.reduce((groups, item) => {
-      const group = item[key];
-      groups[group] = (groups[group] || 0) + 1;
-      return groups;
-    }, {});
-  }
-
-  isColorInRange(color, fromColor, toColor) {
-    // Simple hex color range comparison
-    const colorVal = parseInt(color.replace('#', ''), 16);
-    const fromVal = parseInt(fromColor.replace('#', ''), 16);
-    const toVal = parseInt(toColor.replace('#', ''), 16);
+  /**
+   * Search colors by criteria (Array-based)
+   */
+  searchColors(criteria) {
+    const { source, colorType, elementType } = criteria;
+    const allColors = Array.from(this.colorToElements.keys());
     
-    return colorVal >= fromVal && colorVal <= toVal;
-  }
-
-  findSimilarColors(threshold = 30) {
-    const colors = Array.from(this.colorToElements.keys());
-    const similarGroups = [];
-    const processed = new Set();
-
-    for (const color1 of colors) {
-      if (processed.has(color1)) continue;
-      
-      const similarColors = [color1];
-      
-      for (const color2 of colors) {
-        if (color1 !== color2 && !processed.has(color2)) {
-          if (this.getColorDistance(color1, color2) < threshold) {
-            similarColors.push(color2);
-            processed.add(color2);
-          }
-        }
-      }
-      
-      if (similarColors.length > 1) {
-        similarGroups.push(similarColors);
-      }
-      
-      processed.add(color1);
-    }
-
-    return similarGroups;
-  }
-
-  getColorDistance(color1, color2) {
-    const rgb1 = this.hexToRgb(color1);
-    const rgb2 = this.hexToRgb(color2);
-    
-    return Math.sqrt(
-      Math.pow(rgb1.r - rgb2.r, 2) +
-      Math.pow(rgb1.g - rgb2.g, 2) +
-      Math.pow(rgb1.b - rgb2.b, 2)
-    );
-  }
-
-  hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : { r: 0, g: 0, b: 0 };
-  }
-
-  convertToCSV(data) {
-    const headers = ['Color', 'Element Count', 'Sources', 'Color Types', 'Elements'];
-    const rows = data.analytics.colorBreakdown.map(item => [
-      item.color,
-      item.elementCount,
-      item.stats.sources?.join(';') || '',
-      item.stats.colorTypes?.join(';') || '',
-      item.elements.map(e => `${e.elementName}(${e.source})`).join(';')
-    ]);
-
-    return [headers, ...rows].map(row => row.join(',')).join('\n');
+    return allColors.filter(color => {
+      const elements = this.getElementsByColor(color);
+      return elements.some(element => {
+        return (!source || element.source === source) &&
+               (!colorType || element.colorType === colorType) &&
+               (!elementType || element.elementType === elementType);
+      });
+    }).map(color => ({
+      color,
+      elements: this.getElementsByColor(color).filter(element => {
+        return (!source || element.source === source) &&
+               (!colorType || element.colorType === colorType) &&
+               (!elementType || element.elementType === elementType);
+      })
+    }));
   }
 
   /**
-   * Clear all mappings (useful for testing or reset)
+   * Get color palette with usage counts (Array-based)
+   */
+  getColorPalette(options = {}) {
+    const { limit = 50, sortBy = 'usage' } = options;
+    const allColors = Array.from(this.colorToElements.keys());
+    
+    let palette = allColors.map(color => {
+      const elements = this.colorToElements.get(color);
+      const stats = this.colorStats.get(color);
+      
+      return {
+        color,
+        usageCount: elements ? elements.length : 0,
+        stats: stats ? {
+          totalUsage: stats.totalUsage,
+          sources: [...stats.sources],      // Return copy of Array
+          colorTypes: [...stats.colorTypes] // Return copy of Array
+        } : null
+      };
+    });
+    
+    // Sort palette
+    if (sortBy === 'usage') {
+      palette.sort((a, b) => b.usageCount - a.usageCount);
+    } else if (sortBy === 'color') {
+      palette.sort((a, b) => a.color.localeCompare(b.color));
+    }
+    
+    return palette.slice(0, limit);
+  }
+
+  /**
+   * Get service statistics (Array-based)
+   */
+  getStats() {
+    return {
+      totalColors: this.colorToElements.size,
+      totalElements: this.elementDetails.size,
+      totalAssociations: Array.from(this.colorToElements.values())
+        .reduce((sum, elements) => sum + elements.length, 0),
+      colorStats: this.colorStats.size,
+      
+      // Memory usage approximation
+      memoryUsage: {
+        colorToElements: this.colorToElements.size,
+        elementToColors: this.elementToColors.size,
+        colorStats: this.colorStats.size,
+        elementDetails: this.elementDetails.size
+      }
+    };
+  }
+
+  /**
+   * Clear all mappings (Array-based)
    */
   clear() {
     this.colorToElements.clear();
@@ -490,32 +352,93 @@ export class ColorElementMappingService {
   }
 
   /**
-   * Reset service state - useful for clearing corrupted data
+   * Reset service state - useful for clearing corrupted data (Array-based)
    */
   reset() {
     this.clear();
-    console.log('🔄 ColorElementMappingService reset - all data cleared');
+    console.log('🔄 ColorElementMappingService reset - all data cleared (Array-based)');
   }
 
   /**
-   * Get service statistics
-   * @returns {Object} Service statistics
+   * Normalize color to consistent format
    */
-  getStats() {
+  normalizeColor(color) {
+    if (!color) return '#000000';
+    
+    // Handle different color formats
+    if (color.startsWith('rgb')) {
+      return this.rgbToHex(color);
+    }
+    
+    if (color.startsWith('#')) {
+      return color.toLowerCase();
+    }
+    
+    // Default fallback
+    return color.toLowerCase();
+  }
+
+  /**
+   * Convert RGB to hex
+   */
+  rgbToHex(rgb) {
+    const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/);
+    if (!match) return rgb;
+    
+    const [, r, g, b] = match;
+    return `#${((1 << 24) + (parseInt(r) << 16) + (parseInt(g) << 8) + parseInt(b)).toString(16).slice(1)}`;
+  }
+
+  /**
+   * Group array by property (utility method)
+   */
+  groupBy(array, property) {
+    return array.reduce((groups, item) => {
+      const key = item[property] || 'unknown';
+      groups[key] = (groups[key] || 0) + 1;
+      return groups;
+    }, {});
+  }
+
+  /**
+   * Export data for backup/migration (Array-based)
+   */
+  exportData() {
     return {
-      totalColors: this.colorToElements.size,
-      totalElements: this.elementDetails.size,
-      totalColorAssociations: Array.from(this.colorToElements.values())
-        .reduce((sum, elements) => sum + elements.size, 0),
-      memoryUsage: {
-        colorToElements: this.colorToElements.size,
-        elementToColors: this.elementToColors.size,
-        colorStats: this.colorStats.size,
-        elementDetails: this.elementDetails.size
+      version: '2.0-array-based',
+      timestamp: new Date().toISOString(),
+      data: {
+        colorToElements: Array.from(this.colorToElements.entries()),
+        elementToColors: Array.from(this.elementToColors.entries()),
+        colorStats: Array.from(this.colorStats.entries()),
+        elementDetails: Array.from(this.elementDetails.entries())
       }
     };
   }
+
+  /**
+   * Import data from backup (Array-based)
+   */
+  importData(exportedData) {
+    try {
+      if (exportedData.version !== '2.0-array-based') {
+        throw new Error(`Unsupported data version: ${exportedData.version}`);
+      }
+
+      this.clear();
+      
+      this.colorToElements = new Map(exportedData.data.colorToElements);
+      this.elementToColors = new Map(exportedData.data.elementToColors);
+      this.colorStats = new Map(exportedData.data.colorStats);
+      this.elementDetails = new Map(exportedData.data.elementDetails);
+      
+      console.log('✅ ColorElementMappingService data imported successfully (Array-based)');
+    } catch (error) {
+      console.error('❌ Failed to import ColorElementMappingService data:', error.message);
+      throw error;
+    }
+  }
 }
 
-// Export singleton instance
+// Create and export singleton instance
 export const colorElementMapping = new ColorElementMappingService();
