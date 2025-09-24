@@ -293,13 +293,17 @@ export default function VisualDiffViewer({
                 {selectedDiscrepancy.figmaValue && (
                   <div>
                     <span className="text-muted-foreground">Design Value:</span>
-                    <code className="block mt-1 p-2 bg-gray-100 rounded">{selectedDiscrepancy.figmaValue}</code>
+                    <code className="block mt-1 p-2 bg-gray-100 rounded">
+                      {typeof selectedDiscrepancy.figmaValue === 'string' ? selectedDiscrepancy.figmaValue : JSON.stringify(selectedDiscrepancy.figmaValue)}
+                    </code>
                   </div>
                 )}
                 {selectedDiscrepancy.developedValue && (
                   <div>
                     <span className="text-muted-foreground">Implementation Value:</span>
-                    <code className="block mt-1 p-2 bg-gray-100 rounded">{selectedDiscrepancy.developedValue}</code>
+                    <code className="block mt-1 p-2 bg-gray-100 rounded">
+                      {typeof selectedDiscrepancy.developedValue === 'string' ? selectedDiscrepancy.developedValue : JSON.stringify(selectedDiscrepancy.developedValue)}
+                    </code>
                   </div>
                 )}
               </div>

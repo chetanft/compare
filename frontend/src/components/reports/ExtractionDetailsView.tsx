@@ -174,7 +174,10 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
                 {((figma as any).spacing || []).map((space: any, index: number) => (
                   <Badge key={index} variant="outline" className="text-xs">
-                    {space}
+                    {typeof space === 'object' ? 
+                      `${space.value || space.name || 'Unknown'}${space.unit || ''}` : 
+                      String(space)
+                    }
                   </Badge>
                 ))}
               </div>
@@ -188,7 +191,10 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="flex flex-wrap gap-1 max-h-32 overflow-y-auto">
                 {((figma as any).borderRadius || []).map((radius: any, index: number) => (
                   <Badge key={index} variant="outline" className="text-xs">
-                    {radius}
+                    {typeof radius === 'object' ? 
+                      `${radius.value || radius.name || 'Unknown'}${radius.unit || ''}` : 
+                      String(radius)
+                    }
                   </Badge>
                 ))}
               </div>
@@ -256,7 +262,10 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
                 {(web.spacing || []).map((spacing, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
-                    {spacing}
+                    {typeof spacing === 'object' ? 
+                      `${spacing.value || spacing.name || 'Unknown'}${spacing.unit || ''}` : 
+                      String(spacing)
+                    }
                   </Badge>
                 ))}
               </div>
@@ -270,7 +279,10 @@ const ExtractionDetailsView: React.FC<ExtractionDetailsViewProps> = ({ extractio
               <div className="flex flex-wrap gap-1">
                 {(web.borderRadius || []).map((radius, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
-                    {radius}
+                    {typeof radius === 'object' ? 
+                      `${radius.value || radius.name || 'Unknown'}${radius.unit || ''}` : 
+                      String(radius)
+                    }
                   </Badge>
                 ))}
               </div>

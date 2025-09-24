@@ -49,7 +49,14 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
   }
 
   const { comparison, extractionDetails } = result.data;
-  const similarity = Math.round(comparison.overallSimilarity * 100);
+  
+  // Handle different comparison data structures
+  const similarityScore = comparison?.overallSimilarity || 
+                          (extractionDetails?.comparison?.matchPercentage / 100) ||
+                          (comparison?.summary?.totalMatches / Math.max(comparison?.summary?.totalComponents || 1, 1)) ||
+                          0;
+  
+  const similarity = Math.round(similarityScore * 100);
   
   // Determine similarity level and color
   const getSimilarityLevel = (score: number) => {

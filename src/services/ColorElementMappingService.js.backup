@@ -40,9 +40,6 @@ export class ColorElementMappingService {
    * @param {string} source - Source of extraction (figma, web)
    */
   addColorElementAssociation(color, element, colorType, source) {
-    // TEMPORARILY DISABLED TO PREVENT ERRORS
-    console.log(`🔧 Color mapping temporarily disabled: ${color} -> ${element.id || 'unknown'}`);
-    return;
     try {
       const normalizedColor = this.normalizeColor(color);
       const elementId = element.id || `${source}-${element.name || 'unnamed'}-${Date.now()}`;

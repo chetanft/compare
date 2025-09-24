@@ -245,14 +245,21 @@ export default function SingleSourcePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
                   {figmaData.colors.map((color: any, index: number) => {
                     const colorValue = getColorValue(color);
+                    const colorName = typeof color.name === 'string' ? color.name : 
+                                     typeof color.name === 'object' ? JSON.stringify(color.name) :
+                                     `Color ${index + 1}`;
+                    const keyValue = typeof color.value === 'string' ? color.value :
+                                    typeof color.value === 'object' ? JSON.stringify(color.value) :
+                                    String(color.value || index);
+                    
                     return (
-                      <div key={`color-${index}-${color.name || color.value}`} className="flex flex-col items-center">
+                      <div key={`color-${index}-${keyValue}`} className="flex flex-col items-center">
                         <div 
                           className="w-12 h-12 rounded-lg border shadow-sm" 
                           style={{ backgroundColor: colorValue }}
                         />
-                        <span className="text-xs mt-1 font-medium truncate max-w-16" title={color.name || `Color ${index + 1}`}>
-                          {color.name || `Color ${index + 1}`}
+                        <span className="text-xs mt-1 font-medium truncate max-w-16" title={colorName}>
+                          {colorName}
                         </span>
                         <span className="text-xs text-muted-foreground">{colorValue}</span>
                       </div>
@@ -267,23 +274,35 @@ export default function SingleSourcePage() {
               <div className="mt-6">
                 <h3 className="text-lg font-semibold mb-4">Typography ({figmaData.typography.length})</h3>
                 <div className="space-y-3">
-                  {figmaData.typography.map((typo: any, index: number) => (
-                    <div key={`typo-${index}-${typo.name || typo.fontFamily}`} className="p-3 bg-muted/50 rounded-lg">
-                      <p 
-                        className="mb-2" 
-                        style={{ 
-                          fontFamily: typo.fontFamily || 'inherit',
-                          fontSize: typo.fontSize ? `${typo.fontSize}px` : 'inherit',
-                          fontWeight: typo.fontWeight || 'normal'
-                        }}
-                      >
-                        {typo.characters || typo.name || 'The quick brown fox jumps over the lazy dog'}
-                      </p>
-                      <div className="text-xs text-muted-foreground">
-                        {typo.fontFamily || 'Unknown'}, {typo.fontSize || 'Unknown'}px, weight: {typo.fontWeight || 'Unknown'}
+                  {figmaData.typography.map((typo: any, index: number) => {
+                    const typoName = typeof typo.name === 'string' ? typo.name :
+                                    typeof typo.name === 'object' ? JSON.stringify(typo.name) :
+                                    String(typo.name || `Typography ${index + 1}`);
+                    const fontFamily = typeof typo.fontFamily === 'string' ? typo.fontFamily :
+                                      typeof typo.fontFamily === 'object' ? JSON.stringify(typo.fontFamily) :
+                                      String(typo.fontFamily || 'Unknown');
+                    const characters = typeof typo.characters === 'string' ? typo.characters :
+                                      typeof typo.characters === 'object' ? JSON.stringify(typo.characters) :
+                                      String(typo.characters || typoName || 'The quick brown fox jumps over the lazy dog');
+                    
+                    return (
+                      <div key={`typo-${index}-${fontFamily}`} className="p-3 bg-muted/50 rounded-lg">
+                        <p 
+                          className="mb-2" 
+                          style={{ 
+                            fontFamily: fontFamily === 'Unknown' ? 'inherit' : fontFamily,
+                            fontSize: typo.fontSize ? `${typo.fontSize}px` : 'inherit',
+                            fontWeight: typo.fontWeight || 'normal'
+                          }}
+                        >
+                          {characters}
+                        </p>
+                        <div className="text-xs text-muted-foreground">
+                          {fontFamily}, {typo.fontSize || 'Unknown'}px, weight: {typo.fontWeight || 'Unknown'}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

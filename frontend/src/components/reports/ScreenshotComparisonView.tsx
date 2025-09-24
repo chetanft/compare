@@ -286,13 +286,17 @@ export default function ScreenshotComparisonView({
                             {discrepancy.figmaValue && (
                               <div>
                                 <span className="text-muted-foreground">Design:</span> 
-                                <code className="ml-1 px-1 bg-gray-100 rounded">{discrepancy.figmaValue}</code>
+                                <code className="ml-1 px-1 bg-gray-100 rounded">
+                                  {typeof discrepancy.figmaValue === 'string' ? discrepancy.figmaValue : JSON.stringify(discrepancy.figmaValue)}
+                                </code>
                               </div>
                             )}
                             {discrepancy.developedValue && (
                               <div>
                                 <span className="text-muted-foreground">Implementation:</span> 
-                                <code className="ml-1 px-1 bg-gray-100 rounded">{discrepancy.developedValue}</code>
+                                <code className="ml-1 px-1 bg-gray-100 rounded">
+                                  {typeof discrepancy.developedValue === 'string' ? discrepancy.developedValue : JSON.stringify(discrepancy.developedValue)}
+                                </code>
                               </div>
                             )}
                           </div>

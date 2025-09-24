@@ -713,18 +713,29 @@ export async function startServer() {
 
       const totalComponentCount = countAllComponents(standardizedData.components);
 
+      // Ensure metadata is properly constructed even if standardizedData.metadata is null
+      const metadata = {
+        ...(standardizedData.metadata || {}), // Handle null metadata gracefully
+        componentCount: totalComponentCount, // Use actual count
+        colorCount: standardizedData.colors?.length || 0, // Use actual count with fallback
+        typographyCount: standardizedData.typography?.length || 0, // Use actual count with fallback
+        extractedAt: new Date().toISOString(),
+        source: standardizedData.extractionMethod || 'figma-mcp'
+      };
+
+      console.log('🔍 Figma extraction metadata debug:', {
+        originalMetadata: standardizedData.metadata,
+        colorsLength: standardizedData.colors?.length,
+        constructedMetadata: metadata
+      });
+
       res.json({
         success: true,
         data: {
           ...standardizedData,
           componentCount: totalComponentCount, // Override with actual recursive count
           extractionMethod: standardizedData.extractionMethod, // Ensure it's at root level
-          metadata: {
-            ...standardizedData.metadata,
-            componentCount: totalComponentCount, // Use actual count
-            colorCount: standardizedData.colors.length, // Use actual count
-            typographyCount: standardizedData.typography.length // Use actual count
-          },
+          metadata,
           reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null
         }
       });
@@ -1151,7 +1162,11 @@ export async function startServer() {
         figma: {
           componentCount: figmaData?.components?.length || 0,
           colors: figmaData?.colors || [],
-          typography: figmaData?.typography || [],
+          typography: {
+            fontFamilies: [...new Set((figmaData?.typography || []).map(t => t.fontFamily).filter(Boolean))],
+            fontSizes: [...new Set((figmaData?.typography || []).map(t => t.fontSize ? `${t.fontSize}px` : null).filter(Boolean))],
+            fontWeights: [...new Set((figmaData?.typography || []).map(t => t.fontWeight?.toString()).filter(Boolean))]
+          },
           extractionTime: figmaDuration,
           fileInfo: {
             name: figmaData?.fileName || 'Unknown',
@@ -1160,7 +1175,31 @@ export async function startServer() {
         },
         web: {
           elementCount: webData?.elements?.length || 0,
-          colors: webData?.colorPalette || [],
+          colors: (webData?.colors || webData?.colorPalette || []).map(color => {
+            // Convert RGB colors to hex format for consistency
+            if (typeof color === 'string' && color.startsWith('rgb(')) {
+              const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+              if (match) {
+                const [, r, g, b] = match;
+                return `#${parseInt(r).toString(16).padStart(2, '0')}${parseInt(g).toString(16).padStart(2, '0')}${parseInt(b).toString(16).padStart(2, '0')}`;
+              }
+            }
+            // Handle RGBA colors
+            if (typeof color === 'string' && color.startsWith('rgba(')) {
+              const match = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([0-9.]+)\)/);
+              if (match) {
+                const [, r, g, b, a] = match;
+                const alpha = parseFloat(a);
+                if (alpha === 1) {
+                  // Full opacity, convert to hex
+                  return `#${parseInt(r).toString(16).padStart(2, '0')}${parseInt(g).toString(16).padStart(2, '0')}${parseInt(b).toString(16).padStart(2, '0')}`;
+                }
+                // Keep RGBA for transparency
+                return color;
+              }
+            }
+            return color; // Return as-is if already hex or other format
+          }),
           typography: {
             fontFamilies: webData?.typography?.fontFamilies || [],
             fontSizes: webData?.typography?.fontSizes || [],

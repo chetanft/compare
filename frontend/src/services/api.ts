@@ -391,8 +391,8 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
             fileKey: response.data.extractionDetails?.figma?.fileKey || response.data.figmaData?.metadata?.fileKey,
             fileName: response.data.extractionDetails?.figma?.fileName || response.data.figmaData?.metadata?.fileName,
             url: response.data.extractionDetails?.figma?.url,
-            // Design properties from Figma extraction
-            colors: response.data.figmaData?.colorPalette || [],
+            // Design properties from Figma extraction  
+            colors: response.data.extractionDetails?.figma?.colors || [],
             typography: response.data.figmaData?.typography || {},
             spacing: response.data.figmaData?.spacing || [],
             borderRadius: response.data.figmaData?.borderRadius || []
@@ -405,7 +405,7 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
             },
             extractorVersion: response.data.extractionDetails?.web?.extractorVersion || response.data.webData?.metadata?.extractorVersion,
             // Design properties from web extraction
-            colors: response.data.webData?.colorPalette || [],
+            colors: response.data.extractionDetails?.web?.colors || [],
             typography: response.data.webData?.typography || {},
             spacing: response.data.webData?.spacing || [],
             borderRadius: response.data.webData?.borderRadius || []
