@@ -121,7 +121,7 @@ export class ServerControlService extends EventEmitter {
         },
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false,
-        cwd: path.join(__dirname, '../..')
+        cwd: path.join(__dirname, '../../..')  // Repository root, not src/
       });
 
       // Handle server output
