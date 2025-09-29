@@ -9,6 +9,7 @@ import { APP_SERVER_PORT, SERVER_CONFIG } from '../../config/app-constants.js';
 import { logger } from '../../utils/logger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,6 @@ export class ServerControlService extends EventEmitter {
    */
   async isPortAvailable(port = this.serverPort) {
     return new Promise((resolve) => {
-      const net = require('net');
       const server = net.createServer();
       
       server.listen(port, () => {
@@ -110,8 +110,8 @@ export class ServerControlService extends EventEmitter {
         throw new Error(`Port ${this.serverPort} is still in use`);
       }
 
-      // Start the server process
-      const serverPath = path.join(__dirname, '../../server.js');
+      // Start the server process - point to root server.js, not src/server.js
+      const serverPath = path.join(__dirname, '../../../server.js');
       
       this.serverProcess = spawn('node', [serverPath], {
         env: {

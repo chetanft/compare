@@ -62,7 +62,8 @@ router.post('/figma/file', async (req, res) => {
       });
     }
     
-    await initializeMCP();
+    const mcpClient = new FigmaMCPClient();
+    await mcpClient.connect();
     const data = await mcpClient.getFigmaFile(fileId, nodeId);
     
     res.json({
@@ -93,7 +94,8 @@ router.post('/figma/export', async (req, res) => {
       });
     }
     
-    await initializeMCP();
+    const mcpClient = new FigmaMCPClient();
+    await mcpClient.connect();
     const data = await mcpClient.exportAssets(fileId, nodeIds, format, scale);
     
     res.json({
@@ -124,7 +126,8 @@ router.post('/figma/analyze', async (req, res) => {
       });
     }
     
-    await initializeMCP();
+    const mcpClient = new FigmaMCPClient();
+    await mcpClient.connect();
     const data = await mcpClient.analyzeComponents(fileId);
     
     res.json({
@@ -155,7 +158,8 @@ router.post('/figma/compare', async (req, res) => {
       });
     }
     
-    await initializeMCP();
+    const mcpClient = new FigmaMCPClient();
+    await mcpClient.connect();
     
     // Get Figma data via MCP
     const figmaData = await mcpClient.getFigmaFile(fileId, nodeId);
