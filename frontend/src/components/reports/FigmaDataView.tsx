@@ -20,13 +20,18 @@ interface DesignToken {
 }
 
 interface TypographyToken {
+  id?: string;
   name?: string;
-  fontFamily: string;
-  fontSize: number;
-  fontWeight: number | string;
-  letterSpacing?: number;
+  fontFamilies?: string[];
+  fontFamily?: string;
+  fontSizes?: (string | number)[];
+  fontSize?: number;
+  fontWeights?: (string | number)[];
+  fontWeight?: number | string;
+  lineHeights?: (string | number)[];
   lineHeight?: number;
-  styleId?: string;
+  letterSpacing?: number;
+  usageCount?: number;
 }
 
 interface SpacingToken {
@@ -460,50 +465,45 @@ const FigmaDataView: React.FC<FigmaDataViewProps> = ({ data }) => {
     );
   };
   
-  const renderTypographyToken = (token: TypographyToken, index: number) => {
-    // Create a safe font family with fallbacks
-    const safeFontFamily = token.fontFamily ? 
-      `"${token.fontFamily}", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif` : 
-      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
-    
-    return (
-      <div key={index} className="p-3 border rounded mb-2 bg-card">
-        <div 
-          className="mb-2" 
-          style={{ 
-            fontFamily: safeFontFamily,
-            fontSize: `${token.fontSize}px`,
-            fontWeight: token.fontWeight,
-            letterSpacing: token.letterSpacing ? `${token.letterSpacing}px` : 'normal',
-            lineHeight: token.lineHeight ? `${token.lineHeight}px` : 'normal'
-          }}
-        >
-          {(token as any).text || token.name || 'The quick brown fox jumps over the lazy dog'}
-        </div>
-        <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2">
-          <div>
-            <span className="font-medium">Font:</span> {token.fontFamily}
-          </div>
-          <div>
-            <span className="font-medium">Size:</span> {token.fontSize}px
-          </div>
-          <div>
-            <span className="font-medium">Weight:</span> {token.fontWeight}
-          </div>
-          {token.letterSpacing !== undefined && (
-            <div>
-              <span className="font-medium">Letter Spacing:</span> {token.letterSpacing}px
-            </div>
-          )}
-          {token.lineHeight !== undefined && (
-            <div>
-              <span className="font-medium">Line Height:</span> {token.lineHeight}px
-            </div>
-          )}
-        </div>
+const renderTypographyToken = (token: TypographyToken, index: number) => {
+  const families = token.fontFamilies || (token.fontFamily ? [token.fontFamily] : []);
+  const sizes = token.fontSizes || (token.fontSize !== undefined ? [token.fontSize] : []);
+  const weights = token.fontWeights || (token.fontWeight !== undefined ? [token.fontWeight] : []);
+  const lineHeights = token.lineHeights || (token.lineHeight !== undefined ? [token.lineHeight] : []);
+
+  return (
+    <div key={`${token.id || index}-typography`} className="space-y-2 rounded-lg border bg-card px-3 py-3 text-xs">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-foreground">{token.name || `Style ${index + 1}`}</span>
+        {token.usageCount !== undefined && (
+          <span className="text-muted-foreground">{token.usageCount} uses</span>
+        )}
       </div>
-    );
-  };
+      <div className="space-y-1 text-muted-foreground">
+        {families.length > 0 && (
+          <div>
+            <span className="font-semibold text-foreground">Families:</span> {families.join(', ')}
+          </div>
+        )}
+        {sizes.length > 0 && (
+          <div>
+            <span className="font-semibold text-foreground">Sizes:</span> {sizes.map(size => `${size}`).join(', ')}
+          </div>
+        )}
+        {weights.length > 0 && (
+          <div>
+            <span className="font-semibold text-foreground">Weights:</span> {weights.join(', ')}
+          </div>
+        )}
+        {lineHeights.length > 0 && (
+          <div>
+            <span className="font-semibold text-foreground">Line heights:</span> {lineHeights.join(', ')}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
   
   const renderSpacingToken = (token: SpacingToken, index: number) => {
     const value = token.value;

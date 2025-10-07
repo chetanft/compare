@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import FigmaDataView from './FigmaDataView';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -20,7 +21,8 @@ import {
   Download,
   CheckCircle,
   AlertTriangle,
-  Info
+  Info,
+  Save
 } from 'lucide-react';
 // import ColorUsageSection from '../ui/ColorUsageSection';
 // import ColorComparisonSection from '../ui/ColorComparisonSection';
@@ -155,86 +157,57 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
 
       {/* Extraction Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Figma Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Figma Design
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {extractionDetails.figma && (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">File Name</span>
-                  <span className="font-medium">
-                    {extractionDetails.figma.fileName || 'Unknown'}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Components</span>
-                  <Badge variant="secondary">
-                    {extractionDetails.figma.componentCount || 0}
-                  </Badge>
-                </div>
-                
-                {extractionDetails.figma.fileKey && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">File Key</span>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {extractionDetails.figma.fileKey.slice(0, 8)}...
-                    </code>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {result.data.figmaData && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Figma Extraction Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FigmaDataView data={{ data: result.data.figmaData, metadata: extractionDetails.figma }} />
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Web Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Code className="w-5 h-5" />
-              Web Implementation
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {extractionDetails.web && (
-              <>
+        {extractionDetails.web && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="w-5 h-5" />
+                Web Extraction Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Page Title</span>
+                <span className="font-medium">
+                  {extractionDetails.web.urlInfo?.title || 'Unknown'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Elements</span>
+                <Badge variant="secondary">
+                  {extractionDetails.web.elementCount || 0}
+                </Badge>
+              </div>
+              {extractionDetails.web.urlInfo?.url && (
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Page Title</span>
-                  <span className="font-medium">
-                    {extractionDetails.web.urlInfo?.title || 'Unknown'}
-                  </span>
+                  <span className="text-sm text-gray-600">URL</span>
+                  <a 
+                    href={extractionDetails.web.urlInfo.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
+                  >
+                    Open <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Elements</span>
-                  <Badge variant="secondary">
-                    {extractionDetails.web.elementCount || 0}
-                  </Badge>
-                </div>
-                
-                {extractionDetails.web.urlInfo?.url && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">URL</span>
-                    <a 
-                      href={extractionDetails.web.urlInfo.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1"
-                    >
-                      Open <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Raw Data Preview */}
@@ -250,17 +223,37 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {result.data.figmaData && (
                 <div>
-                  <h4 className="font-semibold mb-3">Figma Components</h4>
-                  <div className="bg-gray-50 p-4 rounded-lg max-h-40 overflow-y-auto">
-                    <pre className="text-xs text-gray-700">
-                      {JSON.stringify(result.data.figmaData.components?.slice(0, 2), null, 2)}
-                      {result.data.figmaData.components && result.data.figmaData.components.length > 2 && (
-                        <div className="text-center text-gray-500 mt-2">
-                          ... and {result.data.figmaData.components.length - 2} more components
-                        </div>
-                      )}
-                    </pre>
-                  </div>
+                  <h4 className="font-semibold mb-3">Figma Typography</h4>
+                  {result.data.figmaData.typography?.length ? (
+                    <ul className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                      {result.data.figmaData.typography.map((token, index) => (
+                        <li key={`fg-typo-${token.id || index}`} className="rounded-lg border bg-gray-50 p-3 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-900">{token.name || `Style ${index + 1}`}</span>
+                            {token.usageCount !== undefined && (
+                              <span className="text-muted-foreground">{token.usageCount} uses</span>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground space-y-1">
+                            {token.fontFamilies?.length && (
+                              <div><span className="font-semibold text-gray-700">Families:</span> {token.fontFamilies.join(', ')}</div>
+                            )}
+                            {token.fontSizes?.length && (
+                              <div><span className="font-semibold text-gray-700">Sizes:</span> {token.fontSizes.join(', ')}</div>
+                            )}
+                            {token.fontWeights?.length && (
+                              <div><span className="font-semibold text-gray-700">Weights:</span> {token.fontWeights.join(', ')}</div>
+                            )}
+                            {token.lineHeights?.length && (
+                              <div><span className="font-semibold text-gray-700">Line heights:</span> {token.lineHeights.join(', ')}</div>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No typography tokens detected.</p>
+                  )}
                 </div>
               )}
               

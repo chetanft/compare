@@ -5,8 +5,10 @@ import ComparisonForm from '../components/forms/ComparisonForm'
 import ProgressTracker from '../components/ui/ProgressTracker'
 import { ComparisonResult } from '../types'
 import { DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline'
+import { Download } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/environment'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
 import ExtractionDetailsView from '../components/reports/ExtractionDetailsView'
 
@@ -15,6 +17,7 @@ export default function NewComparison() {
   const [showProgress, setShowProgress] = useState(false)
   const [result, setResult] = useState<ComparisonResult | null>(null)
   const [reportUrl, setReportUrl] = useState<string | null>(null)
+  const [isSavingReport, setIsSavingReport] = useState(false)
   const navigate = useNavigate()
 
   const handleComparisonStart = (comparisonId: string) => {
@@ -66,7 +69,59 @@ export default function NewComparison() {
     }
   }
 
-  // Function to open report in new tab
+  const openReportInNewTab = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleSaveReport = async () => {
+    if (!result?.comparisonId && !result?.id) {
+      toast({
+        title: 'Cannot save report',
+        description: 'Comparison identifier is missing. Please rerun the comparison.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const comparisonId = result?.comparisonId || result?.id
+
+    try {
+      setIsSavingReport(true)
+      const apiBaseUrl = getApiBaseUrl()
+      const response = await fetch(`${apiBaseUrl}/api/reports/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comparisonId })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Save failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error while saving report')
+      }
+
+      setResult(prev => prev ? ({
+        ...prev,
+        reports: data.reports || data.report || prev.reports
+      }) : prev)
+
+      toast({
+        title: 'Report saved',
+        description: 'The comparison report has been saved and will appear below.'
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Failed to save report',
+        description: error.message || 'Unexpected error encountered',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSavingReport(false)
+    }
+  }
 
   if (result) {
     return (
@@ -159,7 +214,16 @@ export default function NewComparison() {
 
           {/* Report Links */}
           <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Generated Reports</h3>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Generated Reports</h3>
+                <p className="text-xs text-muted-foreground">Save the comparison to generate downloadable reports.</p>
+              </div>
+              <Button size="sm" onClick={handleSaveReport} disabled={isSavingReport} className="flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                {isSavingReport ? 'Saving…' : 'Save Report'}
+              </Button>
+            </div>
             <div className="space-y-3">
               {result?.reports?.directUrl && (
                 <a
@@ -228,6 +292,12 @@ export default function NewComparison() {
                   </div>
                   <div className="text-sm text-indigo-600 font-medium">Download →</div>
                 </a>
+              )}
+
+              {!result?.reports?.directUrl && !result?.reports?.downloadUrl && !result?.reportPath && (
+                <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+                  No reports yet. Run “Save Report” to generate downloadable files.
+                </div>
               )}
             </div>
           </div>
