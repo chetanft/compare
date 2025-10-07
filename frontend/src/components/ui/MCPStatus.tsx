@@ -18,7 +18,7 @@ interface MCPStatusResponse {
 const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = '' }) => {
   const apiBaseUrl = getApiBaseUrl();
   
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['mcpStatus'],
     queryFn: async () => {
       try {
@@ -55,6 +55,13 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
   
   const isAvailable = data.available;
   
+  // keep in sync with server status events
+  React.useEffect(() => {
+    const handler = () => refetch();
+    window.addEventListener('server-status-updated', handler);
+    return () => window.removeEventListener('server-status-updated', handler);
+  }, [refetch]);
+
   return (
     <div className={`flex items-center ${className}`}>
       <div 

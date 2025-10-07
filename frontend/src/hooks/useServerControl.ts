@@ -117,6 +117,8 @@ export function useServerControl() {
                 success: true,
                 data: data
               }));
+
+              window.dispatchEvent(new Event('server-status-updated'));
             }
           } catch (error) {
             console.error('Error parsing SSE data:', error);

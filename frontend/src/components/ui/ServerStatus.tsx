@@ -35,7 +35,7 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
   
   const currentPort = getPortFromUrl(apiBaseUrl);
   
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['serverStatus'],
     queryFn: async () => {
       try {
@@ -63,6 +63,16 @@ export default function ServerStatus({ className = '', onStatusChange }: ServerS
       onStatusChange?.(isOnline ? 'online' : 'offline');
     }
   }, [data, isLoading, error, onStatusChange]);
+
+  // Listen for global server status updates to keep indicators in sync
+  useEffect(() => {
+    const handler = () => {
+      refetch();
+    };
+
+    window.addEventListener('server-status-updated', handler);
+    return () => window.removeEventListener('server-status-updated', handler);
+  }, [refetch]);
   
   if (isLoading) {
     return (

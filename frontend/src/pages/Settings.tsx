@@ -149,6 +149,32 @@ export default function Settings() {
     try {
       setIsLoading(true);
       setUsingCachedSettings(false);
+
+      const apiBaseUrl = getApiBaseUrl();
+
+      // Always refresh server health before loading settings
+      try {
+        const healthResponse = await fetch(`${apiBaseUrl}/api/health`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          signal: AbortSignal.timeout(3000)
+        });
+
+        if (healthResponse.ok) {
+          const healthData = await healthResponse.json();
+          const isHealthy = healthData?.success && (healthData.data?.status === 'ok' || healthData.data?.status === 'healthy');
+          setServerStatus(isHealthy ? 'online' : 'offline');
+
+          if (isHealthy) {
+            window.dispatchEvent(new Event('server-status-updated'));
+          }
+        }
+      } catch (healthError) {
+        console.warn('Health check failed:', healthError);
+        setServerStatus('offline');
+      }
       
       const response = await fetch('/api/settings/current', {
         headers: {
