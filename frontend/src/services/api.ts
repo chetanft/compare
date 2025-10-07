@@ -353,18 +353,11 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
     }
     
     // Transform the response to match the ComparisonResult interface
-    // Support both new standardized fields and legacy fields for backward compatibility
     const figmaCount = 
-      // NEW STANDARDIZED FIELDS (preferred)
       response.data?.figmaData?.componentCount ||
       response.data?.extractionDetails?.figma?.componentCount ||
-      
-      // LEGACY FIELDS (fallback for backward compatibility)
-      response.data?.extractionDetails?.figma?.totalElements ||
-      response.data?.figmaData?.componentsCount ||
       (Array.isArray(response.data?.figmaData?.components) ? response.data.figmaData.components.length : 0) ||
-      (Array.isArray(response.data?.figmaData?.elements) ? response.data.figmaData.elements.length : 0) ||
-      response.data?.figmaData?.metadata?.totalElements || 0;
+      0;
     
     const webCount = 
       // NEW STANDARDIZED FIELDS (preferred)
@@ -427,33 +420,19 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       error: (response as any).error
     };
 
-    // Enhanced data with standardized fields (maintaining some compatibility)
+    // Enhanced data with standardized fields
     (comparisonResult as any).figmaData = { 
       ...(response.data?.figmaData || {}),
-      
-      // STANDARDIZED FIELDS (preferred)
-      componentCount: figmaCount, // Standard field name
-      components: response.data?.figmaData?.components || response.data?.figmaData?.elements || [],
-      
-      // LEGACY FIELDS (temporary compatibility - UI now supports both)
-      componentsCount: figmaCount, // Will be removed in next phase
+      componentCount: figmaCount,
+      components: response.data?.figmaData?.components || [],
     };
     (comparisonResult as any).webData = { 
       ...(response.data?.webData || {}),
-      
-      // STANDARDIZED FIELDS (preferred)
-      elementCount: webCount, // Standard field name
+      elementCount: webCount,
       elements: response.data?.webData?.elements || [],
-      
-      // LEGACY FIELDS (temporary compatibility - UI now supports both)
-      elementsCount: webCount, // Will be removed in next phase
     };
     (comparisonResult as any).extractionDetails = comparisonResult.data?.extractionDetails;
     
-    console.log('🔍 compareUrls: figmaCount =', figmaCount, 'webCount =', webCount);
-    console.log('🔍 compareUrls: comparisonResult.figmaData.componentsCount =', (comparisonResult as any).figmaData?.componentsCount);
-    console.log('🔍 compareUrls: comparisonResult.webData.elementsCount =', (comparisonResult as any).webData?.elementsCount);
-    console.log('🔍 compareUrls: Returning transformed comparison result:', JSON.stringify(comparisonResult, null, 2));
     return comparisonResult;
   } catch (error) {
     console.error('Error comparing URLs:', error);

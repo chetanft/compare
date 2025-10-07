@@ -66,7 +66,7 @@ Start the server:
 npm start
 ```
 
-The server will run on port 3007 by default.
+The server will run on port 3847 by default.
 
 > **Note:** Default server is now 'main'; run `node start-server.js` to start the modular server implementation.
 

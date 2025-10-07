@@ -35,8 +35,8 @@ echo "🚀 Starting development app from: $APP_PATH"
 
 # Wait a moment and check if it started
 sleep 2
-if curl -s http://localhost:3007/api/test > /dev/null 2>&1; then
-    echo "✅ App started successfully on http://localhost:3007"
+if curl -s http://localhost:3847/api/test > /dev/null 2>&1; then
+    echo "✅ App started successfully on http://localhost:3847"
 else
     echo "❌ App failed to start or server not responding"
     exit 1
@@ -45,6 +45,6 @@ fi
 echo ""
 echo "📝 Development Notes:"
 echo "   - App is running from: $APP_PATH"
-echo "   - Server: http://localhost:3007"
+echo "   - Server: http://localhost:3847"
 echo "   - To rebuild: npm run build:mac"
 echo "   - To stop: pkill -f 'Figma Comparison Tool'"

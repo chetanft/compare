@@ -13,7 +13,7 @@ Both applications share the same API structure for consistency and feature parit
 
 ### Base URLs
 - **Web App**: `http://localhost:3001` (development) / `https://your-domain.com` (production)
-- **macOS App**: `http://localhost:3007` (embedded server)
+- **macOS App**: `http://localhost:3847` (embedded server)
 
 ### Response Format
 All API endpoints return responses in the following standardized format:
@@ -935,10 +935,10 @@ console.log('Comparison result:', result);
 ### Direct API Calls
 ```bash
 # Test server health
-curl http://localhost:3007/api/health
+curl http://localhost:3847/api/health
 
 # Compare designs
-curl -X POST http://localhost:3007/api/compare \
+curl -X POST http://localhost:3847/api/compare \
   -H "Content-Type: application/json" \
   -d '{
     "figmaUrl": "https://www.figma.com/design/...",

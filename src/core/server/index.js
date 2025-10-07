@@ -736,7 +736,12 @@ export async function startServer() {
           componentCount: totalComponentCount, // Override with actual recursive count
           extractionMethod: standardizedData.extractionMethod, // Ensure it's at root level
           metadata,
-          reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null
+          reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
+          reports: reportPath ? {
+            directUrl: `/reports/${reportPath.split('/').pop()}`,
+            downloadUrl: `/reports/${reportPath.split('/').pop()}?download=true`,
+            hasError: false
+          } : null
         }
       });
     } catch (error) {
@@ -916,7 +921,12 @@ export async function startServer() {
             elementsExtracted: webData.elements?.length || 0
           },
           screenshot: webData.screenshot?.data ? `data:image/${webData.screenshot.type || 'png'};base64,${webData.screenshot.data}` : undefined,
-          reportPath: reportPath ? `/reports/${path.basename(reportPath)}` : null
+          reportPath: reportPath ? `/reports/${path.basename(reportPath)}` : null,
+          reports: reportPath ? {
+            directUrl: `/reports/${path.basename(reportPath)}`,
+            downloadUrl: `/reports/${path.basename(reportPath)}?download=true`,
+            hasError: false
+          } : null
         }
       });
 
@@ -1254,6 +1264,11 @@ export async function startServer() {
           webElementsCount: webData?.elements?.length || 0 // Keep for compatibility
         },
         reportPath: reportPath ? `/reports/${reportPath.split('/').pop()}` : null,
+        reports: reportPath ? {
+          directUrl: `/reports/${reportPath.split('/').pop()}`,
+          downloadUrl: `/reports/${reportPath.split('/').pop()}?download=true`,
+          hasError: false
+        } : null,
         extractionDetails
       };
 
@@ -1621,9 +1636,9 @@ export async function startServer() {
   /**
    * Enhanced web extraction endpoint (V2 - Legacy)
    * @deprecated Use /api/web/extract-v3 instead
+   * Note: No rate limiting - this is internal web scraping, not external API calls
    */
   app.post('/api/web/extract-v2',
-    extractionLimiter,
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
     console.warn('⚠️ DEPRECATED: /api/web/extract-v2 will be removed. Use /api/web/extract-v3');
@@ -1649,9 +1664,9 @@ export async function startServer() {
 
   /**
    * Unified web extraction endpoint (V3 - Recommended)
+   * Note: No rate limiting - this is internal web scraping, not external API calls
    */
   app.post('/api/web/extract-v3',
-    extractionLimiter,
     validateExtractionUrl(config.security.allowedHosts),
     async (req, res, next) => {
     try {

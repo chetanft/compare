@@ -69,7 +69,7 @@ export default function SingleSourcePage() {
   
   const handleFigmaSuccess = (data: FigmaOnlyResponse['data']) => {
     console.log('Figma data received:', {
-      componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
+      componentCount: data.components?.length || data.metadata?.totalComponents || 0,
       colorCount: data.metadata?.colorCount || data.colors?.length || 0,
       typographyCount: data.metadata?.typographyCount || data.typography?.length || 0,
       actualColorsLength: data.colors?.length || 0,
@@ -94,11 +94,11 @@ export default function SingleSourcePage() {
       colors: data.colors || [],
       typography: data.typography || [],
       // Preserve componentCount at root level from API response
-      componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
+      componentCount: data.components?.length || data.metadata?.totalComponents || 0,
       metadata: {
         ...data.metadata,
         // Don't override - preserve what API sent
-        componentCount: data.componentCount || data.metadata?.componentCount || data.components?.length || 0,
+        componentCount: data.components?.length || data.metadata?.totalComponents || 0,
         colorCount: data.metadata?.colorCount || data.colors?.length || 0,
         typographyCount: data.metadata?.typographyCount || data.typography?.length || 0
       }
@@ -185,7 +185,7 @@ export default function SingleSourcePage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Components:</span>
-                    <span className="font-medium">{figmaData.componentCount || figmaData.metadata?.componentCount || figmaData.components?.length || 0}</span>
+                    <span className="font-medium">{figmaData.components?.length || figmaData.metadata?.totalComponents || 0}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Colors:</span>
@@ -255,13 +255,21 @@ export default function SingleSourcePage() {
                     return (
                       <div key={`color-${index}-${keyValue}`} className="flex flex-col items-center">
                         <div 
-                          className="w-12 h-12 rounded-lg border shadow-sm" 
+                          className="w-12 h-12 rounded-lg border shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all" 
                           style={{ backgroundColor: colorValue }}
+                          title={`Click to see all components using ${colorValue}`}
+                          onClick={() => {
+                            // Navigate to color analytics with selected color
+                            window.open(`/color-analytics?color=${encodeURIComponent(colorValue)}`, '_blank');
+                          }}
                         />
                         <span className="text-xs mt-1 font-medium truncate max-w-16" title={colorName}>
                           {colorName}
                         </span>
-                        <span className="text-xs text-muted-foreground">{colorValue}</span>
+                        <span className="text-xs text-muted-foreground cursor-pointer hover:text-blue-500"
+                              onClick={() => window.open(`/color-analytics?color=${encodeURIComponent(colorValue)}`, '_blank')}>
+                          {colorValue}
+                        </span>
                       </div>
                     );
                   })}
@@ -415,10 +423,18 @@ export default function SingleSourcePage() {
                 {(webData.colorPalette || []).slice(0, 20).map((color, index) => (
                   <div key={index} className="flex flex-col items-center">
                     <div 
-                      className="w-10 h-10 rounded-full border border-gray-200" 
+                      className="w-10 h-10 rounded-full border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all" 
                       style={{ backgroundColor: color }}
+                      title={`Click to see all elements using ${color}`}
+                      onClick={() => {
+                        // Navigate to color analytics with selected color
+                        window.open(`/color-analytics?color=${encodeURIComponent(color)}`, '_blank');
+                      }}
                     ></div>
-                    <span className="text-xs mt-1">{color}</span>
+                    <span className="text-xs mt-1 cursor-pointer hover:text-blue-500"
+                          onClick={() => window.open(`/color-analytics?color=${encodeURIComponent(color)}`, '_blank')}>
+                      {color}
+                    </span>
                   </div>
                 ))}
                 {(webData.colorPalette?.length || 0) > 20 && (

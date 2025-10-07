@@ -4,7 +4,7 @@
 
 ### **Method 1: Double-Click (Easiest)** 
 1. **Double-click** the `start.command` file in this folder
-2. Your browser will automatically open to `http://localhost:3007`
+2. Your browser will automatically open to `http://localhost:3847`
 3. Start comparing your designs! 🎨
 
 ### **Method 2: From Finder**
@@ -55,9 +55,9 @@ Download and install from: [nodejs.org](https://nodejs.org/)
 ---
 
 ## 🌐 **App URLs**
-- **Main App**: http://localhost:3007
-- **Health Check**: http://localhost:3007/health
-- **API**: http://localhost:3007/api/*
+- **Main App**: http://localhost:3847
+- **Health Check**: http://localhost:3847/health
+- **API**: http://localhost:3847/api/*
 
 ---
 

@@ -6,7 +6,7 @@
 echo "🧪 Comprehensive API Test Suite"
 echo "================================"
 
-BASE_URL="http://localhost:3007"
+BASE_URL="http://localhost:3847"
 FIGMA_URL="https://www.figma.com/design/fb5Yc1aKJv9YWsMLnNlWeK/My-Journeys?node-id=2-22260&t=v44knLp2vGz8AYVY-4"
 
 echo ""

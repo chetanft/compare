@@ -8,6 +8,7 @@ import Settings from './pages/Settings'
 import SingleSourcePage from './pages/SingleSourcePage'
 import ScreenshotComparison from './pages/ScreenshotComparison'
 import Reports from './pages/Reports'
+import ColorAnalytics from './pages/ColorAnalytics'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { ServerStartup } from './components/ServerStartup'
 import { Toaster } from '@/components/ui/toaster'
@@ -22,6 +23,8 @@ function AppContent() {
     if (pathname.includes('screenshot-comparison')) return 'Screenshot Comparison'
     if (pathname.includes('settings')) return 'Settings'
     if (pathname.includes('single-source')) return 'Single Source'
+    if (pathname.includes('color-analytics')) return 'Color Analytics'
+    if (pathname.includes('reports')) return 'Reports'
     return 'Comparison Tool'
   }
 
@@ -68,6 +71,7 @@ function AppContent() {
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/single-source" element={<SingleSourcePage />} />
+                <Route path="/color-analytics" element={<ColorAnalytics />} />
                 {/* Redirect any other routes to main comparison */}
                 <Route path="*" element={<NewComparison />} />
               </Routes>

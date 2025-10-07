@@ -293,7 +293,7 @@ export class UnifiedFigmaExtractor {
       try {
         switch (method.name) {
           case 'figma-mcp':
-            const { FigmaMCPClient } = await import('../../figma/mcpClient.js');
+            const FigmaMCPClient = (await import('../../figma/mcpClient.js')).default;
             const mcpClient = new FigmaMCPClient();
             results[method.name] = await mcpClient.connect();
             break;

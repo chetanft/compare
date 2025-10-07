@@ -11,8 +11,8 @@
     "fontSizeDifference": 2
   },
   "ports": {
-    "server": 3006,
-    "fallback": 3003
+    "server": 3847,
+    "fallback": 3845
   },
   "figmaApi": {
     "tokenLastUpdated": null
