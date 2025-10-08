@@ -30,7 +30,7 @@ export async function loadConfig() {
   const baseConfig = {
     server: {
       port: parseInt(env.PORT || env.SERVER_PORT || PORTS.SERVER.toString(), 10),
-      host: env.HOST || env.SERVER_HOST || 'localhost',
+      host: env.HOST || env.SERVER_HOST || '0.0.0.0',  // Bind to all interfaces for Electron compatibility
     },
     cors: {
       origins: env.CORS_ORIGINS ? env.CORS_ORIGINS.split(',') : [

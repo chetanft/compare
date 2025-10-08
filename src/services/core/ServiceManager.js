@@ -187,18 +187,28 @@ export class ServiceManager {
    */
   async registerLegacyServices() {
     try {
+      console.log('[DEBUG] registerLegacyServices starting...');
       // Get services from container and register them in the legacy format
+      console.log('[DEBUG] Resolving config...');
       this.services.set('config', await serviceContainer.resolve('config'));
+      console.log('[DEBUG] Resolving browserPool...');
       this.services.set('browserPool', await serviceContainer.resolve('browserPool'));
+      console.log('[DEBUG] Resolving mcpClient...');
       this.services.set('mcpClient', await serviceContainer.resolve('mcpClient'));
+      console.log('[DEBUG] Resolving webExtractor...');
       this.services.set('webExtractor', await serviceContainer.resolve('webExtractor'));
+      console.log('[DEBUG] Resolving comparisonEngine...');
       this.services.set('comparisonEngine', await serviceContainer.resolve('comparisonEngine'));
+      console.log('[DEBUG] Resolving performanceMonitor...');
       this.services.set('performanceMonitor', await serviceContainer.resolve('performanceMonitor'));
 
       logger.debug('Legacy service registration completed');
+      console.log('[DEBUG] About to return from registerLegacyServices');
     } catch (error) {
       logger.error('Failed to register legacy services', { error: error.message });
+      console.log('[DEBUG] Error in registerLegacyServices:', error.message);
     }
+    console.log('[DEBUG] Exiting registerLegacyServices');
   }
 
   /**

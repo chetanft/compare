@@ -19,10 +19,8 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 // Import server utilities
 import { ElectronServerControl } from './server-control.js';
 import { spawn } from 'child_process';
-import { createRequire } from 'module';
 import os from 'os';
-const require = createRequire(import.meta.url);
-const axios = require('axios');
+import axios from 'axios';
 
 // Note: We connect to existing Figma MCP server instead of starting our own
 
@@ -270,7 +268,26 @@ async function startWebServer() {
     const logPath = path.join(os.tmpdir(), 'figma-comparison-server.log');
     console.log(`📝 Server logs: ${logPath}`);
 
-    const serverProcess = spawn(process.execPath, [serverEntry], {
+    // Try to find system Node (Electron's bundled Node has ESM issues)
+    let nodeExecutable = process.execPath;
+    
+    // Try common Node locations
+    const nodePaths = [
+      '/opt/homebrew/bin/node',
+      '/usr/local/bin/node',
+      '/usr/bin/node',
+      process.execPath  // Fallback to Electron's Node
+    ];
+    
+    for (const nodePath of nodePaths) {
+      if (fs.existsSync(nodePath)) {
+        nodeExecutable = nodePath;
+        console.log(`✅ Using Node at: ${nodePath}`);
+        break;
+      }
+    }
+    
+    const serverProcess = spawn(nodeExecutable, [serverEntry], {
       cwd: appRoot,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
@@ -289,14 +306,19 @@ async function startWebServer() {
     
     let serverStarted = false;
     let checkAttempts = 0;
-    const maxAttempts = 60; // 30 seconds with 500ms intervals
+    const maxAttempts = 40; // 40 seconds with 1s intervals
+    
+    // Wait 5 seconds before first check to give server time to initialize
+    console.log('⏳ Waiting for server to initialize...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     // Poll the health endpoint instead of relying on stdout
     const checkServer = setInterval(async () => {
       checkAttempts++;
+      console.log(`🔍 Health check attempt ${checkAttempts}/${maxAttempts}...`);
       
       try {
-        const response = await axios.get('http://localhost:3847/api/health', { timeout: 1000 });
+        const response = await axios.get('http://localhost:3847/api/health', { timeout: 2000 });
         if (response.status === 200 && !serverStarted) {
           serverStarted = true;
           clearInterval(checkServer);
@@ -312,7 +334,7 @@ async function startWebServer() {
           reject(new Error('Server startup timeout - check logs at ' + logPath));
         }
       }
-    }, 500);
+    }, 1000);
     
     serverProcess.on('error', (error) => {
       if (!serverStarted) {
