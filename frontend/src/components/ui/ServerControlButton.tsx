@@ -65,8 +65,9 @@ export default function ServerControlButton({
     toggleServer,
     serverStatus,
     isLoading,
-    error
+    error,
   } = control;
+  const managed = (serverStatus as any)?.runningProcessManaged ?? (serverStatus as any)?.managed ?? false;
 
   // Rate limiting data
   const [rateLimitData, setRateLimitData] = useState<any>(null);
@@ -121,7 +122,7 @@ export default function ServerControlButton({
         icon: StopIcon,
         text: 'Stop Server',
         variant: 'secondary' as const,
-        disabled: false
+        disabled: !managed,
       };
     }
 
@@ -323,11 +324,13 @@ export default function ServerControlButton({
               isServerRunning && "border-green-300 hover:bg-green-50"
             )}
           >
-            <span>{buttonContent.text}</span>
-            <IconComponent className={cn(
-              "h-4 w-4",
-              buttonContent.disabled && "animate-spin"
-            )} />
+            <span>{!managed && isServerRunning ? 'Managed Externally' : buttonContent.text}</span>
+            <IconComponent
+              className={cn(
+                "h-4 w-4",
+                buttonContent.disabled && "animate-spin"
+              )}
+            />
           </Button>
         </div>
       </div>

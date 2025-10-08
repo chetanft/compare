@@ -18,12 +18,11 @@ router.get('/status', async (req, res) => {
     const status = serverControlService.getStatus();
     const healthCheck = await serverControlService.healthCheck();
     
-    // If we're able to respond to this request, the server is running
-    // Override the ServerControlService status which assumes external process management
     const actualStatus = {
       ...status,
-      status: 'running', // Server is running if we can respond to requests
+      status: status.managed ? status.status : 'running',
       healthy: healthCheck.healthy,
+      runningProcessManaged: status.managed,
       lastHealthCheck: new Date().toISOString()
     };
     

@@ -162,16 +162,16 @@ export function useServerControl() {
 
   // Action handlers
   const startServer = useCallback(() => {
-    if (!isTransitioning) {
+    if (!isTransitioning && !isServerRunning) {
       startServerMutation.mutate();
     }
-  }, [startServerMutation, isTransitioning]);
+  }, [startServerMutation, isTransitioning, isServerRunning]);
 
   const stopServer = useCallback(() => {
-    if (!isTransitioning) {
+    if (!isTransitioning && (serverStatus?.data?.runningProcessManaged || serverStatus?.data?.managed)) {
       stopServerMutation.mutate();
     }
-  }, [stopServerMutation, isTransitioning]);
+  }, [stopServerMutation, isTransitioning, serverStatus?.data]);
 
   const restartServer = useCallback(() => {
     if (!isTransitioning) {
@@ -180,12 +180,12 @@ export function useServerControl() {
   }, [restartServerMutation, isTransitioning]);
 
   const toggleServer = useCallback(() => {
-    if (isServerRunning) {
+    if (isServerRunning && (serverStatus?.data?.runningProcessManaged || serverStatus?.data?.managed)) {
       stopServer();
     } else if (isServerStopped) {
       startServer();
     }
-  }, [isServerRunning, isServerStopped, startServer, stopServer]);
+  }, [isServerRunning, isServerStopped, startServer, stopServer, serverStatus?.data]);
 
   return {
     // Status

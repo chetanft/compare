@@ -33,7 +33,8 @@ export class ServerControlService extends EventEmitter {
       port: this.serverPort,
       pid: this.serverProcess?.pid || null,
       uptime: this.startTime ? Date.now() - this.startTime : 0,
-      startTime: this.startTime
+      startTime: this.startTime,
+      managed: !!this.serverProcess
     };
   }
 
