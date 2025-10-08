@@ -13,10 +13,18 @@ const queryClient = new QueryClient({
   },
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Ensure root element exists and is stable
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+// Create root and render
+const root = ReactDOM.createRoot(rootElement);
+root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </React.StrictMode>,
-) // Force new build hash Tue Sep 23 21:57:08 IST 2025
+);

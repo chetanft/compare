@@ -16,22 +16,11 @@ export async function startUnifiedServer() {
   logger.info(`🚀 Starting ${platform} server on port ${serverConfig.port}`);
   
   try {
-    if (platformConfig.isElectron()) {
-      // Start Electron server
-      console.log('🖥️ Starting Electron server...');
-      // Electron server removed - using web server instead
-      throw new Error('Electron server deprecated - use web server on port 3847');
-      const server = new ElectronExpressServer();
-      await server.start();
-      return server;
-      
-    } else {
-      // Start Web server
-      console.log('🌐 Starting Web server...');
-      const { startServer } = await import('../core/server/index.js');
-      const server = await startServer();
-      return server;
-    }
+    // Always use the unified web server (works for both web and Electron)
+    console.log('🌐 Starting Web server...');
+    const { startServer } = await import('../core/server/index.js');
+    const server = await startServer();
+    return server;
     
   } catch (error) {
     logger.error(`❌ Failed to start ${platform} server:`, error);

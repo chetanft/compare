@@ -18,9 +18,6 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 
 // Import server utilities
 import { ElectronServerControl } from './server-control.js';
-import { spawn } from 'child_process';
-import os from 'os';
-import axios from 'axios';
 
 // Note: We connect to existing Figma MCP server instead of starting our own
 
@@ -243,132 +240,19 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-async function checkWebServerRunning(port) {
-  try {
-    const response = await axios.get(`http://localhost:${port}/api/health`, { timeout: 2000 });
-    return response.status === 200;
-  } catch (error) {
-    return false;
-  }
-}
-
-async function startWebServer() {
-  return new Promise((resolve, reject) => {
-    console.log('🚀 Starting web server process...');
-    
-    const appRoot = path.join(__dirname, '..');
-    const scriptPath = path.join(appRoot, 'scripts', 'start-server.js');
-    const serverEntry = fs.existsSync(scriptPath)
-      ? scriptPath
-      : path.join(appRoot, 'server.js');
-
-    console.log(`📄 Using server entrypoint: ${path.relative(appRoot, serverEntry)}`);
-    
-    // Log to file for debugging
-    const logPath = path.join(os.tmpdir(), 'figma-comparison-server.log');
-    console.log(`📝 Server logs: ${logPath}`);
-
-    // Try to find system Node (Electron's bundled Node has ESM issues)
-    let nodeExecutable = process.execPath;
-    
-    // Try common Node locations
-    const nodePaths = [
-      '/opt/homebrew/bin/node',
-      '/usr/local/bin/node',
-      '/usr/bin/node',
-      process.execPath  // Fallback to Electron's Node
-    ];
-    
-    for (const nodePath of nodePaths) {
-      if (fs.existsSync(nodePath)) {
-        nodeExecutable = nodePath;
-        console.log(`✅ Using Node at: ${nodePath}`);
-        break;
-      }
-    }
-    
-    const serverProcess = spawn(nodeExecutable, [serverEntry], {
-      cwd: appRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        PORT: '3847',
-        NODE_ENV: process.env.NODE_ENV || 'production',
-        FORCE_COLOR: '0',  // Disable color codes that might interfere
-        LOG_FILE: logPath  // Pass log path to server via env
-      }
-    });
-    
-    // Pipe output to log file
-    const logStream = fs.createWriteStream(logPath, { flags: 'a' });
-    serverProcess.stdout.pipe(logStream);
-    serverProcess.stderr.pipe(logStream);
-    
-    let serverStarted = false;
-    let checkAttempts = 0;
-    const maxAttempts = 40; // 40 seconds with 1s intervals
-    
-    // Wait 5 seconds before first check to give server time to initialize
-    console.log('⏳ Waiting for server to initialize...');
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    // Poll the health endpoint instead of relying on stdout
-    const checkServer = setInterval(async () => {
-      checkAttempts++;
-      console.log(`🔍 Health check attempt ${checkAttempts}/${maxAttempts}...`);
-      
-      try {
-        const response = await axios.get('http://localhost:3847/api/health', { timeout: 2000 });
-        if (response.status === 200 && !serverStarted) {
-          serverStarted = true;
-          clearInterval(checkServer);
-          console.log('✅ Server health check passed');
-          resolve(serverProcess);
-        }
-      } catch (error) {
-        // Server not ready yet, keep polling
-        if (checkAttempts >= maxAttempts) {
-          clearInterval(checkServer);
-          serverProcess.kill();
-          console.error(`❌ Server failed to start after ${maxAttempts} attempts. Check ${logPath}`);
-          reject(new Error('Server startup timeout - check logs at ' + logPath));
-        }
-      }
-    }, 1000);
-    
-    serverProcess.on('error', (error) => {
-      if (!serverStarted) {
-        clearInterval(checkServer);
-        reject(error);
-      }
-    });
-    
-    serverProcess.on('exit', (code) => {
-      if (!serverStarted && code !== 0) {
-        clearInterval(checkServer);
-        reject(new Error(`Server process exited with code ${code}. Check logs at ${logPath}`));
-      }
-    });
-  });
-}
-
 async function startServer() {
   try {
     console.log('🚀 Starting Figma Comparison Tool...');
     console.log('📡 Will connect to existing Figma MCP server on port 3845');
     
-    // Check if web server is already running
-    const isRunning = await checkWebServerRunning(serverPort);
+    // Import and start server directly in-process (no spawn, avoids ESM issues)
+    console.log('🚀 Starting unified server in-process...');
+    const { startUnifiedServer } = await import('../src/server/unified-server-starter.js');
+    const server = await startUnifiedServer();
     
-    if (isRunning) {
-      console.log(`✅ Web server already running on port ${serverPort}`);
-    } else {
-      console.log('🚀 Starting web server...');
-      expressServer = await startWebServer();
-      console.log(`✅ Web server started on port ${serverPort}`);
-    }
+    console.log(`✅ Server started successfully on port ${serverPort}`);
     
-    // Initialize server control (only if not already initialized)
+    // Initialize server control
     if (!serverControl) {
       serverControl = new ElectronServerControl();
     }
@@ -378,14 +262,13 @@ async function startServer() {
 
   } catch (error) {
     console.error('❌ Failed to start server:', error);
+    console.error('Stack:', error.stack);
     
     // Show error dialog
-    if (mainWindow) {
-      dialog.showErrorBox(
-        'Server Error',
-        `Failed to start the application server:\n\n${error.message}\n\nThe application will now exit.`
-      );
-    }
+    dialog.showErrorBox(
+      'Server Error',
+      `Failed to start the application server:\n\n${error.message}\n\nPlease check the console for details.`
+    );
     
     app.quit();
     return false;
