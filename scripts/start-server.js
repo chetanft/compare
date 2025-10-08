@@ -25,7 +25,15 @@ process.env.PORT = SERVER_PORT;
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Start the server
-const serverPath = path.join(__dirname, '..', 'server.js');
+let serverPath;
+const packagedServerPath = path.join(__dirname, '..', 'app', 'server.js');
+const localServerPath = path.join(__dirname, '..', 'server.js');
+
+if (fs.existsSync(packagedServerPath)) {
+  serverPath = packagedServerPath;
+} else {
+  serverPath = localServerPath;
+}
 
 if (!fs.existsSync(serverPath)) {
   console.error('❌ Server file not found:', serverPath);

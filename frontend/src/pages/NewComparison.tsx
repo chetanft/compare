@@ -8,12 +8,13 @@ import { DocumentTextIcon, EyeIcon } from '@heroicons/react/24/outline'
 import { Download } from 'lucide-react'
 import { getApiBaseUrl } from '../utils/environment'
 import { Button } from '@/components/ui/button'
-import { toast } from '@/components/ui/use-toast'
+import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
 import ExtractionDetailsView from '../components/reports/ExtractionDetailsView'
 
 export default function NewComparison() {
   const [activeComparison, setActiveComparison] = useState<string | null>(null)
+  const { toast } = useToast()
   const [showProgress, setShowProgress] = useState(false)
   const [result, setResult] = useState<ComparisonResult | null>(null)
   const [reportUrl, setReportUrl] = useState<string | null>(null)

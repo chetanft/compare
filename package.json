@@ -160,6 +160,7 @@
       "frontend/dist/**/*",
       "src/**/*",
       "macos-server/**/*",
+      "server.js",
       "package.json",
       "config.json",
       "node_modules/**/*",

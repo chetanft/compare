@@ -7,6 +7,7 @@ import electron from 'electron';
 const { app, BrowserWindow, Menu, shell, dialog } = electron;
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 // Disable all security features via command line flags
 app.commandLine.appendSwitch('disable-web-security');
@@ -19,6 +20,7 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 import { ElectronServerControl } from './server-control.js';
 import { spawn } from 'child_process';
 import { createRequire } from 'module';
+import os from 'os';
 const require = createRequire(import.meta.url);
 const axios = require('axios');
 
@@ -256,41 +258,75 @@ async function startWebServer() {
   return new Promise((resolve, reject) => {
     console.log('🚀 Starting web server process...');
     
-    const serverProcess = spawn('node', ['scripts/start-server.js'], {
-      cwd: path.join(__dirname, '..'),
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PORT: '3847' }
-    });
+    const appRoot = path.join(__dirname, '..');
+    const scriptPath = path.join(appRoot, 'scripts', 'start-server.js');
+    const serverEntry = fs.existsSync(scriptPath)
+      ? scriptPath
+      : path.join(appRoot, 'server.js');
+
+    console.log(`📄 Using server entrypoint: ${path.relative(appRoot, serverEntry)}`);
     
-    let serverStarted = false;
-    
-    serverProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      console.log('📡 Server:', output.trim());
-      
-      if (output.includes('Server running on port') && !serverStarted) {
-        serverStarted = true;
-        resolve(serverProcess);
+    // Log to file for debugging
+    const logPath = path.join(os.tmpdir(), 'figma-comparison-server.log');
+    console.log(`📝 Server logs: ${logPath}`);
+
+    const serverProcess = spawn(process.execPath, [serverEntry], {
+      cwd: appRoot,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        PORT: '3847',
+        NODE_ENV: process.env.NODE_ENV || 'production',
+        FORCE_COLOR: '0',  // Disable color codes that might interfere
+        LOG_FILE: logPath  // Pass log path to server via env
       }
     });
     
-    serverProcess.stderr.on('data', (data) => {
-      console.error('❌ Server Error:', data.toString());
-    });
+    // Pipe output to log file
+    const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+    serverProcess.stdout.pipe(logStream);
+    serverProcess.stderr.pipe(logStream);
+    
+    let serverStarted = false;
+    let checkAttempts = 0;
+    const maxAttempts = 60; // 30 seconds with 500ms intervals
+    
+    // Poll the health endpoint instead of relying on stdout
+    const checkServer = setInterval(async () => {
+      checkAttempts++;
+      
+      try {
+        const response = await axios.get('http://localhost:3847/api/health', { timeout: 1000 });
+        if (response.status === 200 && !serverStarted) {
+          serverStarted = true;
+          clearInterval(checkServer);
+          console.log('✅ Server health check passed');
+          resolve(serverProcess);
+        }
+      } catch (error) {
+        // Server not ready yet, keep polling
+        if (checkAttempts >= maxAttempts) {
+          clearInterval(checkServer);
+          serverProcess.kill();
+          console.error(`❌ Server failed to start after ${maxAttempts} attempts. Check ${logPath}`);
+          reject(new Error('Server startup timeout - check logs at ' + logPath));
+        }
+      }
+    }, 500);
     
     serverProcess.on('error', (error) => {
       if (!serverStarted) {
+        clearInterval(checkServer);
         reject(error);
       }
     });
     
-    // Timeout after 15 seconds
-    setTimeout(() => {
-      if (!serverStarted) {
-        serverProcess.kill();
-        reject(new Error('Server startup timeout'));
+    serverProcess.on('exit', (code) => {
+      if (!serverStarted && code !== 0) {
+        clearInterval(checkServer);
+        reject(new Error(`Server process exited with code ${code}. Check logs at ${logPath}`));
       }
-    }, 15000);
+    });
   });
 }
 

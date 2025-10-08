@@ -1795,6 +1795,9 @@ export async function startServer() {
   // Start server
   const PORT = config.server.port;
   const server = httpServer.listen(PORT, config.server.host, () => {
+    // Write directly to stdout for Electron detection
+    process.stdout.write(`Server running on port ${PORT}\n`);
+    
     console.log(`🚀 Server running at http://${config.server.host}:${PORT}`);
     console.log(`📱 Frontend available at http://${config.server.host}:${PORT}`);
     console.log(`🔌 MCP Status: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
