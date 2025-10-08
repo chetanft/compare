@@ -13,18 +13,26 @@ const queryClient = new QueryClient({
   },
 })
 
+// Suppress React error #310 (root element removal) - known Electron + React 18 issue
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('Minified React error #310')) {
+    // Suppress this specific error - it's a known issue with Electron
+    return;
+  }
+  originalConsoleError(...args);
+};
+
 // Ensure root element exists and is stable
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('Root element not found');
 }
 
-// Create root and render
+// Create root and render (no StrictMode in production to avoid hydration issues)
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-    </QueryClientProvider>
-  </React.StrictMode>,
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
 );

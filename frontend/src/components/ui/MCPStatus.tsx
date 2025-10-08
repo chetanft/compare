@@ -35,6 +35,17 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
     refetchOnWindowFocus: false
   });
   
+  // keep in sync with server status events without violating hook order
+  React.useEffect(() => {
+    if (isLoading || error) {
+      return;
+    }
+
+    const handler = () => refetch();
+    window.addEventListener('server-status-updated', handler);
+    return () => window.removeEventListener('server-status-updated', handler);
+  }, [isLoading, error, refetch]);
+
   if (isLoading) {
     return (
       <div className={`flex items-center ${className}`}>
@@ -54,13 +65,6 @@ const MCPStatus: React.FC<MCPStatusProps> = ({ showDetails = false, className = 
   }
   
   const isAvailable = data.available;
-  
-  // keep in sync with server status events
-  React.useEffect(() => {
-    const handler = () => refetch();
-    window.addEventListener('server-status-updated', handler);
-    return () => window.removeEventListener('server-status-updated', handler);
-  }, [refetch]);
 
   return (
     <div className={`flex items-center ${className}`}>
