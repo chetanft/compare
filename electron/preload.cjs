@@ -1,29 +1,25 @@
+/**
+ * Electron Preload Script
+ * Exposes server control APIs to the renderer process
+ */
+
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
+// Expose server control APIs to the renderer
 contextBridge.exposeInMainWorld('electronAPI', {
-  // File operations
-  openFile: () => ipcRenderer.invoke('dialog:openFile'),
-  saveFile: (data) => ipcRenderer.invoke('dialog:saveFile', data),
+  // Server control methods
+  serverControl: {
+    getStatus: () => ipcRenderer.invoke('server-control:status'),
+    start: () => ipcRenderer.invoke('server-control:start'),
+    stop: () => ipcRenderer.invoke('server-control:stop'),
+    restart: () => ipcRenderer.invoke('server-control:restart'),
+  },
   
-  // Notifications
-  showNotification: (message) => ipcRenderer.invoke('notification:show', message),
-  
-  // App info
-  getVersion: () => ipcRenderer.invoke('app:getVersion'),
-  
-  // Menu events
-  onMenuAction: (callback) => ipcRenderer.on('menu-action', callback),
-  
-  // Platform info
-  platform: process.platform,
-  
-  // Development helpers
-  isDev: process.env.NODE_ENV === 'development'
+  // Platform detection
+  platform: {
+    isElectron: true,
+    os: process.platform
+  }
 });
 
-// DOM ready
-window.addEventListener('DOMContentLoaded', () => {
-  console.log('Electron preload script loaded');
-});
+console.log('🔧 Electron preload script loaded');

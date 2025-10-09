@@ -6,7 +6,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { getApiBaseUrl } from '../config/ports';
+import { getApiBaseUrl, isElectronEnvironment } from '../config/ports';
+import { useElectronServerControl } from './useElectronServerControl';
 
 export interface ServerStatus {
   status: 'stopped' | 'starting' | 'running' | 'stopping' | 'error';
@@ -26,6 +27,43 @@ export interface ServerControlResult {
 }
 
 export function useServerControl() {
+  const inElectron = isElectronEnvironment();
+  const electronControl = useElectronServerControl();
+
+  // If in Electron, use ONLY Electron IPC control
+  if (inElectron && electronControl.inElectron) {
+    return {
+      serverStatus: electronControl.serverStatus,
+      currentStatus: electronControl.currentStatus,
+      isServerRunning: electronControl.isServerRunning,
+      isServerStopped: electronControl.isServerStopped,
+      isTransitioning: electronControl.isTransitioning,
+      hasError: electronControl.hasError,
+      isLoadingStatus: electronControl.isLoading,
+      isConnected: true, // Electron IPC is always "connected"
+      
+      startServer: electronControl.startServer,
+      stopServer: electronControl.stopServer,
+      restartServer: electronControl.restartServer,
+      toggleServer: electronControl.toggleServer,
+      refetchStatus: electronControl.fetchStatus,
+      
+      isStarting: electronControl.isLoading && electronControl.currentStatus === 'starting',
+      isStopping: electronControl.isLoading && electronControl.currentStatus === 'stopping',
+      isRestarting: false,
+      
+      statusError: electronControl.error ? new Error(electronControl.error) : null,
+      startError: null,
+      stopError: null,
+      restartError: null
+    };
+  }
+
+  // For web version, use HTTP API
+  return useHttpServerControl();
+}
+
+function useHttpServerControl() {
   const queryClient = useQueryClient();
   const [isConnected, setIsConnected] = useState(false);
   const apiBaseUrl = getApiBaseUrl();
@@ -158,7 +196,7 @@ export function useServerControl() {
   const isServerRunning = currentStatus === 'running';
   const isServerStopped = currentStatus === 'stopped';
   const isTransitioning = currentStatus === 'starting' || currentStatus === 'stopping';
-  const hasError = currentStatus === 'error' || !!statusError;
+  const hasError = currentStatus === 'error' || (!serverStatus?.data && !!statusError);
 
   // Action handlers
   const startServer = useCallback(() => {

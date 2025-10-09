@@ -22,6 +22,11 @@ export function isElectronApp(): boolean {
           (window.process && window.process.type === 'renderer'));
 }
 
+// Function to detect if we're running in Electron environment (e.g., Electron app or renderer)
+export function isElectronEnvironment(): boolean {
+  return typeof window !== 'undefined' && !!(window as any).electronAPI;
+}
+
 // Type declaration for Vite's import.meta.env
 interface ImportMetaEnv {
   MODE: string;

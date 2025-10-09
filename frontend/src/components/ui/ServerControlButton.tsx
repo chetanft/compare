@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useServerControl } from '@/hooks/useServerControl';
-import { useElectronServerControl } from '@/hooks/useElectronServerControl';
+import { isElectronEnvironment } from '@/config/ports';
 import {
   Tooltip,
   TooltipContent,
@@ -33,29 +33,7 @@ export default function ServerControlButton({
   variant = 'default',
   showStatus = true 
 }: ServerControlButtonProps) {
-  // Check if we're in Electron
-  const isElectron = typeof window !== 'undefined' && 
-                    (window.navigator.userAgent.includes('Electron') || 
-                     window.process?.type === 'renderer');
-
-  // Use appropriate control hook based on platform
-  const httpControl = useServerControl();
-  const electronControl = useElectronServerControl();
-  
-  // For Electron, if the electronAPI isn't available, use a simple status that reflects the server is embedded
-  const control = isElectron ? 
-    (electronControl.inElectron ? electronControl : {
-      currentStatus: 'running',
-      isServerRunning: true,
-      isServerStopped: false,
-      isTransitioning: false,
-      hasError: false,
-      serverStatus: { port: 3847, status: 'running', healthy: true },
-      toggleServer: () => Promise.resolve({ success: true, message: 'Server is embedded in the app' }),
-      isLoading: false,
-      error: null
-    }) : httpControl;
-  
+  // Use unified control hook - it handles Electron vs HTTP automatically
   const {
     currentStatus,
     isServerRunning,
@@ -65,11 +43,11 @@ export default function ServerControlButton({
     toggleServer,
     serverStatus,
     isLoading,
-    error,
-  } = control;
+  } = useServerControl();
   
   // In Electron, the server is always managed by the app
   // In web mode, check if it's externally managed (e.g., via npm run dev)
+  const isElectron = isElectronEnvironment();
   const managed = isElectron ? true : ((serverStatus as any)?.runningProcessManaged ?? (serverStatus as any)?.managed ?? false);
 
   // Rate limiting data

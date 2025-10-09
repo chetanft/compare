@@ -301,7 +301,33 @@ export async function startServer() {
   // Version endpoint for build tracking
   app.get('/api/version', (req, res) => {
     try {
-      const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+      // Try multiple locations for package.json
+      let packageJson;
+      const possiblePaths = [
+        path.join(process.cwd(), 'package.json'),
+        path.join(__dirname, '../../../package.json'),
+        path.join(process.resourcesPath || '', 'app/package.json'),
+        path.join(process.resourcesPath || '', 'package.json')
+      ];
+      
+      let foundPath = null;
+      for (const pkgPath of possiblePaths) {
+        try {
+          if (fs.existsSync(pkgPath)) {
+            packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            foundPath = pkgPath;
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+      
+      if (!packageJson) {
+        // Fallback to hardcoded version if package.json not found
+        packageJson = { version: '1.1.0', name: 'figma-web-comparison-tool' };
+      }
+      
       res.json({
         success: true,
         data: {
@@ -314,14 +340,16 @@ export async function startServer() {
             extractors: 1,
             mcpClients: 1,
             consolidated: true
-          }
+          },
+          packagePath: foundPath || 'fallback'
         }
       });
     } catch (error) {
       res.status(500).json({
         success: false,
         error: 'Failed to get version info',
-        details: error.message
+        details: error.message,
+        timestamp: new Date().toISOString()
       });
     }
   });

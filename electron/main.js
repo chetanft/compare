@@ -8,6 +8,7 @@ const { app, BrowserWindow, Menu, shell, dialog } = electron;
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import net from 'net';
 
 // Disable all security features via command line flags
 app.commandLine.appendSwitch('disable-web-security');
@@ -41,7 +42,7 @@ const __dirname = path.dirname(__filename);
 let mainWindow;
 let expressServer;
 let expressServerInstance; // The actual Express app instance
-let serverPort = 3847; // Use unified port matching APP_SERVER_PORT
+const serverPort = 3847; // Use unified port matching APP_SERVER_PORT
 let serverControl;
 
 function createWindow() {
@@ -53,13 +54,13 @@ function createWindow() {
     minHeight: 800,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: false, // Disable context isolation to bypass CSP
+      contextIsolation: true, // Required for contextBridge API
       enableRemoteModule: false,
       webSecurity: false, // Disable CSP restrictions for local app
       allowRunningInsecureContent: true, // Allow mixed content
       experimentalFeatures: true, // Enable experimental features
       sandbox: false, // Disable sandbox for full access
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.cjs')
     },
     icon: path.join(__dirname, '../assets/icon.png'), // Add app icon if available
     titleBarStyle: 'default',
@@ -79,23 +80,33 @@ function createWindow() {
     callback({ responseHeaders: details.responseHeaders });
   });
 
-  // Load the app once server is ready
-  mainWindow.loadURL(`http://localhost:${serverPort}`);
+  // Always load the static frontend build from disk
+  // In packaged app: app/electron/main.js -> need app/frontend/dist/index.html
+  // In dev: electron/main.js -> need ../frontend/dist/index.html
+  const isPackaged = app.isPackaged;
+  const indexPath = isPackaged 
+    ? path.join(process.resourcesPath, 'app/frontend/dist/index.html')
+    : path.join(__dirname, '../frontend/dist/index.html');
+  
+  console.log('📁 Loading frontend from:', indexPath);
+  console.log('📦 App packaged:', isPackaged);
+  console.log('📂 __dirname:', __dirname);
+  console.log('📂 resourcesPath:', process.resourcesPath);
+  
+  mainWindow.loadFile(indexPath);
 
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
-    // Clear any cached CSP policies and storage
+    // Ensure cached data is cleared when we have navigation guard
     mainWindow.webContents.session.clearCache();
     mainWindow.webContents.session.clearStorageData();
-    
+
     mainWindow.show();
     console.log('🎉 Figma Comparison Tool is ready!');
     console.log('🔓 Web security disabled, CSP restrictions bypassed');
-    
-    // Focus on window (optional)
-    if (process.env.NODE_ENV === 'development') {
-      mainWindow.webContents.openDevTools();
-    }
+
+    // Always open dev tools to see console output
+    mainWindow.webContents.openDevTools();
   });
 
   // Handle window closed
@@ -111,11 +122,23 @@ function createWindow() {
 
   // Prevent navigation to external sites
   mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    
-    if (parsedUrl.origin !== `http://localhost:${serverPort}`) {
+    try {
+      const parsedUrl = new URL(navigationUrl);
+
+      if (parsedUrl.origin.startsWith('file://')) {
+        const frontendDir = path.join(__dirname, '../frontend/dist');
+        if (parsedUrl.pathname.startsWith(frontendDir)) {
+          return;
+        }
+      }
+
+      if (!navigationUrl.startsWith('file://')) {
+        event.preventDefault();
+        shell.openExternal(navigationUrl);
+      }
+    } catch (error) {
+      console.warn('Navigation blocked due to parse error:', navigationUrl, error);
       event.preventDefault();
-      shell.openExternal(navigationUrl);
     }
   });
 }
@@ -243,27 +266,61 @@ function createMenu() {
 
 async function startServer() {
   try {
-    console.log('🚀 Starting Figma Comparison Tool...');
-    console.log('📡 Will connect to existing Figma MCP server on port 3845');
-    
-    // Import and start server directly in-process (no spawn, avoids ESM issues)
+    console.log('='.repeat(60));
+    console.log('🚀 STARTING FIGMA COMPARISON TOOL SERVER');
+    console.log('='.repeat(60));
+
+    // Check if port already in use and reuse if so
+    const portAvailable = await new Promise((resolve) => {
+      const tester = net.createServer()
+        .once('error', () => resolve(false))
+        .once('listening', () => tester.close(() => resolve(true)))
+        .listen(serverPort, '127.0.0.1');
+    });
+
+    if (!portAvailable) {
+      console.log(`⚠️ Port ${serverPort} already in use, assuming external server`);
+      expressServerInstance = null;
+
+      if (!serverControl) {
+        serverControl = new ElectronServerControl();
+        serverControl.setLifecycleHandlers({
+          start: async () => ({ success: false, message: 'Server managed externally' }),
+          stop: async () => ({ success: false, message: 'Server managed externally' })
+        });
+      }
+      serverControl.initializeWithPort(serverPort);
+      return true;
+    }
+
     console.log('🚀 Starting unified server in-process...');
     const { startUnifiedServer } = await import('../src/server/unified-server-starter.js');
     const server = await startUnifiedServer();
-    
-    // Store the Express server instance for later control
     expressServerInstance = server;
-    
-    console.log(`✅ Server started successfully on port ${serverPort}`);
-    
-    // Initialize server control with the actual server instance
+
+    console.log('='.repeat(60));
+    console.log(`✅ SERVER STARTED SUCCESSFULLY ON PORT ${serverPort}`);
+    console.log('='.repeat(60));
+
     if (!serverControl) {
       serverControl = new ElectronServerControl();
     }
+    serverControl.setLifecycleHandlers({
+      start: async () => {
+        if (expressServerInstance) {
+          return { success: true, server: expressServerInstance, port: serverPort };
+        }
+        const started = await startServer();
+        return started ? { success: true, server: expressServerInstance, port: serverPort } : { success: false, message: 'Failed to start server' };
+      },
+      stop: async () => {
+        const stopped = await stopServer();
+        return { success: stopped };
+      }
+    });
     serverControl.initializeWithServerInstance(expressServerInstance, serverPort);
-    
-    return true;
 
+    return true;
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     console.error('Stack:', error.stack);
@@ -284,22 +341,26 @@ async function stopServer() {
     if (expressServerInstance) {
       console.log('⏹️ Stopping Express server...');
       
-      // Close the HTTP server
-      await new Promise((resolve) => {
-        expressServerInstance.close(() => {
-          console.log('✅ Express server stopped');
-          resolve();
-        });
-      });
+      // Stop server with 5 second timeout
+      await Promise.race([
+        new Promise((resolve) => {
+          expressServerInstance.close(() => {
+            console.log('✅ Express server stopped gracefully');
+            resolve();
+          });
+        }),
+        new Promise((resolve) => {
+          setTimeout(() => {
+            console.log('⚠️ Server stop timeout, forcing shutdown...');
+            resolve();
+          }, 5000);
+        })
+      ]);
       
       expressServerInstance = null;
-      
-      if (serverControl) {
-        await serverControl.cleanup();
-      }
-      
       return true;
     }
+    console.log('ℹ️ No embedded server to stop (external server assumed)');
     return false;
   } catch (error) {
     console.error('❌ Failed to stop server:', error);
@@ -357,7 +418,7 @@ app.on('before-quit', async (event) => {
 
     // Clean up server control
     if (serverControl) {
-      await serverControl.cleanup();
+      await serverControl.cleanup({ closeServer: false });
       serverControl = null;
     }
 

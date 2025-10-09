@@ -18,6 +18,7 @@ function printConfig(config: any) {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: './', // Use relative paths for assets (Electron compatibility)
   esbuild: {
     drop: ['console', 'debugger']
   },

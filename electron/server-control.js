@@ -4,19 +4,32 @@
  */
 
 import electron from 'electron';
+import { EventEmitter } from 'events';
 const { ipcMain } = electron;
 
 // Static flag to prevent duplicate handler registration across all instances
 let handlersRegistered = false;
 
-export class ElectronServerControl {
+export class ElectronServerControl extends EventEmitter {
   constructor() {
+    super(); // Call EventEmitter constructor
     this.server = null;
     this.status = 'stopped';
     this.port = null;
     this.startTime = null;
+    this.lifecycleHandlers = {
+      start: null,
+      stop: null,
+    };
     
     this.setupIPC();
+  }
+
+  setLifecycleHandlers(handlers = {}) {
+    this.lifecycleHandlers = {
+      start: handlers.start || null,
+      stop: handlers.stop || null,
+    };
   }
 
   setupIPC() {
@@ -66,26 +79,49 @@ export class ElectronServerControl {
     try {
       this.status = 'starting';
       
-      // Import and start the Electron Express server
-      const { ElectronExpressServer } = await import('../src/macos/server/electron-server.js');
-      
-      this.server = new ElectronExpressServer();
-      const result = await this.server.start();
-      
-      if (result.success) {
+      if (this.lifecycleHandlers.start) {
+        const result = await this.lifecycleHandlers.start();
+        if (result?.success === false) {
+          this.status = 'error';
+          return result;
+        }
+
+        if (result?.server) {
+          this.server = result.server;
+        }
+        if (result?.port) {
+          this.port = result.port;
+        }
+
         this.status = 'running';
-        this.port = result.port || this.server.port;
         this.startTime = Date.now();
-        
+
         return {
           success: true,
           message: 'Server started successfully',
           data: this.getStatus()
         };
-      } else {
-        this.status = 'error';
-        return { success: false, message: 'Failed to start server' };
       }
+
+      // Fallback legacy start (deprecated)
+      const { ElectronExpressServer } = await import('../src/macos/server/electron-server.js');
+      this.server = new ElectronExpressServer();
+      const legacyResult = await this.server.start();
+
+      if (legacyResult.success) {
+        this.status = 'running';
+        this.port = legacyResult.port || this.server.port;
+        this.startTime = Date.now();
+
+        return {
+          success: true,
+          message: 'Server started successfully',
+          data: this.getStatus()
+        };
+      }
+      
+      this.status = 'error';
+      return { success: false, message: 'Failed to start server' };
       
     } catch (error) {
       this.status = 'error';
@@ -100,15 +136,29 @@ export class ElectronServerControl {
 
     try {
       this.status = 'stopping';
-      
-      if (this.server && this.server.stop) {
+      this.emit('statusChange', this.getStatus());
+
+      let stopResult = { success: true };
+      if (this.lifecycleHandlers.stop) {
+        stopResult = await this.lifecycleHandlers.stop() || { success: true };
+        if (stopResult.success === false) {
+          this.status = 'error';
+          this.emit('statusChange', this.getStatus());
+          return stopResult;
+        }
+      } else if (this.server && this.server.stop) {
         await this.server.stop();
+      } else if (this.server && this.server.close) {
+        await new Promise((resolve, reject) => {
+          this.server.close((err) => (err ? reject(err) : resolve()));
+        });
       }
       
+      await this.cleanup({ closeServer: false });
+      
+      // Update status to stopped and emit event
       this.status = 'stopped';
-      this.server = null;
-      this.port = null;
-      this.startTime = null;
+      this.emit('statusChange', this.getStatus());
       
       return {
         success: true,
@@ -118,6 +168,7 @@ export class ElectronServerControl {
       
     } catch (error) {
       this.status = 'error';
+      this.emit('statusChange', this.getStatus());
       return { success: false, message: error.message };
     }
   }
@@ -150,6 +201,7 @@ export class ElectronServerControl {
     this.startTime = Date.now();
     
     console.log(`✅ Server control initialized with server instance on port ${port}`);
+    this.emit('statusChange', this.getStatus());
   }
 
   // Initialize with port only (for web server connection)
@@ -161,8 +213,10 @@ export class ElectronServerControl {
     console.log(`✅ Server control initialized for web server on port ${port}`);
   }
 
-  async cleanup() {
-    if (this.server && this.server.close) {
+  async cleanup(options = {}) {
+    const { closeServer = true } = options;
+
+    if (closeServer && this.server && this.server.close) {
       try {
         await new Promise((resolve) => {
           this.server.close(() => {
