@@ -660,6 +660,15 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   extractTypographyFromCode(code, variables = null) {
     const typography = [];
     
+    // Enhanced logging for debugging
+    console.log('📝 Typography Extraction Debug:');
+    console.log('  - Variables present:', !!variables);
+    console.log('  - Code present:', !!code);
+    if (variables && variables.content) {
+      console.log('  - Variables type:', typeof variables.content);
+      console.log('  - Variables array length:', Array.isArray(variables.content) ? variables.content.length : 'N/A');
+    }
+    
     // First, try to extract from variables if provided (where Font() declarations are)
     if (variables && variables.content) {
       let varsString = '';
@@ -766,6 +775,88 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       });
     }
     
+    // FALLBACK: If no typography found, try extracting from code CSS
+    if (typography.length === 0 && code && code.content) {
+      console.log('⚠️ No typography in variables, trying CSS extraction fallback...');
+      const cssTypography = this.extractTypographyFromCSS(code.content);
+      typography.push(...cssTypography);
+    }
+    
+    console.log(`✅ Typography Extraction Complete: ${typography.length} items found`);
+    return typography;
+  }
+
+  /**
+   * Extract typography from CSS code (fallback method)
+   */
+  extractTypographyFromCSS(cssContent) {
+    const typography = [];
+    let cssString = '';
+    
+    if (Array.isArray(cssContent)) {
+      const textItem = cssContent.find(item => item.type === 'text' && item.text);
+      if (textItem) cssString = textItem.text;
+    } else if (typeof cssContent === 'string') {
+      cssString = cssContent;
+    }
+    
+    if (!cssString) return typography;
+    
+    console.log('🔍 Extracting typography from CSS (length:', cssString.length, ')');
+    
+    // Extract font-family declarations
+    const fontFamilyMatches = cssString.match(/font-family:\s*([^;}"'\n]+)/gi) || [];
+    const fontFamilies = [...new Set(fontFamilyMatches.map(m => {
+      const match = m.match(/font-family:\s*([^;}"'\n]+)/i);
+      if (!match) return null;
+      return match[1].trim().replace(/["']/g, '').split(',')[0].trim(); // Get first font in stack
+    }).filter(Boolean))];
+    
+    console.log('  - Found font families:', fontFamilies);
+    
+    // Extract font-size declarations
+    const fontSizes = [...new Set((cssString.match(/font-size:\s*(\d+(?:\.\d+)?(?:px|rem|em))/gi) || [])
+      .map(m => {
+        const match = m.match(/font-size:\s*(\d+(?:\.\d+)?)(px|rem|em)/i);
+        if (!match) return null;
+        const value = parseFloat(match[1]);
+        const unit = match[2];
+        // Convert to px for consistency
+        if (unit === 'rem') return value * 16;
+        if (unit === 'em') return value * 16;
+        return value;
+      }).filter(Boolean))];
+    
+    // Extract font-weight declarations
+    const fontWeights = [...new Set((cssString.match(/font-weight:\s*(\d+|bold|normal|lighter|bolder)/gi) || [])
+      .map(m => {
+        const match = m.match(/font-weight:\s*(\d+|bold|normal|lighter|bolder)/i);
+        if (!match) return null;
+        const weight = match[1].toLowerCase();
+        // Convert named weights to numeric
+        if (weight === 'normal') return 400;
+        if (weight === 'bold') return 700;
+        if (weight === 'lighter') return 300;
+        if (weight === 'bolder') return 700;
+        return parseInt(weight);
+      }).filter(Boolean))];
+    
+    console.log('  - Font sizes found:', fontSizes);
+    console.log('  - Font weights found:', fontWeights);
+    
+    // Create typography entries (one per font family)
+    fontFamilies.forEach((family, index) => {
+      typography.push({
+        id: `css-font-${index}`,
+        name: family,
+        fontFamily: family,
+        fontSize: fontSizes[0] || 16, // Use first size or default
+        fontWeight: fontWeights[0] || 400, // Use first weight or default
+        source: 'css-fallback'
+      });
+    });
+    
+    console.log(`  ✅ Extracted ${typography.length} font families from CSS`);
     return typography;
   }
 
