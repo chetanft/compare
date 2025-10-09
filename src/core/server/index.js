@@ -1269,9 +1269,15 @@ export async function startServer() {
           // Transform typography to include aggregated data for UI
           typography: {
             ...figmaData?.typography, // Keep original array
-            fontFamilies: [...new Set((figmaData?.typography || []).map(t => t.fontFamily).filter(Boolean))],
-            fontSizes: [...new Set((figmaData?.typography || []).map(t => t.fontSize ? `${t.fontSize}px` : null).filter(Boolean))],
-            fontWeights: [...new Set((figmaData?.typography || []).map(t => t.fontWeight?.toString()).filter(Boolean))]
+            fontFamilies: [...new Set((figmaData?.typography || [])
+              .map(t => t.fontFamily)
+              .filter(f => f && f !== 'Unknown' && f !== 'unknown'))], // Filter out Unknown
+            fontSizes: [...new Set((figmaData?.typography || [])
+              .map(t => t.fontSize ? `${t.fontSize}px` : null)
+              .filter(Boolean))],
+            fontWeights: [...new Set((figmaData?.typography || [])
+              .map(t => t.fontWeight?.toString())
+              .filter(Boolean))]
           },
           
           // LEGACY FIELDS (maintained for backward compatibility)
