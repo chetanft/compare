@@ -367,24 +367,38 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    * @returns {StandardizedFigmaData}
    */
   transformStructuredData(rawData, baseMetadata) {
+    console.log('🔄 Transforming Structured MCP Data...');
     const { metadata, code, variables } = rawData.rawMCPData;
     
+    console.log('  - Metadata:', !!metadata);
+    console.log('  - Code:', !!code);
+    console.log('  - Variables:', !!variables);
+    
     // Extract components from MCP code/metadata
+    console.log('\n📦 Extracting components...');
     const components = this.extractComponentsFromStructuredData(metadata, code);
+    console.log(`  ✅ Components extracted: ${components.length}`);
     
     // Extract colors from variables AND XML metadata
+    console.log('\n🎨 Extracting colors...');
     const colorsFromVariables = this.extractColorsFromVariables(variables);
     const colorsFromXML = this.extractColorsFromXMLMetadata(metadata);
     const colors = [...colorsFromVariables, ...colorsFromXML];
+    console.log(`  ✅ Total colors: ${colors.length} (${colorsFromVariables.length} from variables, ${colorsFromXML.length} from XML)`);
     
     // Extract typography from code and variables
+    console.log('\n📝 Extracting typography...');
     const typography = this.extractTypographyFromCode(code, variables);
     
     // Extract spacing tokens
+    console.log('\n📏 Extracting spacing...');
     const spacing = this.extractSpacingFromVariables(variables);
+    console.log(`  ✅ Spacing tokens: ${spacing.length}`);
     
     // Extract shadows
+    console.log('\n🌑 Extracting shadows...');
     const shadows = this.extractShadowsFromVariables(variables);
+    console.log(`  ✅ Shadows: ${shadows.length}`);
     
     return {
       ...baseMetadata,
@@ -546,23 +560,38 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     const colors = [];
     let xmlContent = '';
     
+    console.log('🎨 Color Extraction from XML Metadata Debug:');
+    console.log('  - Metadata present:', !!metadata);
+    console.log('  - Metadata.content present:', !!(metadata && metadata.content));
+    
     // Get XML content from metadata
     if (metadata && metadata.content) {
+      console.log('  - Metadata.content type:', typeof metadata.content);
+      console.log('  - Metadata.content is array:', Array.isArray(metadata.content));
+      
       if (Array.isArray(metadata.content)) {
+        console.log('  - Metadata.content length:', metadata.content.length);
         for (const item of metadata.content) {
           if (item.type === 'text' && item.text) {
             xmlContent += item.text;
           }
         }
+        console.log('  - Assembled XML content length:', xmlContent.length);
       } else if (typeof metadata.content === 'string') {
         xmlContent = metadata.content;
+        console.log('  - XML content length:', xmlContent.length);
+      } else {
+        console.warn('  - Metadata.content has unexpected type');
       }
+    } else {
+      console.warn('  - No metadata or metadata.content');
     }
     
     if (xmlContent) {
       // Extract hex colors from XML attributes and content
       const hexMatches = xmlContent.match(/#[0-9a-fA-F]{6}/g) || [];
       const uniqueHexColors = [...new Set(hexMatches)];
+      console.log('  - Found', hexMatches.length, 'hex colors,', uniqueHexColors.length, 'unique');
       
       uniqueHexColors.forEach((hex, index) => {
         colors.push({
@@ -574,7 +603,9 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       });
       
-      console.log(`🎨 Extracted ${colors.length} colors from XML metadata`);
+      console.log(`  ✅ Extracted ${colors.length} colors from XML metadata`);
+    } else {
+      console.warn('  - No XML content to extract colors from');
     }
     
     return colors;
@@ -586,45 +617,64 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   extractColorsFromVariables(variables) {
     const colors = [];
     
+    console.log('🎨 Color Extraction from Variables Debug:');
+    console.log('  - Variables present:', !!variables);
+    console.log('  - Variables.content present:', !!(variables && variables.content));
+    
     if (variables && variables.content) {
       try {
         let varsData;
         
+        console.log('  - Variables.content type:', typeof variables.content);
+        console.log('  - Variables.content is array:', Array.isArray(variables.content));
+        
         // Handle array format from MCP
         if (Array.isArray(variables.content)) {
+          console.log('  - Variables.content length:', variables.content.length);
           // Find the first text item with JSON content
           const textItem = variables.content.find(item => item.type === 'text' && item.text);
           if (textItem && textItem.text) {
+            console.log('  - Found text item, length:', textItem.text.length);
             try {
               varsData = JSON.parse(textItem.text);
               console.log('🎨 Parsing colors from MCP variables array...');
             } catch (e) {
               console.warn('Variables text is not JSON:', textItem.text.substring(0, 100));
+              console.warn('Parse error:', e.message);
               return colors;
             }
+          } else {
+            console.warn('  - No text item found in variables.content array');
+            return colors;
           }
         } else {
           // Handle both object and string content (original logic)
           varsData = typeof variables.content === 'string' ? 
             JSON.parse(variables.content) : variables.content;
+          console.log('  - Variables data parsed/extracted');
         }
         
         // Look for color variables in different possible structures
+        console.log('  - VarsData has .variables:', !!varsData.variables);
         if (varsData.variables) {
-          Object.entries(varsData.variables).forEach(([key, value]) => {
-            if (this.isColorVariable(value)) {
-              colors.push({
-                id: key,
-                name: value.name || key,
-                value: this.extractColorValue(value),
-                type: 'COLOR',
-                source: 'mcp-variables'
-              });
-            }
+          const colorVars = Object.entries(varsData.variables).filter(([key, value]) => this.isColorVariable(value));
+          console.log('  - Found', colorVars.length, 'color variables in varsData.variables');
+          colorVars.forEach(([key, value]) => {
+            colors.push({
+              id: key,
+              name: value.name || key,
+              value: this.extractColorValue(value),
+              type: 'COLOR',
+              source: 'mcp-variables'
+            });
           });
         } else if (varsData && typeof varsData === 'object') {
+          console.log('  - Checking varsData directly for colors...');
+          const entries = Object.entries(varsData);
+          console.log('  - VarsData has', entries.length, 'entries');
+          
           // Try to extract colors from direct variable data
-          Object.entries(varsData).forEach(([key, value]) => {
+          entries.forEach(([key, value]) => {
             // Handle both structured variables and direct hex values
             if (this.isColorVariable(value)) {
               colors.push({
@@ -645,12 +695,18 @@ export class MCPXMLAdapter extends BaseDataAdapter {
               });
             }
           });
+        } else {
+          console.warn('  - VarsData is not an object or has unexpected structure');
         }
       } catch (error) {
-        console.warn('Failed to parse variables content:', error);
+        console.error('❌ Failed to parse variables content:', error);
+        console.error('   Error stack:', error.stack);
       }
+    } else {
+      console.warn('  - No variables or variables.content - skipping variable color extraction');
     }
     
+    console.log(`  ✅ Extracted ${colors.length} colors from variables`);
     return colors;
   }
 

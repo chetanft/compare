@@ -20,7 +20,7 @@ export default defineConfig({
   plugins: [react()],
   base: './', // Use relative paths for assets (Electron compatibility)
   esbuild: {
-    drop: ['console', 'debugger']
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [] // Keep console logs in dev
   },
   resolve: {
     alias: {
