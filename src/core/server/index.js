@@ -1351,11 +1351,12 @@ export async function startServer() {
   const upload = multer({
     storage,
     limits: {
-      fileSize: 10 * 1024 * 1024, // 10MB limit
-      files: 2
+      fileSize: 50 * 1024 * 1024, // 50MB limit (increased for high-res screenshots)
+      files: 2,
+      fieldSize: 50 * 1024 * 1024 // Increase field size limit
     },
     fileFilter: (req, file, cb) => {
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
@@ -1367,12 +1368,22 @@ export async function startServer() {
   // Screenshot upload endpoint (NO rate limiting - internal file processing)
   app.post('/api/screenshots/upload',
     (req, res, next) => {
+      // Increase timeout for large file uploads
+      req.setTimeout(5 * 60 * 1000); // 5 minutes
+      res.setTimeout(5 * 60 * 1000);
+      
       upload.fields([
         { name: 'figmaScreenshot', maxCount: 1 },
         { name: 'developedScreenshot', maxCount: 1 }
       ])(req, res, (err) => {
         if (err) {
-          console.error('Multer error:', err);
+          console.error('❌ Multer error:', err);
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({
+              success: false,
+              error: 'File too large. Maximum file size is 50MB per screenshot.'
+            });
+          }
           return res.status(400).json({
             success: false,
             error: 'File upload error: ' + err.message
