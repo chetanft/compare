@@ -67,7 +67,10 @@ export default function ServerControlButton({
     isLoading,
     error,
   } = control;
-  const managed = (serverStatus as any)?.runningProcessManaged ?? (serverStatus as any)?.managed ?? false;
+  
+  // In Electron, the server is always managed by the app
+  // In web mode, check if it's externally managed (e.g., via npm run dev)
+  const managed = isElectron ? true : ((serverStatus as any)?.runningProcessManaged ?? (serverStatus as any)?.managed ?? false);
 
   // Rate limiting data
   const [rateLimitData, setRateLimitData] = useState<any>(null);
@@ -311,27 +314,55 @@ export default function ServerControlButton({
           </div>
         )}
         
+        {/* Managed Externally Note */}
+        {!managed && isServerRunning && (
+          <div className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
+            <span className="inline-block">Managed Externally</span>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <ExclamationTriangleIcon className="h-3 w-3" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Server started outside the app (e.g., via npm run dev)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+        
         {/* Control Button */}
         <div className="flex justify-center pt-2">
-          <Button
-            onClick={toggleServer}
-            disabled={buttonContent.disabled}
-            variant={buttonContent.variant}
-            size="sm"
-            className={cn(
-              "flex items-center space-x-2 font-medium transition-all min-w-[100px]",
-              hasError && "border-orange-300 hover:bg-orange-50",
-              isServerRunning && "border-green-300 hover:bg-green-50"
-            )}
-          >
-            <span>{!managed && isServerRunning ? 'Managed Externally' : buttonContent.text}</span>
-            <IconComponent
-              className={cn(
-                "h-4 w-4",
-                buttonContent.disabled && "animate-spin"
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={toggleServer}
+                  disabled={buttonContent.disabled}
+                  variant={buttonContent.variant}
+                  size="sm"
+                  className={cn(
+                    "flex items-center space-x-2 font-medium transition-all min-w-[100px]",
+                    hasError && "border-orange-300 hover:bg-orange-50",
+                    isServerRunning && "border-green-300 hover:bg-green-50"
+                  )}
+                >
+                  <span>{buttonContent.text}</span>
+                  <IconComponent
+                    className={cn(
+                      "h-4 w-4",
+                      buttonContent.disabled && "animate-spin"
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              {!managed && isServerRunning && (
+                <TooltipContent>
+                  <p className="text-xs">Cannot stop externally managed server</p>
+                </TooltipContent>
               )}
-            />
-          </Button>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>

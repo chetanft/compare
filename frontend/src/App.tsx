@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from './components/layout/Sidebar'
@@ -11,11 +11,14 @@ import Reports from './pages/Reports'
 import ColorAnalytics from './pages/ColorAnalytics'
 import ErrorBoundary from './components/ui/ErrorBoundary'
 import { ServerStartup } from './components/ServerStartup'
+import ServerStoppedPage from './pages/ServerStoppedPage'
 import { Toaster } from '@/components/ui/toaster'
 
 function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [serverReady, setServerReady] = useState(false)
+  const [serverStopped, setServerStopped] = useState(false)
+  const [isStartingServer, setIsStartingServer] = useState(false)
   const location = useLocation()
 
   const getPageTitle = (pathname: string): string => {
@@ -32,6 +35,56 @@ function AppContent() {
     initial: { opacity: 0, x: 20 },
     in: { opacity: 1, x: 0 },
     out: { opacity: 0, x: -20 }
+  }
+
+  // Listen for server stop events
+  useEffect(() => {
+    const handleServerStopped = () => {
+      setServerStopped(true);
+      setServerReady(false);
+    };
+
+    window.addEventListener('server-stopped', handleServerStopped);
+    return () => window.removeEventListener('server-stopped', handleServerStopped);
+  }, []);
+
+  // Handle server restart
+  const handleStartServer = async () => {
+    setIsStartingServer(true);
+    
+    try {
+      // If running in Electron, use the IPC API
+      if ((window as any).electronAPI) {
+        const result = await (window as any).electronAPI.serverControl.start();
+        if (result.success) {
+          setServerStopped(false);
+          setServerReady(false); // Let ServerStartup component handle the ready state
+          setIsStartingServer(false);
+        } else {
+          throw new Error(result.message || 'Failed to start server');
+        }
+      } else {
+        // For web version, the server should always be running
+        setServerStopped(false);
+        setServerReady(false);
+        setIsStartingServer(false);
+      }
+    } catch (error) {
+      console.error('Failed to start server:', error);
+      setIsStartingServer(false);
+      // Show error to user
+      alert('Failed to start server: ' + (error as Error).message);
+    }
+  };
+
+  // Show server stopped page if server was explicitly stopped
+  if (serverStopped) {
+    return (
+      <ServerStoppedPage 
+        onStartServer={handleStartServer}
+        isStarting={isStartingServer}
+      />
+    );
   }
 
   // Show server startup screen if server is not ready

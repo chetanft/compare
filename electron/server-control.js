@@ -142,6 +142,16 @@ export class ElectronServerControl {
     this.startTime = Date.now();
   }
 
+  // Initialize with server instance and port (unified method)
+  initializeWithServerInstance(serverInstance, port) {
+    this.server = serverInstance;
+    this.port = port;
+    this.status = 'running';
+    this.startTime = Date.now();
+    
+    console.log(`✅ Server control initialized with server instance on port ${port}`);
+  }
+
   // Initialize with port only (for web server connection)
   initializeWithPort(port) {
     this.port = port;
@@ -152,6 +162,19 @@ export class ElectronServerControl {
   }
 
   async cleanup() {
+    if (this.server && this.server.close) {
+      try {
+        await new Promise((resolve) => {
+          this.server.close(() => {
+            console.log('✅ Server closed via cleanup');
+            resolve();
+          });
+        });
+      } catch (error) {
+        console.error('⚠️ Error during server cleanup:', error);
+      }
+    }
+    
     this.server = null;
     this.status = 'stopped';
     this.port = null;

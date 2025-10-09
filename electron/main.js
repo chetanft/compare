@@ -40,6 +40,7 @@ const __dirname = path.dirname(__filename);
 // Keep a global reference of the window object
 let mainWindow;
 let expressServer;
+let expressServerInstance; // The actual Express app instance
 let serverPort = 3847; // Use unified port matching APP_SERVER_PORT
 let serverControl;
 
@@ -250,13 +251,16 @@ async function startServer() {
     const { startUnifiedServer } = await import('../src/server/unified-server-starter.js');
     const server = await startUnifiedServer();
     
+    // Store the Express server instance for later control
+    expressServerInstance = server;
+    
     console.log(`✅ Server started successfully on port ${serverPort}`);
     
-    // Initialize server control
+    // Initialize server control with the actual server instance
     if (!serverControl) {
       serverControl = new ElectronServerControl();
     }
-    serverControl.initializeWithPort(serverPort);
+    serverControl.initializeWithServerInstance(expressServerInstance, serverPort);
     
     return true;
 
@@ -271,6 +275,34 @@ async function startServer() {
     );
     
     app.quit();
+    return false;
+  }
+}
+
+async function stopServer() {
+  try {
+    if (expressServerInstance) {
+      console.log('⏹️ Stopping Express server...');
+      
+      // Close the HTTP server
+      await new Promise((resolve) => {
+        expressServerInstance.close(() => {
+          console.log('✅ Express server stopped');
+          resolve();
+        });
+      });
+      
+      expressServerInstance = null;
+      
+      if (serverControl) {
+        await serverControl.cleanup();
+      }
+      
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('❌ Failed to stop server:', error);
     return false;
   }
 }

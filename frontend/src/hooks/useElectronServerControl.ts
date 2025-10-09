@@ -78,6 +78,12 @@ export function useElectronServerControl() {
     try {
       const result = await window.electronAPI.serverControl.stop();
       await fetchStatus(); // Refresh status
+      
+      // Dispatch event to notify app that server was stopped
+      if (result.success) {
+        window.dispatchEvent(new CustomEvent('server-stopped'));
+      }
+      
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to stop server';
