@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { generateCSSIncludes } from './utils/cssIncludes.js';
+import { IssueFormatter } from '../services/reports/IssueFormatter.js';
 import { 
   generateProgressBar, 
   generateCircularProgress, 
@@ -158,6 +159,9 @@ export class ReportGenerator {
     // Generate comparison tables
     html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
     
+    // Generate DevRev issues table
+    html = html.replaceAll('{{devrevIssuesTable}}', this.generateDevRevIssuesTable(comparisonResults));
+    
     // Generate JSON data for interactive features
     const jsonData = JSON.stringify(comparisonResults);
     html = html.replaceAll('{{jsonData}}', jsonData);
@@ -209,6 +213,10 @@ export class ReportGenerator {
     // Add theme toggle and interactive JavaScript
     html = html.replaceAll('{{themeToggle}}', generateThemeToggle());
     html = html.replaceAll('{{interactiveJS}}', generateInteractiveJS());
+    
+    // Add DevRev table styles and scripts
+    html = html.replaceAll('{{devrevTableStyles}}', this.getDevRevTableStyles());
+    html = html.replaceAll('{{devrevTableScripts}}', this.getDevRevTableScripts());
     
     return html;
   }
@@ -334,6 +342,151 @@ export class ReportGenerator {
         </tr>
       `;
     }).join('');
+  }
+  
+  /**
+   * Generate DevRev-ready issues table
+   * @param {Object} comparisonResults - Comparison results
+   * @returns {string} HTML content for DevRev issues table
+   */
+  generateDevRevIssuesTable(comparisonResults) {
+    try {
+      // Transform comparison results into DevRev issues
+      const formatter = new IssueFormatter();
+      const issues = formatter.transform(comparisonResults);
+      
+      if (!issues || issues.length === 0) {
+        return `
+          <div class="no-data">
+            <p>✅ No issues found - All components match the design specifications!</p>
+          </div>
+        `;
+      }
+      
+      // Generate table HTML
+      return `
+        <section class="devrev-issues-section" id="devrev-issues">
+          <div class="section-header">
+            <h2>📋 Comparison Issues (DevRev Format)</h2>
+            <p class="section-description">
+              Ready-to-upload issue tracker format with frame/component names from Figma.
+              Copy to clipboard or export as CSV for use in DevRev or other issue tracking systems.
+            </p>
+          </div>
+          
+          <div class="table-controls">
+            <button onclick="exportDevRevTableToCSV()" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export as CSV
+            </button>
+            <button onclick="copyDevRevTableToClipboard()" class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copy Table
+            </button>
+            <input 
+              type="search" 
+              placeholder="Filter issues..." 
+              id="devrev-filter-input"
+              class="table-filter"
+              onkeyup="filterDevRevTable()"
+            >
+            <div class="issue-stats">
+              <span class="stat-badge stat-critical">Critical: ${issues.filter(i => i.severity === 'Critical').length}</span>
+              <span class="stat-badge stat-major">Major: ${issues.filter(i => i.severity === 'Major').length}</span>
+              <span class="stat-badge stat-minor">Minor: ${issues.filter(i => i.severity === 'Minor').length}</span>
+            </div>
+          </div>
+          
+          <div class="table-wrapper">
+            <table class="devrev-issues-table" id="devrev-issues-table">
+              <thead>
+                <tr>
+                  <th class="sortable" onclick="sortDevRevTable(0)">Issue ID</th>
+                  <th class="sortable" onclick="sortDevRevTable(1)">Title / Summary</th>
+                  <th class="sortable" onclick="sortDevRevTable(2)">Description</th>
+                  <th class="sortable" onclick="sortDevRevTable(3)">Module</th>
+                  <th class="sortable" onclick="sortDevRevTable(4)">Frame / Component Name</th>
+                  <th>Figma ID</th>
+                  <th>Type</th>
+                  <th>Web Element</th>
+                  <th class="sortable" onclick="sortDevRevTable(8)">Severity</th>
+                  <th class="sortable" onclick="sortDevRevTable(9)">Priority</th>
+                  <th>Status</th>
+                  <th>Expected Result</th>
+                  <th>Actual Result</th>
+                  <th>Environment</th>
+                  <th>Created Date</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${issues.map(issue => this.generateDevRevIssueRow(issue)).join('')}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="table-footer">
+            <p>📊 Total Issues: <strong>${issues.length}</strong></p>
+            <p>💡 Tip: Click column headers to sort, use the filter to search, or export to CSV for DevRev upload</p>
+          </div>
+        </section>
+      `;
+    } catch (error) {
+      logger.error('Failed to generate DevRev issues table', error);
+      return '<div class="error">Failed to generate DevRev issues table</div>';
+    }
+  }
+  
+  /**
+   * Generate a single DevRev issue row
+   * @param {Object} issue - Issue object
+   * @returns {string} HTML content for table row
+   */
+  generateDevRevIssueRow(issue) {
+    return `
+      <tr class="severity-${issue.severity?.toLowerCase()}" data-severity="${issue.severity}" data-priority="${issue.priority}">
+        <td class="issue-id">${issue.issueId}</td>
+        <td class="issue-title">${this.escapeHtml(issue.title)}</td>
+        <td class="issue-description"><div class="truncate-text">${this.escapeHtml(issue.description)}</div></td>
+        <td>${this.escapeHtml(issue.module)}</td>
+        <td class="component-name"><code>${this.escapeHtml(issue.frameComponentName)}</code></td>
+        <td class="figma-id"><small>${this.escapeHtml(issue.figmaComponentId)}</small></td>
+        <td><small>${this.escapeHtml(issue.figmaComponentType)}</small></td>
+        <td class="web-element"><code>${this.escapeHtml(issue.webElement)}</code></td>
+        <td><span class="badge badge-${issue.severity?.toLowerCase()}">${issue.severity}</span></td>
+        <td><span class="badge badge-priority-${issue.priority?.toLowerCase()}">${issue.priority}</span></td>
+        <td><span class="badge badge-status">${issue.status}</span></td>
+        <td class="expected-result"><div class="truncate-text">${this.escapeHtml(issue.expectedResult)}</div></td>
+        <td class="actual-result"><div class="truncate-text">${this.escapeHtml(issue.actualResult)}</div></td>
+        <td>${this.escapeHtml(issue.environment)}</td>
+        <td class="date">${issue.createdDate}</td>
+        <td class="remarks"><div class="truncate-text">${this.escapeHtml(issue.remarks)}</div></td>
+      </tr>
+    `;
+  }
+  
+  /**
+   * Escape HTML to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
   }
   
   /**
@@ -725,6 +878,9 @@ export class ReportGenerator {
       {{comparisonTables}}
     </div>
     
+    <!-- DevRev Issues Table Section -->
+    {{devrevIssuesTable}}
+    
     <footer>
       <p>Generated by Figma-Web Comparison Tool</p>
     </footer>
@@ -736,6 +892,12 @@ export class ReportGenerator {
     
     // Add interactive features here if needed
   </script>
+  
+  <!-- DevRev Table Styles -->
+  {{devrevTableStyles}}
+  
+  <!-- DevRev Table Scripts -->
+  {{devrevTableScripts}}
 </body>
 </html>`;
   }
@@ -936,6 +1098,36 @@ export class ReportGenerator {
         </div>
       </div>
     `;
+  }
+  
+  /**
+   * Get DevRev table styles
+   * @returns {string} CSS styles for DevRev table
+   */
+  getDevRevTableStyles() {
+    try {
+      const stylesPath = path.join(__dirname, 'utils/devrevTableStyles.css');
+      const styles = require('fs').readFileSync(stylesPath, 'utf8');
+      return `<style>${styles}</style>`;
+    } catch (error) {
+      logger.warn('Failed to load DevRev table styles', error);
+      return '<style>/* DevRev table styles not found */</style>';
+    }
+  }
+  
+  /**
+   * Get DevRev table scripts
+   * @returns {string} JavaScript for DevRev table functionality
+   */
+  getDevRevTableScripts() {
+    try {
+      const scriptsPath = path.join(__dirname, 'utils/devrevTableScripts.js');
+      const scripts = require('fs').readFileSync(scriptsPath, 'utf8');
+      return `<script>${scripts}</script>`;
+    } catch (error) {
+      logger.warn('Failed to load DevRev table scripts', error);
+      return '<script>// DevRev table scripts not found</script>';
+    }
   }
 }
 
