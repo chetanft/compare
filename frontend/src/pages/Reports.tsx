@@ -13,6 +13,7 @@ import {
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
+import { getApiBaseUrl } from '@/utils/environment';
 
 interface ComparisonReport {
   id: string;
@@ -39,7 +40,8 @@ export default function Reports() {
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('/api/reports/list');
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/reports/list`);
       const data = await response.json();
       
       if (data.success && data.reports) {
@@ -104,15 +106,19 @@ export default function Reports() {
 
   const handleViewReport = (report: ComparisonReport) => {
     // Open the report file in a new tab using the URL from the API
+    const apiBaseUrl = getApiBaseUrl();
     const reportUrl = report.url || `/reports/report_${report.id}.html`;
-    window.open(reportUrl, '_blank');
+    const fullUrl = reportUrl.startsWith('http') ? reportUrl : `${apiBaseUrl}${reportUrl}`;
+    window.open(fullUrl, '_blank');
   };
 
   const handleExportReport = async (report: ComparisonReport) => {
     try {
       // Download the report file using the URL from the API
+      const apiBaseUrl = getApiBaseUrl();
       const reportUrl = report.url || `/reports/report_${report.id}.html`;
-      const response = await fetch(reportUrl);
+      const fullUrl = reportUrl.startsWith('http') ? reportUrl : `${apiBaseUrl}${reportUrl}`;
+      const response = await fetch(fullUrl);
       const blob = await response.blob();
       
       // Create download link
@@ -136,7 +142,8 @@ export default function Reports() {
     }
     
     try {
-      const response = await fetch(`/api/reports/${report.id}`, {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/reports/${report.id}`, {
         method: 'DELETE'
       });
       
