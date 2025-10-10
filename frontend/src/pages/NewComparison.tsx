@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Card, CardContent } from '@/components/ui/card'
 import ExtractionDetailsView from '../components/reports/ExtractionDetailsView'
+import { VisualTokenComparison } from '../components/comparison/VisualTokenComparison'
+import { Palette, Type, Ruler, BoxSelect } from 'lucide-react'
 
 export default function NewComparison() {
   const [activeComparison, setActiveComparison] = useState<string | null>(null)
@@ -72,6 +74,210 @@ export default function NewComparison() {
 
   const openReportInNewTab = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  // Helper function to calculate similarity percentage
+  const calculateSimilarity = (matched: number, total: number): number => {
+    if (total === 0) return 0
+    return Math.round((matched / total) * 100)
+  }
+
+  // Helper function to extract color comparison data
+  const getColorComparisonData = () => {
+    // Try multiple data sources
+    const analysis = result?.colorAnalysis || result?.comparison?.colorAnalysis
+    
+    // Get colors from extraction details if analysis doesn't exist
+    let figmaColors = analysis?.figmaColors || result?.extractionDetails?.figma?.colors || result?.figmaData?.colors || []
+    let webColors = analysis?.webColors || analysis?.developedColors || result?.extractionDetails?.web?.colors || result?.webData?.colors || []
+    let matched = analysis?.matchedColors || []
+    let missing = analysis?.missingColors || []
+    let extra = analysis?.extraColors || []
+    
+    // Ensure all are arrays
+    figmaColors = Array.isArray(figmaColors) ? figmaColors : []
+    webColors = Array.isArray(webColors) ? webColors : []
+    matched = Array.isArray(matched) ? matched : []
+    missing = Array.isArray(missing) ? missing : []
+    extra = Array.isArray(extra) ? extra : []
+    
+    // If we have colors but no analysis, do basic matching
+    if (figmaColors.length > 0 && matched.length === 0) {
+      figmaColors.forEach((figmaColor: any) => {
+        const figmaValue = figmaColor.value || figmaColor
+        const webMatch = webColors.find((webColor: any) => {
+          const webValue = webColor.value || webColor
+          return figmaValue.toLowerCase() === webValue.toLowerCase()
+        })
+        if (webMatch) {
+          matched.push({ figma: figmaColor, web: webMatch, similarity: 100 })
+        } else {
+          missing.push(figmaColor)
+        }
+      })
+      
+      webColors.forEach((webColor: any) => {
+        const webValue = webColor.value || webColor
+        const figmaMatch = figmaColors.find((figmaColor: any) => {
+          const figmaValue = figmaColor.value || figmaColor
+          return figmaValue.toLowerCase() === webValue.toLowerCase()
+        })
+        if (!figmaMatch) {
+          extra.push(webColor)
+        }
+      })
+    }
+    
+    // Only return if we have data
+    if (figmaColors.length === 0 && webColors.length === 0) return null
+    
+    return {
+      figmaTokens: figmaColors,
+      webTokens: webColors,
+      matchedTokens: matched.map((m: any) => ({
+        figma: m.figma || m.figmaColor,
+        web: m.web || m.developedColor,
+        similarity: m.similarity || m.matchPercentage || 100
+      })),
+      missingTokens: missing,
+      extraTokens: extra,
+      similarity: analysis?.similarity || calculateSimilarity(matched.length, figmaColors.length)
+    }
+  }
+
+  // Helper function to extract typography comparison data
+  const getTypographyComparisonData = () => {
+    // Handle both array and object formats
+    let figmaTypography = result?.figmaData?.typography || result?.extractionDetails?.figma?.typography || []
+    let webTypography = result?.webData?.typography || []
+    
+    // Convert object to array if needed
+    if (!Array.isArray(figmaTypography) && typeof figmaTypography === 'object') {
+      figmaTypography = Object.values(figmaTypography)
+    }
+    if (!Array.isArray(webTypography) && typeof webTypography === 'object') {
+      webTypography = Object.values(webTypography)
+    }
+    
+    // Ensure arrays
+    figmaTypography = Array.isArray(figmaTypography) ? figmaTypography : []
+    webTypography = Array.isArray(webTypography) ? webTypography : []
+    
+    // Simple matching logic based on font family
+    const matched: any[] = []
+    const missing: any[] = []
+    const extra: any[] = []
+    
+    figmaTypography.forEach((figmaFont: any) => {
+      const webMatch = webTypography.find((webFont: any) => 
+        webFont.fontFamily?.toLowerCase() === figmaFont.fontFamily?.toLowerCase()
+      )
+      if (webMatch) {
+        matched.push({
+          figma: figmaFont,
+          web: webMatch,
+          similarity: 95 // Simplified similarity
+        })
+      } else {
+        missing.push(figmaFont)
+      }
+    })
+    
+    webTypography.forEach((webFont: any) => {
+      const figmaMatch = figmaTypography.find((figmaFont: any) =>
+        figmaFont.fontFamily?.toLowerCase() === webFont.fontFamily?.toLowerCase()
+      )
+      if (!figmaMatch) {
+        extra.push(webFont)
+      }
+    })
+    
+    return {
+      figmaTokens: figmaTypography,
+      webTokens: webTypography,
+      matchedTokens: matched,
+      missingTokens: missing,
+      extraTokens: extra,
+      similarity: calculateSimilarity(matched.length, figmaTypography.length)
+    }
+  }
+
+  // Helper function to extract spacing comparison data
+  const getSpacingComparisonData = () => {
+    let figmaSpacing = result?.extractionDetails?.figma?.spacing || result?.figmaData?.spacing || []
+    let webSpacing = result?.extractionDetails?.web?.spacing || result?.webData?.spacing || []
+    
+    // Ensure arrays
+    figmaSpacing = Array.isArray(figmaSpacing) ? figmaSpacing : []
+    webSpacing = Array.isArray(webSpacing) ? webSpacing : []
+    
+    if (figmaSpacing.length === 0 && webSpacing.length === 0) return null
+    
+    const matched: any[] = []
+    const missing: any[] = []
+    const extra: any[] = []
+    
+    figmaSpacing.forEach((spacing: any) => {
+      const match = webSpacing.find((w: any) => w === spacing || w.value === spacing)
+      if (match) {
+        matched.push({ figma: spacing, web: match, similarity: 100 })
+      } else {
+        missing.push(spacing)
+      }
+    })
+    
+    webSpacing.forEach((spacing: any) => {
+      const match = figmaSpacing.find((f: any) => f === spacing || f.value === spacing)
+      if (!match) extra.push(spacing)
+    })
+    
+    return {
+      figmaTokens: figmaSpacing,
+      webTokens: webSpacing,
+      matchedTokens: matched,
+      missingTokens: missing,
+      extraTokens: extra,
+      similarity: calculateSimilarity(matched.length, figmaSpacing.length)
+    }
+  }
+
+  // Helper function to extract border radius comparison data
+  const getBorderRadiusComparisonData = () => {
+    let figmaBorderRadius = result?.extractionDetails?.figma?.borderRadius || result?.figmaData?.borderRadius || []
+    let webBorderRadius = result?.extractionDetails?.web?.borderRadius || result?.webData?.borderRadius || []
+    
+    // Ensure arrays
+    figmaBorderRadius = Array.isArray(figmaBorderRadius) ? figmaBorderRadius : []
+    webBorderRadius = Array.isArray(webBorderRadius) ? webBorderRadius : []
+    
+    if (figmaBorderRadius.length === 0 && webBorderRadius.length === 0) return null
+    
+    const matched: any[] = []
+    const missing: any[] = []
+    const extra: any[] = []
+    
+    figmaBorderRadius.forEach((radius: any) => {
+      const match = webBorderRadius.find((w: any) => w === radius || w.value === radius)
+      if (match) {
+        matched.push({ figma: radius, web: match, similarity: 100 })
+      } else {
+        missing.push(radius)
+      }
+    })
+    
+    webBorderRadius.forEach((radius: any) => {
+      const match = figmaBorderRadius.find((f: any) => f === radius || f.value === radius)
+      if (!match) extra.push(radius)
+    })
+    
+    return {
+      figmaTokens: figmaBorderRadius,
+      webTokens: webBorderRadius,
+      matchedTokens: matched,
+      missingTokens: missing,
+      extraTokens: extra,
+      similarity: calculateSimilarity(matched.length, figmaBorderRadius.length)
+    }
   }
 
   const handleSaveReport = async () => {
@@ -212,6 +418,83 @@ export default function NewComparison() {
               </Card>
             </div>
           )}
+
+          {/* Visual Token Comparisons */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-6">Visual Design Token Analysis</h2>
+            
+            {/* Color Comparison */}
+            {(() => {
+              const colorData = getColorComparisonData()
+              return colorData && (
+                <VisualTokenComparison
+                  title="Color Palette"
+                  icon={<Palette className="w-6 h-6" />}
+                  figmaTokens={colorData.figmaTokens}
+                  webTokens={colorData.webTokens}
+                  matchedTokens={colorData.matchedTokens}
+                  missingTokens={colorData.missingTokens}
+                  extraTokens={colorData.extraTokens}
+                  similarity={colorData.similarity}
+                  type="color"
+                />
+              )
+            })()}
+
+            {/* Typography Comparison */}
+            {(() => {
+              const typographyData = getTypographyComparisonData()
+              return typographyData.figmaTokens.length > 0 && (
+                <VisualTokenComparison
+                  title="Typography"
+                  icon={<Type className="w-6 h-6" />}
+                  figmaTokens={typographyData.figmaTokens}
+                  webTokens={typographyData.webTokens}
+                  matchedTokens={typographyData.matchedTokens}
+                  missingTokens={typographyData.missingTokens}
+                  extraTokens={typographyData.extraTokens}
+                  similarity={typographyData.similarity}
+                  type="typography"
+                />
+              )
+            })()}
+
+            {/* Spacing Comparison */}
+            {(() => {
+              const spacingData = getSpacingComparisonData()
+              return spacingData && (
+                <VisualTokenComparison
+                  title="Spacing"
+                  icon={<Ruler className="w-6 h-6" />}
+                  figmaTokens={spacingData.figmaTokens}
+                  webTokens={spacingData.webTokens}
+                  matchedTokens={spacingData.matchedTokens}
+                  missingTokens={spacingData.missingTokens}
+                  extraTokens={spacingData.extraTokens}
+                  similarity={spacingData.similarity}
+                  type="spacing"
+                />
+              )
+            })()}
+
+            {/* Border Radius Comparison */}
+            {(() => {
+              const borderRadiusData = getBorderRadiusComparisonData()
+              return borderRadiusData && (
+                <VisualTokenComparison
+                  title="Border Radius"
+                  icon={<BoxSelect className="w-6 h-6" />}
+                  figmaTokens={borderRadiusData.figmaTokens}
+                  webTokens={borderRadiusData.webTokens}
+                  matchedTokens={borderRadiusData.matchedTokens}
+                  missingTokens={borderRadiusData.missingTokens}
+                  extraTokens={borderRadiusData.extraTokens}
+                  similarity={borderRadiusData.similarity}
+                  type="spacing"
+                />
+              )
+            })()}
+          </div>
 
           {/* Report Links */}
           <div className="card">

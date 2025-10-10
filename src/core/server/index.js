@@ -161,6 +161,11 @@ export async function startServer() {
   // Configure enhanced middleware
   configureSecurityMiddleware(app, config);
   
+  // Body parsing middleware - MUST come before routes
+  // Increased limits to handle large payloads (but multipart/form-data uses multer)
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  
   // Development cache control (prevent browser caching issues)
   if (process.env.NODE_ENV !== 'production') {
     app.use((req, res, next) => {
@@ -1335,9 +1340,11 @@ export async function startServer() {
   // Configure multer for file uploads
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const uploadId = req.uploadId || uuidv4();
-      req.uploadId = uploadId;
-      const uploadDir = path.join(process.cwd(), 'output/screenshots/uploads', uploadId);
+      // Generate uploadId once per request (first file triggers this)
+      if (!req.uploadId) {
+        req.uploadId = uuidv4();
+      }
+      const uploadDir = path.join(process.cwd(), 'output/screenshots/uploads', req.uploadId);
       fs.mkdirSync(uploadDir, { recursive: true });
       cb(null, uploadDir);
     },
@@ -1368,6 +1375,11 @@ export async function startServer() {
   // Screenshot upload endpoint (NO rate limiting - internal file processing)
   app.post('/api/screenshots/upload',
     (req, res, next) => {
+      console.log('🔵 Screenshot upload request started');
+      console.log('  Headers:', req.headers);
+      console.log('  Content-Length:', req.headers['content-length']);
+      console.log('  Content-Type:', req.headers['content-type']);
+      
       // Increase timeout for large file uploads
       req.setTimeout(5 * 60 * 1000); // 5 minutes
       res.setTimeout(5 * 60 * 1000);
@@ -1378,6 +1390,10 @@ export async function startServer() {
       ])(req, res, (err) => {
         if (err) {
           console.error('❌ Multer error:', err);
+          console.error('  Error code:', err.code);
+          console.error('  Error message:', err.message);
+          console.error('  Stack:', err.stack);
+          
           if (err.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
               success: false,
@@ -1389,11 +1405,13 @@ export async function startServer() {
             error: 'File upload error: ' + err.message
           });
         }
+        console.log('✅ Multer processing complete, files uploaded');
         next();
       });
     },
     async (req, res) => {
       try {
+        console.log('📦 Processing uploaded files...');
         console.log('Upload request received:', {
           hasFiles: !!req.files,
           fileFields: req.files ? Object.keys(req.files) : [],
@@ -1418,7 +1436,7 @@ export async function startServer() {
           });
         }
 
-        // Get upload ID from multer storage
+        // Get upload ID from multer storage (already generated in destination callback)
         const uploadId = req.uploadId;
         
         // Store upload metadata
@@ -1845,6 +1863,18 @@ export async function startServer() {
     }
   }
 
+  // Add global error handlers for debugging
+  process.on('uncaughtException', (error) => {
+    console.error('💥 UNCAUGHT EXCEPTION:', error);
+    console.error('  Message:', error.message);
+    console.error('  Stack:', error.stack);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 UNHANDLED REJECTION:', reason);
+    console.error('  Promise:', promise);
+  });
+  
   // Start server
   const PORT = config.server.port;
   const server = httpServer.listen(PORT, config.server.host, () => {
