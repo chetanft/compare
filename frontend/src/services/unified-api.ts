@@ -12,7 +12,7 @@ class UnifiedApiService {
 
   constructor() {
     this.baseURL = getApiBaseUrl();
-    this.timeout = 120000; // 2 minutes for comparison operations
+    this.timeout = 300000; // 5 minutes for comparison operations (handles slow web extraction)
   }
 
   /**

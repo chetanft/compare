@@ -7,7 +7,7 @@ import { FigmaData, WebData } from '../../../src/types/extractor';
 const API_CONFIG = {
   baseURL: getApiBaseUrl(),
   // Extended timeout for comparison operations that include web extraction with authentication
-  timeout: 120000, // 2 minutes - allows for backend web extraction + comparison processing
+  timeout: 300000, // 5 minutes - allows for slow web extraction (FreightTiger authentication)
   retries: 3
 };
 
@@ -615,7 +615,7 @@ export const extractWebOnly = async (
       options: {
         includeScreenshot: false,
         viewport: { width: 1920, height: 1080 },
-        timeout: webUrl.includes('freighttiger.com') ? 120000 : 60000 // Extended timeout for FreightTiger
+        timeout: webUrl.includes('freighttiger.com') ? 300000 : 120000 // Extended timeout for FreightTiger (5 min vs 2 min)
       }
     });
     
