@@ -4,305 +4,89 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{title}}</title>
-  {{cssIncludes}}
   <style>
-    :root {
-      --color-primary: #4f46e5;
-      --color-secondary: #6366f1;
-      --color-success: #10b981;
-      --color-warning: #f59e0b;
-      --color-danger: #ef4444;
-      --color-gray-50: #f9fafb;
-      --color-gray-100: #f3f4f6;
-      --color-gray-200: #e5e7eb;
-      --color-gray-300: #d1d5db;
-      --color-gray-400: #9ca3af;
-      --color-gray-500: #6b7280;
-      --color-gray-600: #4b5563;
-      --color-gray-700: #374151;
-      --color-gray-800: #1f2937;
-      --color-gray-900: #111827;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
       line-height: 1.5;
-      color: var(--color-gray-800);
-      background-color: var(--color-gray-50);
-      margin: 0;
-      padding: 0;
+      color: #1f2937;
+      background-color: #f9fafb;
+      padding: 2rem;
     }
     
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 2rem;
     }
     
     header {
       background-color: white;
-      padding: 1.5rem 2rem;
+      padding: 2rem;
       border-radius: 0.5rem;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
       margin-bottom: 2rem;
     }
     
     h1 {
-      margin: 0;
-      color: var(--color-gray-900);
-      font-size: 1.875rem;
+      color: #111827;
+      font-size: 2rem;
       font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    .subtitle {
+      color: #6b7280;
+      font-size: 1rem;
     }
     
     .metadata {
       display: flex;
       flex-wrap: wrap;
       gap: 1.5rem;
-      margin-top: 1rem;
-      color: var(--color-gray-600);
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+      color: #4b5563;
+      font-size: 0.875rem;
     }
     
     .metadata-item {
       display: flex;
       align-items: center;
+      gap: 0.5rem;
     }
     
     .metadata-item strong {
-      margin-right: 0.5rem;
+      color: #111827;
     }
     
-    .summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
-    }
-    
-    .summary-card {
-      background-color: white;
-      padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .summary-card h3 {
-      margin-top: 0;
-      color: var(--color-gray-700);
-      font-size: 1.25rem;
-    }
-    
-    .summary-value {
-      font-size: 2.25rem;
-      font-weight: 700;
-      color: var(--color-primary);
-      margin: 0.5rem 0;
-    }
-    
-    .text-sm {
+    .note {
+      margin-top: 1.5rem;
+      padding: 12px 16px;
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      color: #92400e;
       font-size: 0.875rem;
+      line-height: 1.5;
     }
     
-    .text-xs {
-      font-size: 0.75rem;
-    }
-    
-    .text-gray-600 {
-      color: var(--color-gray-600);
-    }
-    
-    .text-gray-500 {
-      color: var(--color-gray-500);
-    }
-    
-    .severity-counts {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 1rem;
-    }
-    
-    .severity-count {
-      text-align: center;
-      flex: 1;
-    }
-    
-    .severity-count-value {
-      font-size: 1.5rem;
-      font-weight: 600;
-    }
-    
-    .severity-count-label {
-      font-size: 0.875rem;
-      color: var(--color-gray-600);
-    }
-    
-    .severity-high .severity-count-value {
-      color: var(--color-danger);
-    }
-    
-    .severity-medium .severity-count-value {
-      color: var(--color-warning);
-    }
-    
-    .severity-low .severity-count-value {
-      color: var(--color-success);
-    }
-    
-    .severity-group {
-      margin-bottom: 2rem;
-    }
-    
-    .severity-group h3 {
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.375rem;
-      font-size: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .severity-high h3 {
-      background-color: rgba(239, 68, 68, 0.1);
-      color: var(--color-danger);
-    }
-    
-    .severity-medium h3 {
-      background-color: rgba(245, 158, 11, 0.1);
-      color: var(--color-warning);
-    }
-    
-    .severity-low h3 {
-      background-color: rgba(16, 185, 129, 0.1);
-      color: var(--color-success);
-    }
-    
-    .comparison-item {
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 1.5rem;
-      overflow: hidden;
-    }
-    
-    .comparison-header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    
-    .comparison-header h4 {
-      margin: 0;
-      font-size: 1.125rem;
-      color: var(--color-gray-800);
-    }
-    
-    .comparison-meta {
-      display: flex;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-    }
-    
-    .match-score, .match-percentage {
-      display: inline-flex;
-      align-items: center;
-      color: var(--color-gray-700);
-    }
-    
-    .comparison-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      padding: 1.5rem;
-      background-color: var(--color-gray-50);
-    }
-    
-    .component-info, .element-info {
-      background-color: white;
-      padding: 1rem;
-      border-radius: 0.375rem;
-      border: 1px solid var(--color-gray-200);
-    }
-    
-    .component-info h5, .element-info h5 {
-      margin-top: 0;
-      margin-bottom: 0.75rem;
-      color: var(--color-gray-700);
-      font-size: 1rem;
-    }
-    
-    .info-row {
-      display: flex;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-    }
-    
-    .info-row span {
-      font-weight: 600;
-      min-width: 80px;
-      color: var(--color-gray-600);
-    }
-    
-    .property-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem;
-    }
-    
-    .property-table th {
-      background-color: var(--color-gray-100);
-      text-align: left;
-      padding: 0.75rem 1.5rem;
-      border-bottom: 2px solid var(--color-gray-300);
-      color: var(--color-gray-700);
-    }
-    
-    .property-table td {
-      padding: 0.75rem 1.5rem;
-      border-bottom: 1px solid var(--color-gray-200);
-      vertical-align: top;
-    }
-    
-    .property-table tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .property-table tr.match {
-      background-color: rgba(16, 185, 129, 0.05);
-    }
-    
-    .property-table tr.mismatch {
-      background-color: rgba(239, 68, 68, 0.05);
-    }
-    
-    .status-cell {
-      font-weight: 600;
-    }
-    
-    .status-cell.match {
-      color: var(--color-success);
-    }
-    
-    .status-cell.mismatch {
-      color: var(--color-danger);
-    }
-    
-    .no-data {
-      padding: 2rem;
-      text-align: center;
-      background-color: white;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      color: var(--color-gray-500);
+    .note strong {
+      color: #78350f;
     }
     
     footer {
-      margin-top: 3rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid var(--color-gray-200);
       text-align: center;
-      color: var(--color-gray-500);
+      color: #9ca3af;
       font-size: 0.875rem;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid #e5e7eb;
     }
   </style>
 </head>
@@ -310,88 +94,39 @@
   <div class="container">
     <header>
       <h1>{{title}}</h1>
+      <p class="subtitle">DevRev-Ready Comparison Report</p>
       <div class="metadata">
         <div class="metadata-item">
-          <strong>Figma File:</strong> {{figmaFileName}}
+          <strong>Generated:</strong>
+          <span>{{timestamp}}</span>
         </div>
         <div class="metadata-item">
-          <strong>Web URL:</strong> {{webUrl}}
+          <strong>Figma Components:</strong>
+          <span>{{figmaComponentsCount}}</span>
         </div>
         <div class="metadata-item">
-          <strong>Generated:</strong> {{timestamp}}
+          <strong>Web Elements:</strong>
+          <span>{{webElementsCount}}</span>
         </div>
+        <div class="metadata-item">
+          <strong>Total Issues:</strong>
+          <span>{{totalIssues}}</span>
+        </div>
+      </div>
+      <div class="note">
+        <strong>Note:</strong> Currently showing missing/existence issues only. Color, typography, and spacing comparisons will be added in the next update.
       </div>
     </header>
-    
-    {{stickyNav}}
-    
-    <div class="summary">
-      <div class="summary-card enhanced-card">
-        <h3>Components Analyzed</h3>
-        <div class="summary-value">{{componentsAnalyzed}}</div>
-        {{componentsProgress}}
-      </div>
-      
-      <div class="summary-card enhanced-card">
-        <h3>Overall Match Percentage</h3>
-        <div class="summary-value">{{matchPercentage}}%</div>
-        <div>Severity: <strong>{{overallSeverity}}</strong></div>
-        {{overallProgress}}
-      </div>
-      
-      <div class="summary-card enhanced-card">
-        <h3>Color Matches</h3>
-        <div class="summary-value">{{colorMatches}}</div>
-        <div class="text-sm text-gray-600">{{colorMatchPercentage}}% matched</div>
-        <div class="text-xs text-gray-500">{{colorTotal}} total colors</div>
-        {{colorProgress}}
-      </div>
-      
-      <div class="summary-card enhanced-card">
-        <h3>Typography Matches</h3>
-        <div class="summary-value">{{typographyMatches}}</div>
-        <div class="text-sm text-gray-600">{{typographyMatchPercentage}}% matched</div>
-        <div class="text-xs text-gray-500">{{typographyTotal}} total styles</div>
-        {{typographyProgress}}
-      </div>
-      
-      <div class="summary-card enhanced-card">
-        <h3>Issues by Severity</h3>
-        <div class="severity-counts">
-          <div class="severity-count severity-high">
-            <div class="severity-count-value">{{highSeverityCount}}</div>
-            <div class="severity-count-label">High</div>
-          </div>
-          <div class="severity-count severity-medium">
-            <div class="severity-count-value">{{mediumSeverityCount}}</div>
-            <div class="severity-count-label">Medium</div>
-          </div>
-          <div class="severity-count severity-low">
-            <div class="severity-count-value">{{lowSeverityCount}}</div>
-            <div class="severity-count-label">Low</div>
-          </div>
-        </div>
-        {{severityChart}}
-      </div>
-    </div>
-    
-    <div class="comparison-results">
-      {{comparisonTables}}
-    </div>
+
+    <!-- DevRev Issues Table -->
+    {{devrevIssuesTable}}
     
     <footer>
       <p>Generated by Figma-Web Comparison Tool</p>
     </footer>
   </div>
   
-  <script>
-    // Store comparison data for interactive features
-    const comparisonData = {{jsonData}};
-    
-    // Add interactive features here if needed
-  </script>
-  
-  {{themeToggle}}
-  {{interactiveJS}}
+  {{devrevTableStyles}}
+  {{devrevTableScripts}}
 </body>
 </html>

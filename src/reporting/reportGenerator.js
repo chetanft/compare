@@ -128,46 +128,28 @@ export class ReportGenerator {
       return this.replaceFigmaOnlyPlaceholders(html, comparisonResults);
     }
     
-    // Default comparison report placeholders
-    // Replace basic info (use replaceAll to handle multiple occurrences)
-    html = html.replaceAll('{{title}}', `Comparison Report - ${new Date().toLocaleString()}`);
-    html = html.replaceAll('{{figmaFileName}}', comparisonResults.figmaData.fileName || 'Unknown Figma File');
-    html = html.replaceAll('{{webUrl}}', comparisonResults.webData.url || 'Unknown Web URL');
-    html = html.replaceAll('{{timestamp}}', comparisonResults.timestamp || new Date().toISOString());
+    // Minimal placeholders for DevRev-only report
+    html = html.replaceAll('{{title}}', `DevRev Issues Report`);
+    html = html.replaceAll('{{timestamp}}', new Date().toLocaleString());
     
-    // Replace summary data
+    // Count Figma and Web data
+    const figmaCount = comparisonResults.figmaData?.components?.length || comparisonResults.figmaData?.metadata?.componentCount || 0;
+    const webCount = comparisonResults.webData?.elements?.length || 0;
+    
+    html = html.replaceAll('{{figmaComponentsCount}}', figmaCount);
+    html = html.replaceAll('{{webElementsCount}}', webCount);
+    
+    // Count total issues (will be calculated from DevRev table)
     const summary = comparisonResults.summary || {};
-    html = html.replaceAll('{{componentsAnalyzed}}', summary.componentsAnalyzed || 0);
-    html = html.replaceAll('{{matchPercentage}}', summary.overallMatchPercentage?.toFixed(2) || '0.00');
-    html = html.replaceAll('{{overallSeverity}}', summary.overallSeverity || 'unknown');
+    const issueCount = summary.componentsAnalyzed || comparisonResults.comparisons?.length || 0;
+    html = html.replaceAll('{{totalIssues}}', issueCount);
     
-    // Replace color and typography match data
-    const matchStats = summary.matchStats || {};
-    html = html.replaceAll('{{colorMatches}}', matchStats.colors?.matched || 0);
-    html = html.replaceAll('{{colorMatchPercentage}}', matchStats.colors?.percentage || 0);
-    html = html.replaceAll('{{colorTotal}}', matchStats.colors?.total || 0);
-    html = html.replaceAll('{{typographyMatches}}', matchStats.typography?.matched || 0);
-    html = html.replaceAll('{{typographyMatchPercentage}}', matchStats.typography?.percentage || 0);
-    html = html.replaceAll('{{typographyTotal}}', matchStats.typography?.total || 0);
-    
-    // Generate severity counts
-    const severityCounts = summary.severityCounts || { high: 0, medium: 0, low: 0 };
-    html = html.replaceAll('{{highSeverityCount}}', severityCounts.high || 0);
-    html = html.replaceAll('{{mediumSeverityCount}}', severityCounts.medium || 0);
-    html = html.replaceAll('{{lowSeverityCount}}', severityCounts.low || 0);
-    
-    // Generate comparison tables
-    html = html.replaceAll('{{comparisonTables}}', this.generateComparisonTables(comparisonResults.comparisons || []));
-    
-    // Generate DevRev issues table
+    // Generate DevRev issues table (the main content)
     html = html.replaceAll('{{devrevIssuesTable}}', this.generateDevRevIssuesTable(comparisonResults));
     
-    // Generate JSON data for interactive features
-    const jsonData = JSON.stringify(comparisonResults);
-    html = html.replaceAll('{{jsonData}}', jsonData);
-    
-    // Generate enhanced interactive components
-    html = this.addEnhancedComponents(html, comparisonResults);
+    // Add DevRev table styles and scripts
+    html = html.replaceAll('{{devrevTableStyles}}', this.getDevRevTableStyles());
+    html = html.replaceAll('{{devrevTableScripts}}', this.getDevRevTableScripts());
     
     return html;
   }
@@ -1107,10 +1089,12 @@ export class ReportGenerator {
   getDevRevTableStyles() {
     try {
       const stylesPath = path.join(__dirname, 'utils/devrevTableStyles.css');
-      const styles = require('fs').readFileSync(stylesPath, 'utf8');
+      logger.info(`Loading DevRev table styles from: ${stylesPath}`);
+      const styles = fs.readFileSync(stylesPath, 'utf8');
+      logger.info(`Loaded DevRev table styles: ${styles.length} characters`);
       return `<style>${styles}</style>`;
     } catch (error) {
-      logger.warn('Failed to load DevRev table styles', error);
+      logger.error('Failed to load DevRev table styles', { path: path.join(__dirname, 'utils/devrevTableStyles.css'), error: error.message, stack: error.stack });
       return '<style>/* DevRev table styles not found */</style>';
     }
   }
@@ -1122,10 +1106,12 @@ export class ReportGenerator {
   getDevRevTableScripts() {
     try {
       const scriptsPath = path.join(__dirname, 'utils/devrevTableScripts.js');
-      const scripts = require('fs').readFileSync(scriptsPath, 'utf8');
+      logger.info(`Loading DevRev table scripts from: ${scriptsPath}`);
+      const scripts = fs.readFileSync(scriptsPath, 'utf8');
+      logger.info(`Loaded DevRev table scripts: ${scripts.length} characters`);
       return `<script>${scripts}</script>`;
     } catch (error) {
-      logger.warn('Failed to load DevRev table scripts', error);
+      logger.error('Failed to load DevRev table scripts', { path: path.join(__dirname, 'utils/devrevTableScripts.js'), error: error.message, stack: error.stack });
       return '<script>// DevRev table scripts not found</script>';
     }
   }

@@ -26,31 +26,33 @@ export class IssueFormatter {
       const metadata = comparisonResults.metadata || {};
       
       comparisons.forEach(comparison => {
-        // Process color deviations
-        if (comparison.colorDeviations && Array.isArray(comparison.colorDeviations)) {
-          comparison.colorDeviations.forEach(deviation => {
-            issues.push(this.createColorIssue(issueId++, deviation, comparison, metadata));
-          });
+        // Skip comparisons with no deviations or "matches" status
+        if (comparison.status === 'matches' || !comparison.deviations || comparison.deviations.length === 0) {
+          return;
         }
         
-        // Process typography deviations
-        if (comparison.typographyDeviations && Array.isArray(comparison.typographyDeviations)) {
-          comparison.typographyDeviations.forEach(deviation => {
-            issues.push(this.createTypographyIssue(issueId++, deviation, comparison, metadata));
-          });
-        }
-        
-        // Process spacing deviations
-        if (comparison.spacingDeviations && Array.isArray(comparison.spacingDeviations)) {
-          comparison.spacingDeviations.forEach(deviation => {
-            issues.push(this.createSpacingIssue(issueId++, deviation, comparison, metadata));
-          });
-        }
-        
-        // Process overall deviations
-        if (comparison.overallDeviation && comparison.overallDeviation.severity !== 'none') {
-          issues.push(this.createOverallIssue(issueId++, comparison, metadata));
-        }
+        // Process each deviation in the deviations array
+        comparison.deviations.forEach(deviation => {
+          // Determine deviation type and create appropriate issue
+          const deviationType = this.detectDeviationType(deviation);
+          
+          switch (deviationType) {
+            case 'color':
+              issues.push(this.createColorIssue(issueId++, deviation, comparison, metadata));
+              break;
+            case 'typography':
+              issues.push(this.createTypographyIssue(issueId++, deviation, comparison, metadata));
+              break;
+            case 'spacing':
+              issues.push(this.createSpacingIssue(issueId++, deviation, comparison, metadata));
+              break;
+            case 'existence':
+              issues.push(this.createExistenceIssue(issueId++, deviation, comparison, metadata));
+              break;
+            default:
+              issues.push(this.createGenericIssue(issueId++, deviation, comparison, metadata));
+          }
+        });
       });
       
       logger.info(`Generated ${issues.length} DevRev issues from comparison results`);
@@ -63,21 +65,56 @@ export class IssueFormatter {
   }
   
   /**
+   * Detect deviation type from deviation object
+   */
+  detectDeviationType(deviation) {
+    const property = (deviation.property || '').toLowerCase();
+    
+    // Check for existence issues (missing components)
+    if (property === 'existence') {
+      return 'existence';
+    }
+    
+    // Check for color-related properties
+    if (property.includes('color') || property.includes('fill') || property.includes('background')) {
+      return 'color';
+    }
+    
+    // Check for typography properties
+    if (property.includes('font') || property.includes('text') || property.includes('typography')) {
+      return 'typography';
+    }
+    
+    // Check for spacing/layout properties
+    if (property.includes('padding') || property.includes('margin') || property.includes('spacing') || 
+        property.includes('gap') || property.includes('size') || property.includes('width') || property.includes('height')) {
+      return 'spacing';
+    }
+    
+    return 'generic';
+  }
+  
+  /**
    * Create issue for color deviation
    */
   createColorIssue(issueId, deviation, comparison, metadata) {
-    const componentName = comparison.figmaComponent?.name || 'Unknown Component';
-    const componentId = comparison.figmaComponent?.id || 'N/A';
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
     const webElement = this.formatWebElement(comparison.webElement);
+    
+    const figmaValue = deviation.figmaValue || deviation.expected || 'N/A';
+    const webValue = deviation.webValue || deviation.actual || 'N/A';
+    const difference = deviation.difference || 'N/A';
     
     return {
       issueId,
       title: `Color mismatch in ${componentName}`,
-      description: `Expected ${deviation.property || 'color'} to be ${deviation.expected} but found ${deviation.actual}. Color difference: ${deviation.difference?.toFixed(1)}%`,
+      description: deviation.message || `Expected ${deviation.property || 'color'} to be ${figmaValue} but found ${webValue}. ${typeof difference === 'number' ? `Color difference: ${difference.toFixed(1)}%` : ''}`,
       module: this.extractModule(metadata),
       frameComponentName: componentName,
       figmaComponentId: componentId,
-      figmaComponentType: comparison.figmaComponent?.type || 'N/A',
+      figmaComponentType: componentType,
       webElement,
       severity: this.calculateColorSeverity(deviation),
       priority: this.calculatePriority(this.calculateColorSeverity(deviation), 'color', componentName),
@@ -85,12 +122,12 @@ export class IssueFormatter {
       assignedTo: '',
       status: 'Open',
       stepsToReproduce: this.generateSteps(metadata, componentName),
-      expectedResult: `${deviation.property || 'Color'}: ${deviation.expected}`,
-      actualResult: `${deviation.property || 'Color'}: ${deviation.actual}`,
+      expectedResult: `${deviation.property || 'Color'}: ${figmaValue}`,
+      actualResult: `${deviation.property || 'Color'}: ${webValue}`,
       environment: this.extractEnvironment(metadata),
       createdDate: new Date().toISOString().split('T')[0],
       updatedDate: new Date().toISOString().split('T')[0],
-      remarks: `Color difference: ${deviation.difference?.toFixed(1)}%. Check if this variation is intentional.`
+      remarks: typeof difference === 'number' ? `Color difference: ${difference.toFixed(1)}%. Check if this variation is intentional.` : 'Check if this color variation is intentional.'
     };
   }
   
@@ -98,18 +135,22 @@ export class IssueFormatter {
    * Create issue for typography deviation
    */
   createTypographyIssue(issueId, deviation, comparison, metadata) {
-    const componentName = comparison.figmaComponent?.name || 'Unknown Component';
-    const componentId = comparison.figmaComponent?.id || 'N/A';
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
     const webElement = this.formatWebElement(comparison.webElement);
+    
+    const figmaValue = deviation.figmaValue || deviation.expected || 'N/A';
+    const webValue = deviation.webValue || deviation.actual || 'N/A';
     
     return {
       issueId,
       title: `Typography mismatch in ${componentName}`,
-      description: `Font ${deviation.property || 'style'} mismatch: Expected ${deviation.expected} but found ${deviation.actual}`,
+      description: deviation.message || `Font ${deviation.property || 'style'} mismatch: Expected ${figmaValue} but found ${webValue}`,
       module: this.extractModule(metadata),
       frameComponentName: componentName,
       figmaComponentId: componentId,
-      figmaComponentType: comparison.figmaComponent?.type || 'N/A',
+      figmaComponentType: componentType,
       webElement,
       severity: 'Major',
       priority: this.calculatePriority('Major', 'typography', componentName),
@@ -117,8 +158,8 @@ export class IssueFormatter {
       assignedTo: '',
       status: 'Open',
       stepsToReproduce: this.generateSteps(metadata, componentName),
-      expectedResult: `${deviation.property || 'Font'}: ${deviation.expected}`,
-      actualResult: `${deviation.property || 'Font'}: ${deviation.actual}`,
+      expectedResult: `${deviation.property || 'Font'}: ${figmaValue}`,
+      actualResult: `${deviation.property || 'Font'}: ${webValue}`,
       environment: this.extractEnvironment(metadata),
       createdDate: new Date().toISOString().split('T')[0],
       updatedDate: new Date().toISOString().split('T')[0],
@@ -130,18 +171,22 @@ export class IssueFormatter {
    * Create issue for spacing deviation
    */
   createSpacingIssue(issueId, deviation, comparison, metadata) {
-    const componentName = comparison.figmaComponent?.name || 'Unknown Component';
-    const componentId = comparison.figmaComponent?.id || 'N/A';
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
     const webElement = this.formatWebElement(comparison.webElement);
+    
+    const figmaValue = deviation.figmaValue || deviation.expected || 'N/A';
+    const webValue = deviation.webValue || deviation.actual || 'N/A';
     
     return {
       issueId,
       title: `Spacing issue in ${componentName}`,
-      description: `${deviation.property || 'Spacing'} deviation: Expected ${deviation.expected}px but found ${deviation.actual}px (difference: ${Math.abs((deviation.expected || 0) - (deviation.actual || 0))}px)`,
+      description: deviation.message || `${deviation.property || 'Spacing'} deviation: Expected ${figmaValue} but found ${webValue}`,
       module: this.extractModule(metadata),
       frameComponentName: componentName,
       figmaComponentId: componentId,
-      figmaComponentType: comparison.figmaComponent?.type || 'N/A',
+      figmaComponentType: componentType,
       webElement,
       severity: 'Minor',
       priority: this.calculatePriority('Minor', 'spacing', componentName),
@@ -149,8 +194,8 @@ export class IssueFormatter {
       assignedTo: '',
       status: 'Open',
       stepsToReproduce: this.generateSteps(metadata, componentName),
-      expectedResult: `${deviation.property || 'Spacing'}: ${deviation.expected}px`,
-      actualResult: `${deviation.property || 'Spacing'}: ${deviation.actual}px`,
+      expectedResult: `${deviation.property || 'Spacing'}: ${figmaValue}`,
+      actualResult: `${deviation.property || 'Spacing'}: ${webValue}`,
       environment: this.extractEnvironment(metadata),
       createdDate: new Date().toISOString().split('T')[0],
       updatedDate: new Date().toISOString().split('T')[0],
@@ -162,8 +207,8 @@ export class IssueFormatter {
    * Create issue for overall component deviation
    */
   createOverallIssue(issueId, comparison, metadata) {
-    const componentName = comparison.figmaComponent?.name || 'Unknown Component';
-    const componentId = comparison.figmaComponent?.id || 'N/A';
+    const componentName = comparison.figmaComponent?.name || comparison.componentName || 'Unknown Component';
+    const componentId = comparison.figmaComponent?.id || comparison.componentId || 'N/A';
     const webElement = this.formatWebElement(comparison.webElement);
     const deviation = comparison.overallDeviation || {};
     
@@ -174,7 +219,7 @@ export class IssueFormatter {
       module: this.extractModule(metadata),
       frameComponentName: componentName,
       figmaComponentId: componentId,
-      figmaComponentType: comparison.figmaComponent?.type || 'N/A',
+      figmaComponentType: comparison.figmaComponent?.type || comparison.componentType || 'N/A',
       webElement,
       severity: this.mapSeverity(deviation.severity),
       priority: this.calculatePriority(this.mapSeverity(deviation.severity), 'overall', componentName),
@@ -188,6 +233,72 @@ export class IssueFormatter {
       createdDate: new Date().toISOString().split('T')[0],
       updatedDate: new Date().toISOString().split('T')[0],
       remarks: 'Review all component properties for alignment with design system.'
+    };
+  }
+  
+  /**
+   * Create issue for existence/missing component
+   */
+  createExistenceIssue(issueId, deviation, comparison, metadata) {
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
+    
+    return {
+      issueId,
+      title: `Missing component: ${componentName}`,
+      description: deviation.message || `Component "${componentName}" exists in Figma but was not found in the web implementation.`,
+      module: this.extractModule(metadata),
+      frameComponentName: componentName,
+      figmaComponentId: componentId,
+      figmaComponentType: componentType,
+      webElement: 'Not found',
+      severity: this.mapSeverity(deviation.severity) || 'Critical',
+      priority: 'High',
+      reportedBy: 'Figma Comparison Tool',
+      assignedTo: '',
+      status: 'Open',
+      stepsToReproduce: this.generateSteps(metadata, componentName),
+      expectedResult: `Component "${componentName}" should be present in the web implementation`,
+      actualResult: 'Component not found',
+      environment: this.extractEnvironment(metadata),
+      createdDate: new Date().toISOString().split('T')[0],
+      updatedDate: new Date().toISOString().split('T')[0],
+      remarks: 'This component is present in the Figma design but missing from the web implementation. Verify if this is intentional or needs to be implemented.'
+    };
+  }
+  
+  /**
+   * Create issue for generic deviations
+   */
+  createGenericIssue(issueId, deviation, comparison, metadata) {
+    const componentName = comparison.componentName || comparison.figmaComponent?.name || 'Unknown Component';
+    const componentId = comparison.componentId || comparison.figmaComponent?.id || 'N/A';
+    const componentType = comparison.componentType || comparison.figmaComponent?.type || 'N/A';
+    const webElement = this.formatWebElement(comparison.webElement);
+    const property = deviation.property || 'property';
+    
+    return {
+      issueId,
+      title: `${this.capitalizeFirst(property)} mismatch in ${componentName}`,
+      description: deviation.message || `${this.capitalizeFirst(property)} does not match design specifications.`,
+      module: this.extractModule(metadata),
+      frameComponentName: componentName,
+      figmaComponentId: componentId,
+      figmaComponentType: componentType,
+      webElement,
+      severity: this.mapSeverity(deviation.severity) || 'Minor',
+      priority: this.calculatePriority(this.mapSeverity(deviation.severity) || 'Minor', 'generic', componentName),
+      reportedBy: 'Figma Comparison Tool',
+      assignedTo: '',
+      status: 'Open',
+      stepsToReproduce: this.generateSteps(metadata, componentName),
+      expectedResult: deviation.figmaValue || 'Match Figma design specifications',
+      actualResult: deviation.webValue || 'Does not match design',
+      environment: this.extractEnvironment(metadata),
+      createdDate: new Date().toISOString().split('T')[0],
+      updatedDate: new Date().toISOString().split('T')[0],
+      remarks: `${this.capitalizeFirst(property)} difference detected. Review if this variation is acceptable.`
     };
   }
   
