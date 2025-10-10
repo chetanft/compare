@@ -496,7 +496,7 @@ export async function startServer() {
     try {
       // Import the reports data adapter
       const { default: ReportsDataAdapter } = await import('../../services/reports/ReportsDataAdapter.js');
-      const reportsPath = path.join(__dirname, '../../../output/reports');
+      const reportsPath = path.join(process.cwd(), 'output/reports');
       
       const adapter = new ReportsDataAdapter(reportsPath);
       const reports = await adapter.getAllReports();
