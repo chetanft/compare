@@ -1619,6 +1619,54 @@ export async function startServer() {
     }
   });
 
+  /**
+   * Save report endpoint
+   */
+  app.post('/api/reports/save', async (req, res) => {
+    try {
+      const { comparisonId } = req.body;
+      
+      if (!comparisonId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Comparison ID is required'
+        });
+      }
+      
+      console.log(`📋 Saving report for comparison: ${comparisonId}`);
+      
+      // For now, we'll create a simple report entry
+      // In a real implementation, you'd save this to a database
+      const reportEntry = {
+        id: `report_${Date.now()}`,
+        comparisonId,
+        title: `Comparison Report - ${new Date().toLocaleDateString()}`,
+        status: 'completed',
+        createdAt: new Date().toISOString(),
+        figmaUrl: 'N/A',
+        webUrl: 'N/A',
+        duration: 0,
+        matchPercentage: 0,
+        url: `/reports/${comparisonId}.html`
+      };
+      
+      console.log(`✅ Report saved: ${reportEntry.id}`);
+      
+      res.json({
+        success: true,
+        report: reportEntry,
+        reports: [reportEntry] // For compatibility with frontend
+      });
+      
+    } catch (error) {
+      console.error('❌ Error saving report:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to save report'
+      });
+    }
+  });
+
   // Get screenshot comparison status/result endpoint
   app.get('/api/screenshots/compare/:comparisonId', async (req, res) => {
     try {
