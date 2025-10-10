@@ -417,7 +417,14 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
       },
       timestamp: response.timestamp || new Date().toISOString(),
       processingTime: (response as any).processingTime,
-      error: (response as any).error
+      error: (response as any).error,
+      comparisonId: response.data?.comparisonId || response.data?.id,
+      id: response.data?.id || response.data?.comparisonId,
+      reportPath: response.data?.reportPath,
+      reports: response.data?.reports,
+      extractionDetails: response.data?.extractionDetails,
+      figmaData: response.data?.figmaData,
+      webData: response.data?.webData
     };
 
     // Enhanced data with standardized fields

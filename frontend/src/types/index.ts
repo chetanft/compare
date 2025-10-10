@@ -78,6 +78,11 @@ export interface ApiResponse<T> {
 export interface ComparisonResult extends ApiResponse<ComparisonData> {
   comparisonId?: string
   id?: string
+  reportPath?: string | null
+  reports?: ComparisonData['reports'] | null
+  extractionDetails?: ComparisonData['extractionDetails']
+  figmaData?: ComparisonData['figmaData']
+  webData?: ComparisonData['webData']
 }
 
 export interface ComparisonData {

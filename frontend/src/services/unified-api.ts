@@ -185,7 +185,14 @@ class UnifiedApiService {
       },
       timestamp: apiResponse.timestamp,
       processingTime: apiResponse.processingTime,
-      error: apiResponse.error
+      error: apiResponse.error,
+      comparisonId: data.comparisonId || data.id,
+      id: data.id || data.comparisonId,
+      reportPath: data.reportPath,
+      reports: data.reports,
+      extractionDetails: data.extractionDetails,
+      figmaData: data.figmaData,
+      webData: data.webData
     };
 
     console.log('✅ Transformed comparison result:', {
