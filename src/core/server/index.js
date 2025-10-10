@@ -1200,6 +1200,10 @@ export async function startServer() {
 
       // Figma extraction completed successfully
 
+      // Generate unique comparison ID for saving reports
+      const comparisonId = `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`📋 Generated comparison ID: ${comparisonId}`);
+      
       // Prepare extraction details for frontend
       const extractionDetails = {
         figma: {
@@ -1266,6 +1270,10 @@ export async function startServer() {
 
       // Add component counts to the response data
       const responseData = {
+        // Comparison identifier for saving reports
+        comparisonId,
+        id: comparisonId, // Alias for backwards compatibility
+        
         figmaData: {
           ...figmaData,
           // STANDARDIZED FIELDS (preferred)
