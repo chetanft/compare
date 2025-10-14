@@ -19,6 +19,7 @@ app.commandLine.appendSwitch('ignore-certificate-errors');
 
 // Import server utilities
 import { ElectronServerControl } from './server-control.js';
+import { getOutputBaseDir } from '../src/utils/outputPaths.js';
 
 // Note: We connect to existing Figma MCP server instead of starting our own
 
@@ -218,7 +219,7 @@ function createMenu() {
               type: 'info',
               title: 'About',
               message: 'Figma Comparison Tool',
-              detail: 'A powerful tool for comparing Figma designs with web implementations.\n\nVersion: 2.0.0\nPlatform: macOS (Electron + Express)',
+              detail: `A powerful tool for comparing Figma designs with web implementations.\n\nVersion: 2.0.0\nPlatform: ${process.platform === 'darwin' ? 'macOS (Electron + Express)' : 'Cross-platform (Electron + Express)'}`,
               buttons: ['OK']
             });
           }
@@ -370,8 +371,21 @@ async function stopServer() {
 
 // App event handlers
 app.whenReady().then(async () => {
-  console.log('🚀 Electron app ready, starting server...');
-  
+  console.log('🚀 Electron app ready, preparing storage...');
+
+  try {
+    const userOutputDir = path.join(app.getPath('userData'), 'output');
+    if (!fs.existsSync(userOutputDir)) {
+      fs.mkdirSync(userOutputDir, { recursive: true });
+    }
+    process.env.APP_OUTPUT_DIR = userOutputDir;
+    console.log('📁 Output directory set to', userOutputDir);
+  } catch (error) {
+    console.warn('⚠️ Failed to prepare output directory:', error.message);
+  }
+
+  console.log('🚀 Starting server...');
+
   // Start the server first
   const serverStarted = await startServer();
   

@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getReportsDir } from '../utils/outputPaths.js';
 
 /**
  * Report Generator
@@ -8,7 +9,7 @@ import path from 'path';
 class ReportGenerator {
   constructor(config) {
     this.config = config;
-    this.outputDir = config.output?.reportDir || './output/reports';
+    this.outputDir = config.output?.reportDir || getReportsDir();
     this.MAX_STRING_LENGTH = 1000; // Maximum length for any string value
     this.MAX_COMPONENTS = 200; // Maximum number of components to process
     this.MAX_DEVIATIONS = 50; // Maximum number of deviations per component
@@ -91,8 +92,10 @@ class ReportGenerator {
     <style>
         body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; line-height: 1.6; }
         .container { max-width: 1400px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center; }
-        .section { background: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #312e81 0%, #1e3a8a 50%, #2563eb 100%); color: white; padding: 36px; border-radius: 18px; margin-bottom: 30px; text-align: left; position: relative; overflow: hidden; }
+    .header::after { content: ''; position: absolute; inset: 0; opacity: 0.35; background: radial-gradient(circle at top right, rgba(255,255,255,0.6), transparent 55%); }
+    .header-content { position: relative; z-index: 1; }
+    .section { background: white; padding: 32px; border-radius: 18px; margin-bottom: 30px; border: 1px solid rgba(15,23,42,0.06); box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08); }
         
         /* Navigation styles */
         .nav-tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 20px; }
@@ -162,11 +165,13 @@ class ReportGenerator {
         .component-title { background: #343a40; color: white; padding: 15px; margin: 0; font-size: 18px; border-radius: 8px 8px 0 0; }
         
         /* Summary cards */
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }
-        .summary-card { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #007bff; }
-        .summary-card h3 { margin: 0 0 10px 0; color: #007bff; }
-        .summary-card .number { font-size: 2em; font-weight: bold; margin: 10px 0; display: block; }
-        .summary-card .label { color: #666; font-size: 14px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin: 20px 0; }
+    .summary-card { background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(248,250,252,0.95)); padding: 24px; border-radius: 16px; border: 1px solid rgba(15,23,42,0.08); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); position: relative; overflow: hidden; }
+    .summary-card::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top right, rgba(37,99,235,0.18), transparent 60%); opacity: 0.8; }
+    .summary-card-content { position: relative; z-index: 1; }
+    .summary-card h3 { margin: 0 0 12px 0; color: #0f172a; font-size: 20px; font-weight: 600; }
+    .summary-card .number { font-size: 3rem; font-weight: 700; margin: 12px 0; display: block; color: #1d4ed8; letter-spacing: -0.04em; }
+    .summary-card .label { color: #475569; font-size: 14px; text-transform: uppercase; letter-spacing: 0.15em; }
         
         /* Property type labels */
         .prop-label { font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }

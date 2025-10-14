@@ -413,7 +413,8 @@ export const compareUrls = async (request: ComparisonRequest): Promise<Compariso
         figmaData: response.data.figmaData,
         webData: response.data.webData,
         reportPath: response.data.reportPath,
-        reports: response.data.reports
+        reports: response.data.reports,
+        export: response.data.export
       },
       timestamp: response.timestamp || new Date().toISOString(),
       processingTime: (response as any).processingTime,

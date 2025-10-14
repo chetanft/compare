@@ -5,6 +5,7 @@
 
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { CONFIGURED_PORTS } from './PORTS.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,8 @@ export class PlatformConfig {
    * Load platform-specific configuration
    */
   loadPlatformConfig() {
+    const serverPort = CONFIGURED_PORTS.SERVER;
+
     const baseConfig = {
       // Shared configuration
       figma: {
@@ -56,10 +59,13 @@ export class PlatformConfig {
     const platformSpecific = {
       web: {
         server: {
-          port: 3847, // Web app uses fixed port 3847
+          port: serverPort,
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3000', 'http://localhost:3847'],
+            origin: [
+              'http://localhost:3000',
+              `http://localhost:${serverPort}`
+            ],
             credentials: true
           }
         },
@@ -71,10 +77,10 @@ export class PlatformConfig {
       
       macos: {
         server: {
-          port: 3847, // macOS app uses same fixed port  
+          port: serverPort,
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3847'],
+            origin: [`http://localhost:${serverPort}`],
             credentials: true
           }
         },
@@ -87,10 +93,10 @@ export class PlatformConfig {
       
       electron: {
         server: {
-          port: 3847,
+          port: serverPort,
           staticPath: path.join(__dirname, '../../frontend/dist'),
           cors: {
-            origin: ['http://localhost:3847'],
+            origin: [`http://localhost:${serverPort}`],
             credentials: true
           }
         },

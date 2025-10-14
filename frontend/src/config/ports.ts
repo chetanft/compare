@@ -3,8 +3,17 @@
  * This ensures consistent port usage across the frontend application
  */
 
-// Fixed application port - like Figma's 3845 for consistency
-export const APP_SERVER_PORT = 3847;
+// Determine the unified server port (defaults to 3001 for both web + mac)
+const resolveConfiguredPort = (): number => {
+  const envPort = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env.VITE_SERVER_PORT
+    : undefined;
+
+  const parsed = envPort ? parseInt(envPort, 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : 3001;
+};
+
+export const APP_SERVER_PORT = resolveConfiguredPort();
 
 // Default port for the backend server (web app) - Unified Architecture  
 export const DEFAULT_SERVER_PORT = APP_SERVER_PORT;

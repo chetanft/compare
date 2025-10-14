@@ -1,5 +1,5 @@
 export const PORTS = {
-  SERVER: 3847,
+  SERVER: 3001,
   WEB_DEV: 5173,
   FIGMA_MCP: 3845,
   PREVIEW: 4173
@@ -11,7 +11,7 @@ export const getWebSocketUrl = (hostname = 'localhost') => `ws://${hostname}:${P
 
 export const CONFIGURED_PORTS = {
   SERVER: parseInt(process.env.PORT || PORTS.SERVER.toString(), 10),
-  WEB_DEV: parseInt(process.env.WEB_DEV_PORT || PORTS.WEB_DEV.toString(), 10),
+  WEB_DEV: parseInt(process.env.WEB_DEV_PORT || process.env.VITE_PORT || PORTS.WEB_DEV.toString(), 10),
   FIGMA_MCP: parseInt(process.env.FIGMA_MCP_PORT || PORTS.FIGMA_MCP.toString(), 10),
   PREVIEW: parseInt(process.env.PREVIEW_PORT || PORTS.PREVIEW.toString(), 10)
 };

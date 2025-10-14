@@ -13,8 +13,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Use PORT environment variable or fallback to production port
-const SERVER_PORT = process.env.PORT || 3847;
+// Use PORT environment variable or fallback to web app port
+const SERVER_PORT = process.env.PORT || 3001;
 
 console.log('🚀 Starting Figma Comparison Tool Server...');
 console.log(`📡 Port: ${SERVER_PORT}`);

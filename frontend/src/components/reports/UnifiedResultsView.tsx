@@ -22,7 +22,9 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
-  Save
+  Save,
+  Share2,
+  Link2
 } from 'lucide-react';
 // import ColorUsageSection from '../ui/ColorUsageSection';
 // import ColorComparisonSection from '../ui/ColorComparisonSection';
@@ -51,6 +53,8 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
   }
 
   const { comparison, extractionDetails } = result.data;
+  const regressionRisk = comparison?.summary?.regressionRisk;
+  const remediationLinks = comparison?.remediationLinks || [];
   
   // Handle different comparison data structures
   const similarityScore = comparison?.overallSimilarity || 
@@ -154,6 +158,30 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
           </CardContent>
         </Card>
       </div>
+
+      {regressionRisk && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingDown className="w-5 h-5" />
+              Regression Risk Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(['critical', 'major', 'minor'] as const).map((risk) => (
+              <div key={risk} className="flex items-center justify-between rounded-lg border bg-muted/40 p-4">
+                <div>
+                  <p className="text-sm text-muted-foreground capitalize">{risk} risk</p>
+                  <p className="text-2xl font-semibold">
+                    {regressionRisk[risk] ?? 0}
+                  </p>
+                </div>
+                <Badge variant={risk === 'critical' ? 'destructive' : risk === 'major' ? 'default' : 'secondary'}>{risk.toUpperCase()}</Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Extraction Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -326,6 +354,64 @@ export default function UnifiedResultsView({ result }: UnifiedResultsViewProps) 
                   View Report
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {remediationLinks.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link2 className="w-5 h-5" />
+              Suggested Remediation Links
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {remediationLinks.map((item, index) => (
+              <div key={`${item.type}-${index}`} className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {item.label || item.type}
+                  </p>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <a href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    <ExternalLink className="w-4 h-4" />
+                    Open
+                  </a>
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {result.data.export && (
+        <Card>
+          <CardContent className="flex items-center justify-between p-6">
+            <div>
+              <h3 className="font-semibold">Share this comparison</h3>
+              <p className="text-sm text-muted-foreground">
+                Download a sharable bundle or copy export link.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(result.data.export.shareUrl)}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Copy Link
+              </Button>
+              <Button asChild size="sm">
+                <a href={result.data.export.bundleUrl} download>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Bundle
+                </a>
+              </Button>
             </div>
           </CardContent>
         </Card>

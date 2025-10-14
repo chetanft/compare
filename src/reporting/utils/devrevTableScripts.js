@@ -139,12 +139,9 @@ function filterDevRevTable() {
   
   rows.forEach(row => {
     const text = row.textContent.toLowerCase();
-    if (text.includes(filter)) {
-      row.style.display = '';
-      visibleCount++;
-    } else {
-      row.style.display = 'none';
-    }
+    const matchesFilter = text.includes(filter);
+    row.style.display = matchesFilter ? '' : 'none';
+    if (matchesFilter) visibleCount++;
   });
   
   // Update visible count
@@ -209,16 +206,13 @@ function sortDevRevTable(columnIndex) {
  * @param {number} totalCount - Total number of rows
  */
 function updateTableStats(visibleCount, totalCount) {
-  const footer = document.querySelector('.devrev-issues-section .table-footer');
-  if (footer) {
-    const statsP = footer.querySelector('p:first-child');
-    if (statsP) {
-      if (visibleCount === totalCount) {
-        statsP.innerHTML = `📊 Total Issues: <strong>${totalCount}</strong>`;
-      } else {
-        statsP.innerHTML = `📊 Showing: <strong>${visibleCount}</strong> of <strong>${totalCount}</strong> issues`;
-      }
-    }
+  const statsCounter = document.getElementById('devrev-visible-count');
+  if (!statsCounter) return;
+
+  if (visibleCount === totalCount) {
+    statsCounter.innerHTML = `<strong>${totalCount}</strong> issues`;
+  } else {
+    statsCounter.innerHTML = `<strong>${visibleCount}</strong> / ${totalCount}`;
   }
 }
 

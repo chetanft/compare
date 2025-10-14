@@ -1,6 +1,11 @@
 import { promises as fs } from 'fs';
 import { AdvancedAlgorithms } from './advancedAlgorithms.js';
 import { logger } from '../utils/logger.js';
+import {
+  saveSnapshot,
+  listSnapshots,
+  pruneSnapshots
+} from '../storage/ComparisonSnapshots.js';
 
 /**
  * Real Comparison Engine
@@ -33,6 +38,10 @@ class ComparisonEngine {
    */
   async compareDesigns(figmaData, webData, options = {}) {
     try {
+      const shouldSnapshot = this.config?.snapshots?.enabled !== false && options.snapshot !== false;
+      const snapshotId = options.snapshotId || `compare-${Date.now()}`;
+      const maxSnapshotRecords = this.config?.snapshots?.maxRecords || 50;
+      const accessibilityChecksEnabled = options.accessibility !== false;
       
       // Initialize results
       const comparisons = [];
@@ -40,7 +49,13 @@ class ComparisonEngine {
         totalComponents: 0,
         totalDeviations: 0,
         totalMatches: 0,
-        severity: { high: 0, medium: 0, low: 0 }
+        severity: { high: 0, medium: 0, low: 0 },
+        regressionRisk: { critical: 0, major: 0, minor: 0 },
+        accessibility: {
+          issues: 0,
+          impactedComponents: 0,
+          details: []
+        }
       };
 
       // Validate and sanitize input data
@@ -56,7 +71,7 @@ class ComparisonEngine {
 
         // Process each component in the chunk
         const chunkResults = await Promise.all(
-          chunk.map(component => this.compareComponent(component, webElements))
+          chunk.map(component => this.compareComponent(component, webElements, { accessibilityChecksEnabled }))
         );
 
         // Filter out null results and add valid ones
@@ -73,6 +88,18 @@ class ComparisonEngine {
           result.deviations.forEach(deviation => {
             if (deviation.severity) {
               summary.severity[deviation.severity]++;
+            }
+            if (deviation.regressionRisk) {
+              summary.regressionRisk[deviation.regressionRisk]++;
+            }
+            if (deviation.accessibility === true) {
+              summary.accessibility.issues += 1;
+              summary.accessibility.impactedComponents += 1;
+              summary.accessibility.details.push({
+                componentId: result.componentId,
+                componentName: result.componentName,
+                deviation
+              });
             }
           });
         }
@@ -100,7 +127,37 @@ class ComparisonEngine {
         }
       };
 
-      return { metadata, comparisons, summary };
+      const result = { metadata, comparisons, summary };
+
+      if (shouldSnapshot) {
+        try {
+          const snapshotRecord = {
+            id: snapshotId,
+            createdAt: new Date().toISOString(),
+            extractionType: 'compare',
+            metadata: {
+              figma: metadata.figma,
+              web: metadata.web,
+              summary,
+              options
+            }
+          };
+
+          const payload = {
+            metadata,
+            comparisons,
+            summary,
+            inputs: this.config?.snapshots?.includeInputs ? { figmaData, webData } : undefined
+          };
+
+          saveSnapshot(snapshotRecord, payload);
+          pruneSnapshots(maxSnapshotRecords);
+        } catch (snapshotError) {
+          logger.warn('Failed to save comparison snapshot', snapshotError);
+        }
+      }
+
+      return result;
 
     } catch (error) {
       console.error('❌ Error in design comparison:', error);
@@ -111,7 +168,7 @@ class ComparisonEngine {
   /**
    * Compare a single component with web elements
    */
-  async compareComponent(figmaComponent, webElements) {
+  async compareComponent(figmaComponent, webElements, options = {}) {
     try {
       // Sanitize input component
       const sanitizedComponent = this.sanitizeObject(figmaComponent);
@@ -138,7 +195,7 @@ class ComparisonEngine {
       }
 
       // Compare properties with sanitized data
-      const { deviations, matches } = await this.compareProperties(sanitizedComponent, matchedElement);
+      const { deviations, matches } = await this.compareProperties(sanitizedComponent, matchedElement, options);
 
       return {
         componentId: sanitizedComponent.id,
@@ -517,7 +574,7 @@ class ComparisonEngine {
    * @param {Object} webElement
    * @returns {{ deviations: Array, matches: Array }}
    */
-  async compareProperties(figmaComponent, webElement) {
+  async compareProperties(figmaComponent, webElement, options = {}) {
     const deviations = [];
     const matches = [];
 
@@ -673,6 +730,16 @@ class ComparisonEngine {
       );
       deviations.push(...dimDev);
       matches.push(...dimMatch);
+    }
+
+    if (options.accessibilityChecksEnabled !== false) {
+      const { deviations: contrastDeviations, matches: contrastMatches } = this.measureContrast(figmaComponent, webElement);
+      deviations.push(...contrastDeviations);
+      matches.push(...contrastMatches);
+
+      const accessibilityResults = this.evaluateAccessibility(figmaComponent, webElement);
+      deviations.push(...accessibilityResults.deviations);
+      matches.push(...accessibilityResults.matches);
     }
 
     return { deviations, matches };

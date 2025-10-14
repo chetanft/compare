@@ -5,124 +5,254 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{title}}</title>
   <style>
+    :root {
+      --bg-surface: #f5f6fb;
+      --card-bg: #ffffff;
+      --card-border: #e5e7f3;
+      --card-shadow: 0 12px 40px -20px rgba(47, 74, 146, 0.35);
+      --text-primary: #101828;
+      --text-secondary: #667085;
+      --accent-primary: #3b82f6;
+      --accent-secondary: #6366f1;
+      --accent-muted: #eaecf5;
+      --badge-critical: #fee4e2;
+      --badge-critical-text: #b42318;
+      --badge-major: #ffe4bc;
+      --badge-major-text: #b54708;
+      --badge-minor: #d8eaff;
+      --badge-minor-text: #175cd3;
+      --status-open: #ecfdf3;
+      --status-open-text: #027a48;
+      --font-sans: "Inter", "SF Pro Text", "Segoe UI", "Roboto", sans-serif;
+      --font-mono: "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
-    
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      line-height: 1.5;
-      color: #1f2937;
-      background-color: #f9fafb;
-      padding: 2rem;
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      color: var(--text-primary);
+      background: radial-gradient(circle at top, rgba(99,102,241,0.12), transparent 45%), var(--bg-surface);
+      padding: 48px 32px 72px;
+      min-height: 100vh;
     }
-    
+
     .container {
-      max-width: 1400px;
+      max-width: 1360px;
       margin: 0 auto;
     }
-    
-    header {
-      background-color: white;
-      padding: 2rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      margin-bottom: 2rem;
+
+    header.report-header {
+      background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(252,253,255,0.85));
+      border-radius: 28px;
+      padding: 36px;
+      margin-bottom: 32px;
+      border: 1px solid rgba(99,102,241,0.08);
+      box-shadow: var(--card-shadow);
+      position: relative;
+      overflow: hidden;
     }
-    
+
+    header.report-header::after {
+      content: "";
+      position: absolute;
+      inset: -30% 50% auto -20%;
+      height: 140%;
+      background: radial-gradient(circle at center, rgba(99,102,241,0.16), transparent 60%);
+      transform: rotate(25deg);
+      opacity: 0.85;
+    }
+
+    header.report-header > * {
+      position: relative;
+      z-index: 1;
+    }
+
     h1 {
-      color: #111827;
-      font-size: 2rem;
+      font-size: 32px;
       font-weight: 700;
-      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
     }
-    
+
     .subtitle {
-      color: #6b7280;
-      font-size: 1rem;
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
     }
-    
-    .metadata {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      margin-top: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #e5e7eb;
-      color: #4b5563;
-      font-size: 0.875rem;
+
+    .stat-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
     }
-    
-    .metadata-item {
+
+    .stat-card {
+      background: rgba(255,255,255,0.85);
+      border: 1px solid rgba(226, 232, 255, 0.8);
+      border-radius: 18px;
+      padding: 18px 20px;
+      backdrop-filter: blur(10px);
       display: flex;
+      gap: 12px;
       align-items: center;
-      gap: 0.5rem;
+      box-shadow: 0 10px 30px -24px rgba(93, 110, 176, 0.65);
     }
-    
-    .metadata-item strong {
-      color: #111827;
+
+    .stat-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, rgba(63,131,248,0.15), transparent 70%);
+      color: var(--accent-secondary);
+      font-size: 18px;
     }
-    
-    .note {
-      margin-top: 1.5rem;
-      padding: 12px 16px;
-      background: #fef3c7;
-      border-left: 4px solid #f59e0b;
-      border-radius: 6px;
-      color: #92400e;
-      font-size: 0.875rem;
-      line-height: 1.5;
+
+    .stat-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
     }
-    
-    .note strong {
-      color: #78350f;
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
     }
-    
+
+    .alert-banner {
+      margin-top: 28px;
+      padding: 16px 20px;
+      border-radius: 16px;
+      background: linear-gradient(120deg, #fff6d6, #fff0c9);
+      border: 1px solid #fde7aa;
+      color: #b35900;
+      font-size: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .alert-banner svg {
+      flex-shrink: 0;
+      color: #f59e0b;
+      margin-top: 2px;
+    }
+
+    .alert-content strong {
+      color: #a15800;
+      font-weight: 600;
+    }
+
+    .alert-dismiss {
+      margin-left: auto;
+      background: transparent;
+      border: none;
+      color: #a15800;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .section-shell {
+      background: var(--card-bg);
+      border-radius: 28px;
+      padding: 32px;
+      border: 1px solid rgba(226, 232, 255, 0.65);
+      box-shadow: var(--card-shadow);
+    }
+
     footer {
+      margin-top: 48px;
       text-align: center;
-      color: #9ca3af;
-      font-size: 0.875rem;
-      margin-top: 3rem;
-      padding-top: 2rem;
-      border-top: 1px solid #e5e7eb;
+      color: #98a2b3;
+      font-size: 13px;
+    }
+
+    footer span {
+      color: var(--accent-secondary);
+      font-weight: 600;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 32px 20px 48px;
+      }
+
+      header.report-header {
+        padding: 28px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
+    <header class="report-header">
       <h1>{{title}}</h1>
-      <p class="subtitle">DevRev-Ready Comparison Report</p>
-      <div class="metadata">
-        <div class="metadata-item">
-          <strong>Generated:</strong>
-          <span>{{timestamp}}</span>
+      <p class="subtitle">DevRev-ready comparison summary tailored for rapid triage and CSV export.</p>
+
+      <div class="stat-bar">
+        <div class="stat-card">
+          <div class="stat-icon">🕒</div>
+          <div>
+            <div class="stat-label">Generated</div>
+            <div class="stat-value">{{timestamp}}</div>
+          </div>
         </div>
-        <div class="metadata-item">
-          <strong>Figma Components:</strong>
-          <span>{{figmaComponentsCount}}</span>
+        <div class="stat-card">
+          <div class="stat-icon">🧩</div>
+          <div>
+            <div class="stat-label">Figma Components</div>
+            <div class="stat-value">{{figmaComponentsCount}}</div>
+          </div>
         </div>
-        <div class="metadata-item">
-          <strong>Web Elements:</strong>
-          <span>{{webElementsCount}}</span>
+        <div class="stat-card">
+          <div class="stat-icon">🌐</div>
+          <div>
+            <div class="stat-label">Web Elements</div>
+            <div class="stat-value">{{webElementsCount}}</div>
+          </div>
         </div>
-        <div class="metadata-item">
-          <strong>Total Issues:</strong>
-          <span>{{totalIssues}}</span>
+        <div class="stat-card">
+          <div class="stat-icon">🚨</div>
+          <div>
+            <div class="stat-label">Total Issues</div>
+            <div class="stat-value">{{totalIssues}}</div>
+          </div>
         </div>
       </div>
-      <div class="note">
-        <strong>Note:</strong> Currently showing missing/existence issues only. Color, typography, and spacing comparisons will be added in the next update.
+
+      <div class="alert-banner" id="note-banner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <div class="alert-content">
+          <strong>Heads up:</strong> we currently surface missing/existence mismatches. Color and spacing variances ship next.
+        </div>
+        <button class="alert-dismiss" onclick="(function(){ document.getElementById('note-banner').style.display='none'; })()">Dismiss</button>
       </div>
     </header>
 
-    <!-- DevRev Issues Table -->
-    {{devrevIssuesTable}}
-    
+    <div class="section-shell">
+      {{devrevIssuesTable}}
+    </div>
+
     <footer>
-      <p>Generated by Figma-Web Comparison Tool</p>
+      <p>Generated by <span>Figma‑Web Comparison Tool</span></p>
     </footer>
   </div>
   

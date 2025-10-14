@@ -30,6 +30,7 @@ import {
 import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
 import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
+import { getOutputBaseDir } from '../../utils/outputPaths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -203,6 +204,14 @@ export async function startServer() {
     console.warn('⚠️ Failed to load server control routes:', error.message);
   }
 
+  try {
+    const exportRoutes = await import('../../routes/exportRoutes.js');
+    app.use('/api/export', exportRoutes.default);
+    console.log('✅ Export routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load export routes:', error.message);
+  }
+
   // MCP Routes
   try {
     const mcpRoutes = await import('../../routes/mcp-routes.js');
@@ -246,7 +255,7 @@ export async function startServer() {
   });
   
   // Serve output files (reports, images, screenshots)
-  const outputPath = path.join(__dirname, '../../../output');
+  const outputPath = getOutputBaseDir();
   app.use('/output', express.static(outputPath));
   app.use('/reports', express.static(path.join(outputPath, 'reports')));
   app.use('/images', express.static(path.join(outputPath, 'images')));
@@ -496,7 +505,8 @@ export async function startServer() {
     try {
       // Import the reports data adapter
       const { default: ReportsDataAdapter } = await import('../../services/reports/ReportsDataAdapter.js');
-      const reportsPath = path.join(process.cwd(), 'output/reports');
+      const { getReportsDir } = await import('../../utils/outputPaths.js');
+      const reportsPath = getReportsDir();
       
       const adapter = new ReportsDataAdapter(reportsPath);
       const reports = await adapter.getAllReports();
@@ -523,8 +533,9 @@ export async function startServer() {
   app.delete('/api/reports/:id', async (req, res) => {
     try {
       const fs = await import('fs');
+      const { getReportsDir } = await import('../../utils/outputPaths.js');
       const { id } = req.params;
-      const reportsPath = path.join(__dirname, '../../../output/reports');
+      const reportsPath = getReportsDir();
       
       // Find the report file
       const files = fs.readdirSync(reportsPath);
@@ -1869,6 +1880,18 @@ export async function startServer() {
       next(error);
     }
   });
+
+  // Export routes must be registered before static exports handler
+  try {
+    const exportRoutes = await import('../../routes/exportRoutes.js');
+    app.use('/api/export', exportRoutes.default);
+    console.log('✅ Export routes registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load export routes:', error.message);
+  }
+
+  // Serve exported bundles
+  app.use('/exports', express.static(path.join(process.cwd(), 'output', 'exports')));
 
   // 404 handler for API routes
   app.use('/api', notFoundHandler);

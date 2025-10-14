@@ -17,6 +17,9 @@ class BrowserPool {
     this.maxBrowsers = 5; // Increased for concurrent extractions
     this.maxPagesPerBrowser = 20; // Increased to prevent premature cleanup
     this.maxIdleTime = 10 * 60 * 1000; // 10 minutes for long extractions
+    this.queue = [];
+    this.activeJobs = 0;
+    this.maxConcurrentJobs = 3;
     this.resourceManager = getResourceManager();
     
     // Start cleanup interval
@@ -28,6 +31,48 @@ class BrowserPool {
   async initialize() {
     if (!this.config) {
       this.config = await loadConfig();
+      if (this.config?.browserPool?.maxConcurrentJobs) {
+        this.maxConcurrentJobs = this.config.browserPool.maxConcurrentJobs;
+      }
+      if (this.config?.browserPool?.maxBrowsers) {
+        this.maxBrowsers = this.config.browserPool.maxBrowsers;
+      }
+      if (this.config?.browserPool?.maxPagesPerBrowser) {
+        this.maxPagesPerBrowser = this.config.browserPool.maxPagesPerBrowser;
+      }
+      if (this.config?.browserPool?.maxIdleMinutes) {
+        this.maxIdleTime = this.config.browserPool.maxIdleMinutes * 60 * 1000;
+      }
+    }
+  }
+
+  enqueue(task) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ task, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  async processQueue() {
+    if (this.activeJobs >= this.maxConcurrentJobs) {
+      return;
+    }
+
+    const nextJob = this.queue.shift();
+    if (!nextJob) {
+      return;
+    }
+
+    this.activeJobs += 1;
+
+    try {
+      const result = await nextJob.task();
+      nextJob.resolve(result);
+    } catch (error) {
+      nextJob.reject(error);
+    } finally {
+      this.activeJobs -= 1;
+      setImmediate(() => this.processQueue());
     }
   }
 
@@ -113,64 +158,66 @@ class BrowserPool {
    * Create a new page with proper lifecycle management
    */
   async createPage(options = {}) {
-    const browser = await this.getBrowser(options);
+    return this.enqueue(async () => {
+      const browser = await this.getBrowser(options);
     
-    // Check if this browser has too many pages
-    const browserPages = Array.from(this.pages.values())
-      .filter(pageInfo => pageInfo.browser === browser);
-    
-    if (browserPages.length >= this.maxPagesPerBrowser) {
-      // Close oldest page
-      const oldestPage = browserPages
-        .sort((a, b) => a.lastUsed - b.lastUsed)[0];
-      if (oldestPage) {
-        await this.closePage(oldestPage.pageId);
+      // Check if this browser has too many pages
+      const browserPages = Array.from(this.pages.values())
+        .filter(pageInfo => pageInfo.browser === browser);
+      
+      if (browserPages.length >= this.maxPagesPerBrowser) {
+        // Close oldest page
+        const oldestPage = browserPages
+          .sort((a, b) => a.lastUsed - b.lastUsed)[0];
+        if (oldestPage) {
+          await this.closePage(oldestPage.pageId);
+        }
       }
-    }
 
-    const page = await browser.newPage();
-    const pageId = this.generatePageId();
-    
-    // Configure page
-    await page.setViewport({ 
-      width: options.width || 1920, 
-      height: options.height || 1080 
+      const page = await browser.newPage();
+      const pageId = this.generatePageId();
+      
+      // Configure page
+      await page.setViewport({ 
+        width: options.width || 1920, 
+        height: options.height || 1080 
+      });
+      
+      await page.setUserAgent(
+        options.userAgent || 
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      );
+
+      // Store page info
+      this.pages.set(pageId, {
+        browser,
+        page,
+        pageId,
+        lastUsed: Date.now(),
+        createdAt: Date.now(),
+        isActive: false // Track if page is actively being used
+      });
+      
+      // Track page in resource manager
+      this.resourceManager.track(pageId, page, 'page', {
+        browserId: this.getBrowserKey(options),
+        viewport: { width: options.width || 1920, height: options.height || 1080 }
+      });
+      
+      // Add cleanup handlers
+      page.on('close', () => {
+        console.log(`📄 Page closed: ${pageId}`);
+        this.pages.delete(pageId);
+      });
+      
+      page.on('error', (error) => {
+        console.warn(`❌ Page ${pageId} error:`, error.message);
+        this.pages.delete(pageId);
+      });
+
+      console.log(`✅ Page created: ${pageId}`);
+      return { page, pageId };
     });
-    
-    await page.setUserAgent(
-      options.userAgent || 
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    );
-
-    // Store page info
-    this.pages.set(pageId, {
-      browser,
-      page,
-      pageId,
-      lastUsed: Date.now(),
-      createdAt: Date.now(),
-      isActive: false // Track if page is actively being used
-    });
-
-    // Track page in resource manager
-    this.resourceManager.track(pageId, page, 'page', {
-      browserId: this.getBrowserKey(options),
-      viewport: { width: options.width || 1920, height: options.height || 1080 }
-    });
-
-    // Add cleanup handlers
-    page.on('close', () => {
-      console.log(`📄 Page closed: ${pageId}`);
-      this.pages.delete(pageId);
-    });
-
-    page.on('error', (error) => {
-      console.warn(`❌ Page ${pageId} error:`, error.message);
-      this.pages.delete(pageId);
-    });
-
-    console.log(`✅ Page created: ${pageId}`);
-    return { page, pageId };
   }
 
   /**
@@ -210,16 +257,22 @@ class BrowserPool {
    */
   async closePage(pageId) {
     const pageInfo = this.pages.get(pageId);
-    if (pageInfo) {
-      try {
-        if (!pageInfo.page.isClosed()) {
-          await pageInfo.page.close();
-        }
-      } catch (error) {
-        console.warn(`Error closing page ${pageId}:`, error.message);
-      } finally {
-        this.pages.delete(pageId);
+    if (!pageInfo) {
+      return;
+    }
+
+    if (pageInfo.isActive) {
+      pageInfo.isActive = false;
+    }
+
+    this.pages.delete(pageId);
+
+    try {
+      if (!pageInfo.page.isClosed()) {
+        await pageInfo.page.close();
       }
+    } catch (error) {
+      console.warn(`Error closing page ${pageId}:`, error.message);
     }
   }
 

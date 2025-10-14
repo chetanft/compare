@@ -349,40 +349,44 @@ export class ReportGenerator {
       return `
         <section class="devrev-issues-section" id="devrev-issues">
           <div class="section-header">
-            <h2>📋 Comparison Issues (DevRev Format)</h2>
+            <div class="section-heading-row">
+              <span class="section-pill">DevRev Export</span>
+              <h2>📋 Comparison Issues (DevRev Format)</h2>
+            </div>
             <p class="section-description">
-              Ready-to-upload issue tracker format with frame/component names from Figma.
-              Copy to clipboard or export as CSV for use in DevRev or other issue tracking systems.
+              Structured issue log engineered for DevRev ingestion. Filter, triage, and export without leaving the browser.
             </p>
           </div>
           
           <div class="table-controls">
-            <button onclick="exportDevRevTableToCSV()" class="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Export as CSV
-            </button>
-            <button onclick="copyDevRevTableToClipboard()" class="btn btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              Copy Table
-            </button>
+            <div class="control-group">
+              <button onclick="exportDevRevTableToCSV()" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export CSV
+              </button>
+              <button onclick="copyDevRevTableToClipboard()" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copy All
+              </button>
+            </div>
             <input 
               type="search" 
-              placeholder="Filter issues..." 
+              placeholder="Filter by component, severity, or status..." 
               id="devrev-filter-input"
               class="table-filter"
               onkeyup="filterDevRevTable()"
             >
             <div class="issue-stats">
-              <span class="stat-badge stat-critical">Critical: ${issues.filter(i => i.severity === 'Critical').length}</span>
-              <span class="stat-badge stat-major">Major: ${issues.filter(i => i.severity === 'Major').length}</span>
-              <span class="stat-badge stat-minor">Minor: ${issues.filter(i => i.severity === 'Minor').length}</span>
+              <span class="stat-badge stat-critical">🔴 Critical <strong>${issues.filter(i => i.severity === 'Critical').length}</strong></span>
+              <span class="stat-badge stat-major">🟠 Major <strong>${issues.filter(i => i.severity === 'Major').length}</strong></span>
+              <span class="stat-badge stat-minor">🟢 Minor <strong>${issues.filter(i => i.severity === 'Minor').length}</strong></span>
             </div>
           </div>
           
@@ -415,8 +419,10 @@ export class ReportGenerator {
           </div>
           
           <div class="table-footer">
-            <p>📊 Total Issues: <strong>${issues.length}</strong></p>
-            <p>💡 Tip: Click column headers to sort, use the filter to search, or export to CSV for DevRev upload</p>
+            <div class="footer-label">📊 Visible: <span id="devrev-visible-count"><strong>${issues.length}</strong> issues</span></div>
+            <div class="footer-actions">
+              <small>💡 Click headers to sort · Press ⌘/Ctrl + F to jump to filter</small>
+            </div>
           </div>
         </section>
       `;

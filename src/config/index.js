@@ -65,6 +65,12 @@ export async function loadConfig() {
         '--disable-renderer-backgrounding',
       ],
     },
+    browserPool: {
+      maxConcurrentJobs: parseInt(env.BROWSER_POOL_MAX_CONCURRENT_JOBS || '3', 10),
+      maxBrowsers: parseInt(env.BROWSER_POOL_MAX_BROWSERS || '5', 10),
+      maxPagesPerBrowser: parseInt(env.BROWSER_POOL_MAX_PAGES || '20', 10),
+      maxIdleMinutes: parseInt(env.BROWSER_POOL_MAX_IDLE_MINUTES || '10', 10),
+    },
     thresholds: {
       colorDifference: parseInt(env.COLOR_DIFFERENCE_THRESHOLD || '10', 10),
       sizeDifference: parseInt(env.SIZE_DIFFERENCE_THRESHOLD || '5', 10),
@@ -86,6 +92,11 @@ export async function loadConfig() {
     },
     figma: {
       apiKey: env.FIGMA_API_KEY || env.FIGMA_PERSONAL_ACCESS_TOKEN,
+    },
+    snapshots: {
+      enabled: env.SNAPSHOTS_ENABLED !== 'false',
+      maxRecords: parseInt(env.SNAPSHOT_MAX_RECORDS || '50', 10),
+      includeInputs: env.SNAPSHOT_INCLUDE_INPUTS === 'true',
     },
     // Next Version Features (Production-Ready)
     nextVersion: {
