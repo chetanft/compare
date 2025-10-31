@@ -46,6 +46,16 @@ let expressServerInstance; // The actual Express app instance
 const serverPort = 3847; // Use unified port matching APP_SERVER_PORT
 let serverControl;
 
+// Force backend to bind to unified port and expose to renderer
+process.env.PORT = String(serverPort);
+process.env.SERVER_PORT = String(serverPort);
+// Helpful for any logic that reads these at runtime
+process.env.VITE_SERVER_PORT = String(serverPort);
+process.env.VITE_API_URL = `http://localhost:${serverPort}`;
+process.env.VITE_WS_URL = `ws://localhost:${serverPort}`;
+console.log(`🔧 Unified server port set to ${serverPort}`);
+
+
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -72,7 +82,7 @@ function createWindow() {
   mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(true); // Allow all permissions
   });
-  
+
   // Disable CSP enforcement at session level
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     // Remove all CSP headers from responses
@@ -85,15 +95,15 @@ function createWindow() {
   // In packaged app: app/electron/main.js -> need app/frontend/dist/index.html
   // In dev: electron/main.js -> need ../frontend/dist/index.html
   const isPackaged = app.isPackaged;
-  const indexPath = isPackaged 
+  const indexPath = isPackaged
     ? path.join(process.resourcesPath, 'app/frontend/dist/index.html')
     : path.join(__dirname, '../frontend/dist/index.html');
-  
+
   console.log('📁 Loading frontend from:', indexPath);
   console.log('📦 App packaged:', isPackaged);
   console.log('📂 __dirname:', __dirname);
   console.log('📂 resourcesPath:', process.resourcesPath);
-  
+
   mainWindow.loadFile(indexPath);
 
   // Show window when ready to prevent visual flash
@@ -325,13 +335,13 @@ async function startServer() {
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     console.error('Stack:', error.stack);
-    
+
     // Show error dialog
     dialog.showErrorBox(
       'Server Error',
       `Failed to start the application server:\n\n${error.message}\n\nPlease check the console for details.`
     );
-    
+
     app.quit();
     return false;
   }
@@ -341,7 +351,7 @@ async function stopServer() {
   try {
     if (expressServerInstance) {
       console.log('⏹️ Stopping Express server...');
-      
+
       // Stop server with 5 second timeout
       await Promise.race([
         new Promise((resolve) => {
@@ -357,7 +367,7 @@ async function stopServer() {
           }, 5000);
         })
       ]);
-      
+
       expressServerInstance = null;
       return true;
     }
@@ -388,12 +398,12 @@ app.whenReady().then(async () => {
 
   // Start the server first
   const serverStarted = await startServer();
-  
+
   if (serverStarted) {
     // Create window and menu
     createWindow();
     createMenu();
-    
+
     console.log('✅ App is ready!');
   }
 });
