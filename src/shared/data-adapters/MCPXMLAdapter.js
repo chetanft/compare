@@ -20,10 +20,10 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     if (rawData && rawData.rawMCPData) {
       return !!(rawData.rawMCPData.metadata || rawData.rawMCPData.code || rawData.rawMCPData.variables);
     }
-    
+
     // Support legacy XML format
-    return rawData && 
-           rawData.content && 
+    return rawData &&
+           rawData.content &&
            typeof rawData.content === 'string' &&
            rawData.content.includes('<canvas');
   }
@@ -40,12 +40,12 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     }
 
     const baseMetadata = this.extractBaseMetadata(context);
-    
+
     // Handle new structured MCP data format
     if (rawData.rawMCPData) {
       return this.transformStructuredData(rawData, baseMetadata);
     }
-    
+
     // Handle legacy XML format
     const xmlContent = rawData.content;
     const components = this.extractComponents(xmlContent);
@@ -76,7 +76,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractComponents(xmlContent) {
     const components = [];
-    
+
     // Extract different element types
     const elementTypes = [
       { tag: 'frame', type: 'FRAME' },
@@ -107,11 +107,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractElementsByTag(xmlContent, tagName, componentType) {
     const components = [];
-    
+
     // Create regex pattern for self-closing and regular tags
     const selfClosingPattern = new RegExp(`<${tagName}([^>]*?)\\s*/>`, 'g');
     const regularPattern = new RegExp(`<${tagName}([^>]*?)>(.*?)</${tagName}>`, 'gs');
-    
+
     // Process self-closing tags
     let match;
     while ((match = selfClosingPattern.exec(xmlContent)) !== null) {
@@ -120,24 +120,24 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         components.push(this.createComponent(attributes, componentType, null));
       }
     }
-    
+
     // Process regular tags with content
     while ((match = regularPattern.exec(xmlContent)) !== null) {
       const attributes = this.parseAttributes(match[1]);
       const innerContent = match[2];
-      
+
       if (attributes.id && attributes.name) {
         const component = this.createComponent(attributes, componentType, innerContent);
-        
+
         // Extract nested children if present
         if (innerContent) {
           component.children = this.extractComponents(innerContent);
         }
-        
+
         components.push(component);
       }
     }
-    
+
     return components;
   }
 
@@ -148,16 +148,16 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   parseAttributes(attributeString) {
     const attributes = {};
-    
+
     // Match attribute="value" patterns
     const attributePattern = /(\w+)="([^"]*)"/g;
     let match;
-    
+
     while ((match = attributePattern.exec(attributeString)) !== null) {
       const [, name, value] = match;
       attributes[name] = value;
     }
-    
+
     return attributes;
   }
 
@@ -170,14 +170,14 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   createComponent(attributes, type, innerContent) {
     const properties = { ...attributes };
-    
+
     // Convert numeric attributes
     ['x', 'y', 'width', 'height'].forEach(attr => {
       if (properties[attr]) {
         properties[attr] = parseFloat(properties[attr]);
       }
     });
-    
+
     // Handle boolean attributes
     if (properties.hidden !== undefined) {
       properties.visible = properties.hidden !== 'true';
@@ -206,15 +206,15 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractColors(xmlContent) {
     const colors = new Map();
-    
+
     // Extract fill colors
     const fillPattern = /fill="([^"]+)"/g;
     let match;
     let colorIndex = 0;
-    
+
     while ((match = fillPattern.exec(xmlContent)) !== null) {
       const fillValue = match[1];
-      
+
       // Check if it's a color value (hex, rgb, etc.)
       if (this.isColorValue(fillValue)) {
         const colorId = `fill-${colorIndex++}`;
@@ -227,14 +227,14 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       }
     }
-    
+
     // Extract stroke colors
     const strokePattern = /stroke="([^"]+)"/g;
     colorIndex = 0;
-    
+
     while ((match = strokePattern.exec(xmlContent)) !== null) {
       const strokeValue = match[1];
-      
+
       if (this.isColorValue(strokeValue)) {
         const colorId = `stroke-${colorIndex++}`;
         if (!colors.has(strokeValue)) {
@@ -248,7 +248,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         }
       }
     }
-    
+
     return Array.from(colors.values());
   }
 
@@ -259,16 +259,16 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractTypography(xmlContent) {
     const typography = [];
-    
+
     // Extract text elements with content
     const textPattern = /<text([^>]*?)>([^<]*?)<\/text>/g;
     let match;
     let textIndex = 0;
-    
+
     while ((match = textPattern.exec(xmlContent)) !== null) {
       const attributes = this.parseAttributes(match[1]);
       const textContent = match[2].trim();
-      
+
       if (textContent && attributes.id) {
         typography.push({
           id: attributes.id,
@@ -285,14 +285,14 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       }
     }
-    
+
     // Extract text elements with name attributes (even if no content)
     const textElementPattern = /<text[^>]*name="([^"]*)"[^>]*id="([^"]*)"[^>]*>/g;
-    
+
     while ((match = textElementPattern.exec(xmlContent)) !== null) {
       const name = match[1];
       const id = match[2];
-      
+
       // Only add if not already added from content extraction
       if (!typography.find(t => t.id === id) && name) {
         typography.push({
@@ -310,7 +310,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       }
     }
-    
+
     return typography;
   }
 
@@ -324,18 +324,18 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/.test(value)) {
       return true;
     }
-    
+
     // Check for rgb/rgba
     if (/^rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[\d.]+\s*)?\)$/.test(value)) {
       return true;
     }
-    
+
     // Check for common color names
     const colorNames = ['red', 'green', 'blue', 'black', 'white', 'yellow', 'orange', 'purple', 'pink', 'gray', 'grey'];
     if (colorNames.includes(value.toLowerCase())) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -350,13 +350,13 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     if (canvasMatch) {
       return canvasMatch[1];
     }
-    
+
     // Try to extract from document title or similar
     const titleMatch = xmlContent.match(/<title>([^<]*)<\/title>/);
     if (titleMatch) {
       return titleMatch[1];
     }
-    
+
     return null;
   }
 
@@ -369,37 +369,37 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   transformStructuredData(rawData, baseMetadata) {
     console.log('🔄 Transforming Structured MCP Data...');
     const { metadata, code, variables } = rawData.rawMCPData;
-    
+
     console.log('  - Metadata:', !!metadata);
     console.log('  - Code:', !!code);
     console.log('  - Variables:', !!variables);
-    
+
     // Extract components from MCP code/metadata
     console.log('\n📦 Extracting components...');
     const components = this.extractComponentsFromStructuredData(metadata, code);
     console.log(`  ✅ Components extracted: ${components.length}`);
-    
+
     // Extract colors from variables AND XML metadata
     console.log('\n🎨 Extracting colors...');
     const colorsFromVariables = this.extractColorsFromVariables(variables);
     const colorsFromXML = this.extractColorsFromXMLMetadata(metadata);
     const colors = [...colorsFromVariables, ...colorsFromXML];
     console.log(`  ✅ Total colors: ${colors.length} (${colorsFromVariables.length} from variables, ${colorsFromXML.length} from XML)`);
-    
+
     // Extract typography from code and variables
     console.log('\n📝 Extracting typography...');
     const typography = this.extractTypographyFromCode(code, variables);
-    
+
     // Extract spacing tokens
     console.log('\n📏 Extracting spacing...');
     const spacing = this.extractSpacingFromVariables(variables);
     console.log(`  ✅ Spacing tokens: ${spacing.length}`);
-    
+
     // Extract shadows
     console.log('\n🌑 Extracting shadows...');
     const shadows = this.extractShadowsFromVariables(variables);
     console.log(`  ✅ Shadows: ${shadows.length}`);
-    
+
     return {
       ...baseMetadata,
       metadata: {
@@ -427,7 +427,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractComponentsFromStructuredData(metadata, code) {
     const components = [];
-    
+
     // Try to extract from metadata first
     if (metadata && metadata.content) {
       try {
@@ -510,7 +510,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       }
     }
-    
+
     // If no components from metadata, create from code
     if (components.length === 0 && code && code.content) {
       const codeLength = typeof code.content === 'string' ? code.content.length : JSON.stringify(code.content).length;
@@ -525,7 +525,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         }
       });
     }
-    
+
     return components;
   }
 
@@ -544,7 +544,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         },
         children: child.children ? [] : undefined
       });
-      
+
       if (child.children && child.children.length > 0) {
         this.processNodeChildren(child.children, components);
       }
@@ -559,16 +559,16 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   extractColorsFromXMLMetadata(metadata) {
     const colors = [];
     let xmlContent = '';
-    
+
     console.log('🎨 Color Extraction from XML Metadata Debug:');
     console.log('  - Metadata present:', !!metadata);
     console.log('  - Metadata.content present:', !!(metadata && metadata.content));
-    
+
     // Get XML content from metadata
     if (metadata && metadata.content) {
       console.log('  - Metadata.content type:', typeof metadata.content);
       console.log('  - Metadata.content is array:', Array.isArray(metadata.content));
-      
+
       if (Array.isArray(metadata.content)) {
         console.log('  - Metadata.content length:', metadata.content.length);
         for (const item of metadata.content) {
@@ -586,28 +586,32 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     } else {
       console.warn('  - No metadata or metadata.content');
     }
-    
+
     if (xmlContent) {
-      // Extract hex colors from XML attributes and content
-      const hexMatches = xmlContent.match(/#[0-9a-fA-F]{6}/g) || [];
-      const uniqueHexColors = [...new Set(hexMatches)];
-      console.log('  - Found', hexMatches.length, 'hex colors,', uniqueHexColors.length, 'unique');
-      
-      uniqueHexColors.forEach((hex, index) => {
+      // Use the robust XML color extractor so we capture hex AND rgb(a) in fill/stroke
+      const extracted = this.extractColors(xmlContent);
+
+      // Normalize values and de-duplicate by normalized value
+      const seen = new Set();
+      extracted.forEach((item, index) => {
+        const norm = this.normalizeColorString(item.value);
+        if (!norm) return;
+        if (seen.has(norm)) return;
+        seen.add(norm);
         colors.push({
           id: `xml-color-${index}`,
-          name: `Color ${index + 1}`,
-          value: hex,
+          name: item.name || `Color ${colors.length + 1}`,
+          value: norm,
           type: 'COLOR',
           source: 'xml-metadata'
         });
       });
-      
-      console.log(`  ✅ Extracted ${colors.length} colors from XML metadata`);
+
+      console.log(`  ✅ Extracted ${colors.length} colors from XML metadata (normalized & unique)`);
     } else {
       console.warn('  - No XML content to extract colors from');
     }
-    
+
     return colors;
   }
 
@@ -616,18 +620,18 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractColorsFromVariables(variables) {
     const colors = [];
-    
+
     console.log('🎨 Color Extraction from Variables Debug:');
     console.log('  - Variables present:', !!variables);
     console.log('  - Variables.content present:', !!(variables && variables.content));
-    
+
     if (variables && variables.content) {
       try {
         let varsData;
-        
+
         console.log('  - Variables.content type:', typeof variables.content);
         console.log('  - Variables.content is array:', Array.isArray(variables.content));
-        
+
         // Handle array format from MCP
         if (Array.isArray(variables.content)) {
           console.log('  - Variables.content length:', variables.content.length);
@@ -649,21 +653,24 @@ export class MCPXMLAdapter extends BaseDataAdapter {
           }
         } else {
           // Handle both object and string content (original logic)
-          varsData = typeof variables.content === 'string' ? 
+          varsData = typeof variables.content === 'string' ?
             JSON.parse(variables.content) : variables.content;
           console.log('  - Variables data parsed/extracted');
         }
-        
+
         // Look for color variables in different possible structures
         console.log('  - VarsData has .variables:', !!varsData.variables);
         if (varsData.variables) {
           const colorVars = Object.entries(varsData.variables).filter(([key, value]) => this.isColorVariable(value));
           console.log('  - Found', colorVars.length, 'color variables in varsData.variables');
           colorVars.forEach(([key, value]) => {
+            const extracted = this.extractColorValue(value);
+            const norm = this.normalizeColorString(extracted);
+            if (!norm) return;
             colors.push({
               id: key,
               name: value.name || key,
-              value: this.extractColorValue(value),
+              value: norm,
               type: 'COLOR',
               source: 'mcp-variables'
             });
@@ -672,24 +679,29 @@ export class MCPXMLAdapter extends BaseDataAdapter {
           console.log('  - Checking varsData directly for colors...');
           const entries = Object.entries(varsData);
           console.log('  - VarsData has', entries.length, 'entries');
-          
+
           // Try to extract colors from direct variable data
           entries.forEach(([key, value]) => {
             // Handle both structured variables and direct hex values
             if (this.isColorVariable(value)) {
+              const extracted = this.extractColorValue(value);
+              const norm = this.normalizeColorString(extracted);
+              if (!norm) return;
               colors.push({
                 id: key,
                 name: value.name || key,
-                value: this.extractColorValue(value),
+                value: norm,
                 type: 'COLOR',
                 source: 'mcp-variables-direct'
               });
             } else if (typeof value === 'string' && this.isHexColor(value)) {
               // Direct hex color values like "Primary":"#434F64"
+              const norm = this.normalizeColorString(value);
+              if (!norm) return;
               colors.push({
                 id: key,
                 name: key.replace(/_/g, ' '), // Convert underscores to spaces
-                value: value,
+                value: norm,
                 type: 'COLOR',
                 source: 'mcp-variables-hex'
               });
@@ -705,7 +717,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     } else {
       console.warn('  - No variables or variables.content - skipping variable color extraction');
     }
-    
+
     console.log(`  ✅ Extracted ${colors.length} colors from variables`);
     return colors;
   }
@@ -715,7 +727,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractTypographyFromCode(code, variables = null) {
     const typography = [];
-    
+
     // Enhanced logging for debugging
     console.log('📝 Typography Extraction Debug:');
     console.log('  - Variables present:', !!variables);
@@ -724,11 +736,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       console.log('  - Variables type:', typeof variables.content);
       console.log('  - Variables array length:', Array.isArray(variables.content) ? variables.content.length : 'N/A');
     }
-    
+
     // First, try to extract from variables if provided (where Font() declarations are)
     if (variables && variables.content) {
       let varsString = '';
-      
+
       if (Array.isArray(variables.content)) {
         const textItem = variables.content.find(item => item.type === 'text' && item.text);
         if (textItem) {
@@ -738,12 +750,12 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       } else if (typeof variables.content === 'string') {
         varsString = variables.content;
       }
-      
+
       if (varsString) {
         // Look for Figma Font() declarations in variables
         const figmaFontMatches = varsString.match(/Font\([^)]+\)/gi) || [];
         const fontKeyMatches = varsString.match(/"([^"]*(?:Title|Body|font)[^"]*)"\s*:\s*"([^"]*Font[^"]*)"/gi) || [];
-        
+
         figmaFontMatches.forEach((match, index) => {
           const fontProps = this.parseFigmaFont(match);
           if (fontProps) {
@@ -757,7 +769,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
             });
           }
         });
-        
+
         // Also extract typography tokens like "Title/Secondary":"Font(...)"
         const tokenMatches = varsString.match(/"([^"]*(?:Title|Body|Heading)[^"]*)"\s*:\s*"([^"]*)"/gi) || [];
         tokenMatches.forEach((match, index) => {
@@ -778,11 +790,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         });
       }
     }
-    
+
     // Then extract from code as fallback
     if (code && code.content) {
       let codeString = '';
-      
+
       // Handle array format from MCP
       if (Array.isArray(code.content)) {
         // Combine all text content from the array
@@ -794,17 +806,17 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         console.log('📝 Parsing typography from MCP code array...');
       } else {
         // Convert content to string if it's an object (original logic)
-        codeString = typeof code.content === 'string' ? 
+        codeString = typeof code.content === 'string' ?
           code.content : JSON.stringify(code.content);
       }
-      
+
       // Look for font-related properties in the code
       const fontMatches = codeString.match(/font-family:\s*([^;]+)/gi) || [];
       const sizeMatches = codeString.match(/font-size:\s*([^;]+)/gi) || [];
-      
+
       // Also look for Figma Font() declarations
       const figmaFontMatches = codeString.match(/Font\(([^)]+)\)/gi) || [];
-      
+
       fontMatches.forEach((match, index) => {
         typography.push({
           id: `mcp-font-${index}`,
@@ -814,7 +826,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
           source: 'mcp-code'
         });
       });
-      
+
       // Extract Figma Font declarations
       figmaFontMatches.forEach((match, index) => {
         const fontProps = this.parseFigmaFont(match);
@@ -830,14 +842,14 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         }
       });
     }
-    
+
     // FALLBACK: If no typography found, try extracting from code CSS
     if (typography.length === 0 && code && code.content) {
       console.log('⚠️ No typography in variables, trying CSS extraction fallback...');
       const cssTypography = this.extractTypographyFromCSS(code.content);
       typography.push(...cssTypography);
     }
-    
+
     console.log(`✅ Typography Extraction Complete: ${typography.length} items found`);
     return typography;
   }
@@ -848,18 +860,18 @@ export class MCPXMLAdapter extends BaseDataAdapter {
   extractTypographyFromCSS(cssContent) {
     const typography = [];
     let cssString = '';
-    
+
     if (Array.isArray(cssContent)) {
       const textItem = cssContent.find(item => item.type === 'text' && item.text);
       if (textItem) cssString = textItem.text;
     } else if (typeof cssContent === 'string') {
       cssString = cssContent;
     }
-    
+
     if (!cssString) return typography;
-    
+
     console.log('🔍 Extracting typography from CSS (length:', cssString.length, ')');
-    
+
     // Extract font-family declarations
     const fontFamilyMatches = cssString.match(/font-family:\s*([^;}"'\n]+)/gi) || [];
     const fontFamilies = [...new Set(fontFamilyMatches.map(m => {
@@ -867,9 +879,9 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       if (!match) return null;
       return match[1].trim().replace(/["']/g, '').split(',')[0].trim(); // Get first font in stack
     }).filter(Boolean))];
-    
+
     console.log('  - Found font families:', fontFamilies);
-    
+
     // Extract font-size declarations
     const fontSizes = [...new Set((cssString.match(/font-size:\s*(\d+(?:\.\d+)?(?:px|rem|em))/gi) || [])
       .map(m => {
@@ -882,7 +894,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         if (unit === 'em') return value * 16;
         return value;
       }).filter(Boolean))];
-    
+
     // Extract font-weight declarations
     const fontWeights = [...new Set((cssString.match(/font-weight:\s*(\d+|bold|normal|lighter|bolder)/gi) || [])
       .map(m => {
@@ -896,10 +908,10 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         if (weight === 'bolder') return 700;
         return parseInt(weight);
       }).filter(Boolean))];
-    
+
     console.log('  - Font sizes found:', fontSizes);
     console.log('  - Font weights found:', fontWeights);
-    
+
     // Create typography entries (one per font family)
     fontFamilies.forEach((family, index) => {
       typography.push({
@@ -911,16 +923,72 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         source: 'css-fallback'
       });
     });
-    
+
     console.log(`  ✅ Extracted ${typography.length} font families from CSS`);
     return typography;
+  }
+
+  /**
+   * Normalize various color string formats to 6-digit hex (#rrggbb)
+   * Returns null if not parseable
+   */
+  normalizeColorString(value) {
+    if (!value || typeof value !== 'string') return null;
+    let v = value.trim().toLowerCase();
+
+    // Hex forms: #rgb, #rgba, #rrggbb, #rrggbbaa
+    if (v.startsWith('#')) {
+      let hex = v.slice(1);
+      if (hex.length === 3 || hex.length === 4) {
+        // Expand shorthand (#rgb or #rgba) and drop alpha if present
+        const r = hex[0];
+        const g = hex[1];
+        const b = hex[2];
+        hex = r + r + g + g + b + b; // ignore alpha (hex[3])
+      } else if (hex.length === 8) {
+        // Drop alpha (#rrggbbaa -> #rrggbb)
+        hex = hex.slice(0, 6);
+      } else if (hex.length !== 6) {
+        return null;
+      }
+      return `#${hex}`;
+    }
+
+    // rgb/rgba(r, g, b[, a]) -> #rrggbb (ignore alpha)
+    const rgbMatch = v.match(/^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*([0-9.]+)\s*)?\)$/i);
+    if (rgbMatch) {
+      const clamp = (n) => Math.max(0, Math.min(255, Math.round(parseFloat(n))));
+      const r = clamp(rgbMatch[1]);
+      const g = clamp(rgbMatch[2]);
+      const b = clamp(rgbMatch[3]);
+      const toHex = (n) => n.toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    }
+
+    // Basic named colors mapping
+    const named = {
+      black: '#000000',
+      white: '#ffffff',
+      red: '#ff0000',
+      green: '#008000',
+      blue: '#0000ff',
+      yellow: '#ffff00',
+      orange: '#ffa500',
+      purple: '#800080',
+      pink: '#ffc0cb',
+      gray: '#808080',
+      grey: '#808080'
+    };
+    if (named[v]) return named[v];
+
+    return null;
   }
 
   /**
    * Check if a variable represents a color
    */
   isColorVariable(value) {
-    return value.type === 'COLOR' || 
+    return value.type === 'COLOR' ||
            (typeof value.value === 'string' && value.value.match(/^#[0-9a-fA-F]{6}$/));
   }
 
@@ -942,16 +1010,16 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       const sizeMatch = fontString.match(/size:\s*(\d+)/);
       const weightMatch = fontString.match(/weight:\s*(\d+)/);
       const styleMatch = fontString.match(/style:\s*([^,)]+)/);
-      
+
       const result = {
         family: familyMatch ? familyMatch[1].replace(/\\/g, '') : 'Unknown', // Remove escape characters
         size: sizeMatch ? parseInt(sizeMatch[1]) : 16,
         weight: weightMatch ? parseInt(weightMatch[1]) : 400,
         style: styleMatch ? styleMatch[1].trim() : 'Regular'
       };
-      
+
       // Successfully parsed font
-      
+
       return result;
     } catch (error) {
       console.warn('Failed to parse Figma font:', fontString, error);
@@ -966,7 +1034,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
     if (typeof value.value === 'string') {
       return value.value;
     }
-    
+
     if (value.value && value.value.r !== undefined) {
       // RGB format
       const r = Math.round(value.value.r * 255);
@@ -974,7 +1042,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
       const b = Math.round(value.value.b * 255);
       return `rgb(${r}, ${g}, ${b})`;
     }
-    
+
     return '#000000';
   }
 
@@ -983,11 +1051,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractSpacingFromVariables(variables) {
     const spacing = [];
-    
+
     if (variables && variables.content) {
       try {
         let varsData;
-        
+
         // Handle array format from MCP
         if (Array.isArray(variables.content)) {
           const textItem = variables.content.find(item => item.type === 'text' && item.text);
@@ -1000,10 +1068,10 @@ export class MCPXMLAdapter extends BaseDataAdapter {
             }
           }
         } else {
-          varsData = typeof variables.content === 'string' ? 
+          varsData = typeof variables.content === 'string' ?
             JSON.parse(variables.content) : variables.content;
         }
-        
+
         if (varsData && typeof varsData === 'object') {
           Object.entries(varsData).forEach(([key, value]) => {
             // Look for spacing patterns: x0, x1, x2, spacing-, margin-, padding-, gap-
@@ -1023,7 +1091,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         console.warn('Failed to parse spacing variables:', error);
       }
     }
-    
+
     return spacing;
   }
 
@@ -1032,11 +1100,11 @@ export class MCPXMLAdapter extends BaseDataAdapter {
    */
   extractShadowsFromVariables(variables) {
     const shadows = [];
-    
+
     if (variables && variables.content) {
       try {
         let varsData;
-        
+
         // Handle array format from MCP
         if (Array.isArray(variables.content)) {
           const textItem = variables.content.find(item => item.type === 'text' && item.text);
@@ -1049,10 +1117,10 @@ export class MCPXMLAdapter extends BaseDataAdapter {
             }
           }
         } else {
-          varsData = typeof variables.content === 'string' ? 
+          varsData = typeof variables.content === 'string' ?
             JSON.parse(variables.content) : variables.content;
         }
-        
+
         if (varsData && typeof varsData === 'object') {
           Object.entries(varsData).forEach(([key, value]) => {
             if (this.isShadowVariable(key, value)) {
@@ -1070,7 +1138,7 @@ export class MCPXMLAdapter extends BaseDataAdapter {
         console.warn('Failed to parse shadow variables:', error);
       }
     }
-    
+
     return shadows;
   }
 
