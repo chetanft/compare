@@ -24,6 +24,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { useToast } from '@/hooks/use-toast'
 
 // Add error type definition
 interface ComparisonError {
@@ -50,7 +59,10 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const [reportUrls, setReportUrls] = useState<{ directUrl?: string; downloadUrl?: string; hasError?: boolean }>({})
   const [reportOpenAttempts, setReportOpenAttempts] = useState<number>(0)
   const [figmaUrlError, setFigmaUrlError] = useState<string | null>(null)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null)
   const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }>({
     defaultValues: {
@@ -69,6 +81,55 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       }
     }
   })
+
+  const describeError = (error: unknown): string => {
+    if (!error) {
+      return 'Extraction failed for an unknown reason.'
+    }
+
+    if (typeof error === 'string') {
+      return error
+    }
+
+    if (error instanceof Error) {
+      if (/network error/i.test(error.message)) {
+        return 'Unable to reach the comparison server. Confirm it is running on port 3847 and retry.'
+      }
+      if (/timeout/i.test(error.message) || /timed out/i.test(error.message)) {
+        return 'The comparison request timed out. Increase the timeout in Settings or try again with a smaller scope.'
+      }
+      return error.message
+    }
+
+    const apiError = error as { message?: string; status?: number; code?: string; details?: string }
+
+    if (apiError.code === 'ABORT_TIMEOUT') {
+      return 'The request was aborted after the configured timeout. Adjust timeout settings or retry with fewer steps.'
+    }
+
+    switch (apiError.status) {
+      case 401:
+      case 403:
+        return 'Authentication failed. Check your Figma token and any web credentials configured in Settings.'
+      case 404:
+        return 'The /api/compare endpoint is unavailable. Verify the backend is running the latest build.'
+      case 429:
+        return 'Too many requests in a short period. Wait a moment before running another comparison.'
+      case 500:
+        return 'The server encountered an error while processing the comparison. Review server logs for details.'
+      default:
+        break
+    }
+
+    if (apiError.message) {
+      if (/network/i.test(apiError.message)) {
+        return 'Network connection failed while contacting the comparison server.'
+      }
+      return apiError.message
+    }
+
+    return 'Extraction failed due to an unexpected server response.'
+  }
 
   const comparisonMutation = useMutation({
     mutationFn: async (data: ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
@@ -215,22 +276,14 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       console.log('🔍 ComparisonForm: result.data?.extractionDetails exists?', !!result.data?.extractionDetails);
       
       onSuccess?.(result);
+      setLastErrorMessage(null)
     },
     onError: (error: unknown) => {
       console.error('❌ Comparison mutation failed:', error);
-      
-      // Extract error message from various error formats
-      let errorMessage = 'An unknown error occurred';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        const comparisonError = error as ComparisonError;
-        errorMessage = typeof comparisonError.message === 'object' 
-          ? comparisonError.message.message 
-          : comparisonError.message || JSON.stringify(error);
-      }
 
-      // Update progress stages with error
+      const errorMessage = describeError(error);
+      const comparisonError = error as ComparisonError;
+
       setProgressStages(prevStages => {
         const newStages = prevStages.length > 0 ? prevStages : [{
           stage: 'comparison',
@@ -238,19 +291,26 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           progress: 0
         }];
 
-        return newStages.map(stage => 
-          stage.stage === currentStage 
-            ? { 
-                ...stage, 
-                error: true, 
+        return newStages.map(stage =>
+          stage.stage === currentStage
+            ? {
+                ...stage,
+                error: true,
                 message: errorMessage,
-                details: (error as ComparisonError).code ? `Error code: ${(error as ComparisonError).code}` : undefined
+                details: comparisonError?.code ? `Error code: ${comparisonError.code}` : undefined
               }
             : stage
         );
       });
 
-      // Show error toast or notification
+      setLastErrorMessage(errorMessage);
+
+      toast({
+        title: 'Extraction failed',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+
       if (window.Notification && Notification.permission === 'granted') {
         new Notification('Comparison Failed', {
           body: errorMessage,
@@ -263,11 +323,14 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   });
 
   const onSubmit = (data: ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
+    setLastErrorMessage(null)
     comparisonMutation.mutate(data);
   }
 
   const figmaUrl = watch('figmaUrl')
   const webUrl = watch('webUrl')
+  const isSubmitDisabled =
+    comparisonMutation.isPending || !figmaUrl?.trim() || !webUrl?.trim()
 
   // Reset progress when starting new comparison
   useEffect(() => {
@@ -319,6 +382,19 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
         document.body.removeChild(link);
       }
     }
+  }
+
+  const handleConfirmReset = () => {
+    reset()
+    setShowAdvanced(false)
+    setAuthType('none')
+    setProgressStages([])
+    setCurrentStage('')
+    setReportUrls({})
+    setReportOpenAttempts(0)
+    setFigmaUrlError(null)
+    comparisonMutation.reset()
+    setResetDialogOpen(false)
   }
 
   return (
@@ -534,6 +610,44 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           </motion.div>
         </div>
 
+        {/* Submit Section */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
+          <Button
+            type="button"
+            onClick={() => setResetDialogOpen(true)}
+            variant="outline"
+            disabled={comparisonMutation.isPending}
+            className="flex items-center space-x-2"
+          >
+            <XMarkIcon className="w-5 h-5" />
+            <span>Reset Form</span>
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={isSubmitDisabled}
+            className="flex items-center space-x-2 min-w-[200px]"
+          >
+            {comparisonMutation.isPending ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Extracting Data...</span>
+              </>
+            ) : (
+              <>
+                <PlayIcon className="w-5 h-5" />
+                <span>Extract Design & Web Data</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        {isSubmitDisabled && !comparisonMutation.isPending && (
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Enter both a Figma URL and a Web URL to enable extraction.
+          </p>
+        )}
+
         {/* Advanced Options */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -729,38 +843,6 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           )}
         </AnimatePresence>
 
-        {/* Submit Section */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
-          <Button
-            type="button"
-            onClick={() => reset()}
-            variant="outline"
-            disabled={comparisonMutation.isPending}
-            className="flex items-center space-x-2"
-          >
-            <XMarkIcon className="w-5 h-5" />
-            <span>Reset Form</span>
-          </Button>
-
-          <Button
-            type="submit"
-            disabled={comparisonMutation.isPending || !figmaUrl || !webUrl}
-            className="flex items-center space-x-2 min-w-[200px]"
-          >
-            {comparisonMutation.isPending ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Extracting Data...</span>
-              </>
-            ) : (
-              <>
-                <PlayIcon className="w-5 h-5" />
-                <span>Extract Design & Web Data</span>
-              </>
-            )}
-          </Button>
-        </div>
-
         {/* Final Status Messages */}
         <AnimatePresence>
           {comparisonMutation.isError && (
@@ -829,6 +911,25 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           )}
         </AnimatePresence>
       </form>
+
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset form?</DialogTitle>
+            <DialogDescription>
+              This will clear all entered URLs, authentication details, and progress.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmReset}>
+              Reset Form
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

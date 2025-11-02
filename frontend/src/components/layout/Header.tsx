@@ -11,6 +11,9 @@ interface HeaderProps {
 }
 
 export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps) {
+  const navigationLabel = sidebarOpen ? 'Collapse navigation sidebar' : 'Expand navigation sidebar'
+  const notificationsLabel = 'Notifications (coming soon)'
+
   return (
     <header className="page-header px-6 py-4 sticky top-0 z-50">
       <div className="flex items-center justify-between">
@@ -20,8 +23,11 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
             size="sm"
             onClick={onMenuClick}
             className={`p-2 ${sidebarOpen ? 'lg:hidden' : ''}`}
+            aria-label={navigationLabel}
+            title={navigationLabel}
           >
             <Bars3Icon className="w-5 h-5" />
+            <span className="sr-only">{navigationLabel}</span>
           </Button>
           
           <div>
@@ -37,9 +43,17 @@ export default function Header({ title, onMenuClick, sidebarOpen }: HeaderProps)
           
           <ThemeToggle />
           
-          <Button variant="ghost" size="sm" className="p-2 relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-2 relative"
+            aria-label={notificationsLabel}
+            title={notificationsLabel}
+            disabled
+          >
             <BellIcon className="w-5 h-5" />
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="sr-only">{notificationsLabel}</span>
+            <span className="absolute top-0 right-0 w-2 h-2 bg-muted-foreground/60 rounded-full"></span>
           </Button>
           
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">

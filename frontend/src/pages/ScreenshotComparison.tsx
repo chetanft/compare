@@ -7,10 +7,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { PAGE_CONTENT } from '../constants/content';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
 
 export default function ScreenshotComparison() {
   const [comparisonResult, setComparisonResult] = useState<ScreenshotComparisonResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleSuccess = (result: ScreenshotComparisonResult) => {
     setComparisonResult(result);
@@ -25,6 +34,7 @@ export default function ScreenshotComparison() {
   const handleReset = () => {
     setComparisonResult(null);
     setError(null);
+    setShowResetConfirm(false);
   };
 
   return (
@@ -73,13 +83,32 @@ export default function ScreenshotComparison() {
             <ScreenshotComparisonView result={comparisonResult} />
             
             <div className="text-center">
-              <Button onClick={handleReset} variant="outline">
+              <Button onClick={() => setShowResetConfirm(true)} variant="outline">
                 {PAGE_CONTENT.SCREENSHOT_COMPARISON.reset}
               </Button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Start a new comparison?</DialogTitle>
+            <DialogDescription>
+              This will clear the current comparison results and any error messages.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowResetConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleReset}>
+              Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

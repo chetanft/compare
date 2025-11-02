@@ -39,6 +39,42 @@ export default function ScreenshotComparisonForm({
     spacingAnalysis: true
   });
 
+  const describeComparisonError = (error: unknown): string => {
+    if (!error) return 'Comparison failed for an unknown reason.';
+
+    if (typeof error === 'string') return error;
+
+    if (error instanceof Error) {
+      if (/network/i.test(error.message)) {
+        return 'Unable to reach the comparison server. Check your network connection and server status.';
+      }
+      if (/timeout/i.test(error.message)) {
+        return 'The comparison timed out before finishing. Try again with smaller images or adjust timeout settings.';
+      }
+      return error.message;
+    }
+
+    const apiError = error as { message?: string; status?: number };
+
+    switch (apiError.status) {
+      case 400:
+        return 'The server rejected the uploaded files. Confirm both screenshots are valid JPG, PNG, or WebP images.';
+      case 401:
+      case 403:
+        return 'Authentication failed while processing the comparison. Update your credentials and try again.';
+      case 404:
+        return 'Comparison service endpoint was not found. Ensure the backend build is up to date.';
+      case 429:
+        return 'Too many comparison requests in a short time. Wait a moment and try again.';
+      case 500:
+        return 'The server encountered an error while analyzing screenshots. Check server logs for details.';
+      default:
+        break;
+    }
+
+    return apiError.message || 'Comparison failed due to an unexpected server response.';
+  };
+
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       const uploadResult = await uploadScreenshots(formData);
@@ -50,7 +86,8 @@ export default function ScreenshotComparisonForm({
     },
     onError: (error) => {
       console.error('Screenshot comparison failed:', error);
-      onError?.(error);
+      const friendlyMessage = describeComparisonError(error);
+      onError?.(new Error(friendlyMessage));
     }
   });
 
@@ -115,7 +152,8 @@ export default function ScreenshotComparisonForm({
     uploadMutation.mutate(formData);
   };
 
-  const canSubmit = figmaScreenshot && developedScreenshot && !uploadMutation.isPending;
+  const hasBothScreenshots = Boolean(figmaScreenshot && developedScreenshot);
+  const canSubmit = hasBothScreenshots && !uploadMutation.isPending;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -251,7 +289,7 @@ export default function ScreenshotComparisonForm({
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center space-y-2">
           <motion.button
             type="submit"
             disabled={!canSubmit}
@@ -267,6 +305,11 @@ export default function ScreenshotComparisonForm({
               {uploadMutation.isPending ? 'Comparing Screenshots...' : 'Start Comparison'}
             </span>
           </motion.button>
+          {!hasBothScreenshots && (
+            <p className="text-xs text-muted-foreground text-center">
+              Upload both Figma and developed screenshots to enable comparison.
+            </p>
+          )}
         </div>
 
         {/* Error Display */}

@@ -318,10 +318,10 @@ export default function Settings() {
   const tabs = [
     { id: 'general', name: 'General', icon: CogIcon },
     { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
-    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
-    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon }
+    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon, disabled: true, hint: 'Web scraping preferences are coming soon.' },
+    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon, disabled: true, hint: 'Visual comparison settings will be available soon.' },
+    { id: 'notifications', name: 'Notifications', icon: BellIcon, disabled: true, hint: 'Notification channels are not yet configurable.' },
+    { id: 'security', name: 'Security', icon: ShieldCheckIcon, disabled: true, hint: 'Security preferences are in development.' }
   ]
 
   if (isLoading) {
@@ -372,15 +372,31 @@ export default function Settings() {
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="section-standard">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            const nextTab = tabs.find(tab => tab.id === value)
+            if (nextTab?.disabled) {
+              return
+            }
+            setActiveTab(value)
+          }}
+          className="section-standard"
+        >
           <TabsList className="grid w-full grid-cols-6">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
-                <TabsTrigger 
-                  key={tab.id} 
+                <TabsTrigger
+                  key={tab.id}
                   value={tab.id}
-                  className="flex items-center space-x-2 text-xs"
+                  disabled={tab.disabled}
+                  aria-disabled={tab.disabled ? 'true' : undefined}
+                  title={tab.disabled ? tab.hint : undefined}
+                  className={cn(
+                    'flex items-center space-x-2 text-xs',
+                    tab.disabled && 'opacity-60 cursor-not-allowed pointer-events-none'
+                  )}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{tab.name}</span>

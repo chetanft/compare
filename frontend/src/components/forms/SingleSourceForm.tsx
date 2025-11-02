@@ -41,6 +41,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
   const [extractionType, setExtractionType] = useState<'figma' | 'web'>('figma');
   const [showAuth, setShowAuth] = useState(false);
   const [authType, setAuthType] = useState<'none' | 'credentials'>('none');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<SingleSourceRequest>({
     defaultValues: {
@@ -59,6 +60,44 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
       }
     }
   });
+
+  const describeRequestError = (error: unknown): string => {
+    if (!error) return 'Extraction failed for an unknown reason.';
+
+    if (typeof error === 'string') return error;
+
+    if (error instanceof Error) {
+      if (/network error/i.test(error.message)) {
+        return 'Unable to reach the extraction server. Ensure the backend on port 3847 is running.';
+      }
+      if (/timeout/i.test(error.message) || /timed out/i.test(error.message)) {
+        return 'The extraction request timed out. Try again after increasing the timeout in Settings.';
+      }
+      return error.message;
+    }
+
+    const apiError = error as { message?: string; status?: number; code?: string; details?: string };
+
+    switch (apiError.status) {
+      case 401:
+      case 403:
+        return 'Authentication failed. Verify your Figma token or provided web credentials.';
+      case 404:
+        return 'Requested endpoint not found. Update to the latest server build and retry.';
+      case 429:
+        return 'Too many extraction requests. Wait a few moments before retrying.';
+      case 500:
+        return 'The server encountered an error during extraction. Check server logs for details.';
+      default:
+        break;
+    }
+
+    if (apiError.message) {
+      return apiError.message;
+    }
+
+    return 'Extraction failed due to an unexpected server response.';
+  };
   
   const figmaMutation = useMutation({
     mutationFn: async (data: { figmaUrl: string, extractionMode: 'frame-only' | 'global-styles' | 'both' }) => {
@@ -77,6 +116,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
         actualColorsCount: data.colors?.length || 0,
         dataStructure: Object.keys(data || {})
       });
+      setErrorMessage(null);
       
       // Validate data before passing to parent
       if (!data || typeof data !== 'object') {
@@ -88,6 +128,7 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
           duration: 5000,
           isClosable: true,
         });
+        setErrorMessage('Received invalid data structure from server.');
         return;
       }
       
@@ -99,24 +140,12 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
     },
     onError: (error: any) => {
       console.error('Figma extraction failed:', error);
-      
-      // Check if there's a more detailed error message in the response
-      let errorMessage = 'Failed to extract Figma data';
-      
-      if (error.response) {
-        // If the error has a response object from Axios
-        if (error.response.data && error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      } else if (error.message) {
-        // If it's a standard Error object
-        errorMessage = error.message;
-      }
-      
-      // Show toast notification with error
+      const friendlyMessage = describeRequestError(error);
+      setErrorMessage(friendlyMessage);
+
       toast({
         title: 'Extraction Failed',
-        description: errorMessage,
+        description: friendlyMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -137,9 +166,21 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
       );
     },
     onSuccess: (data) => {
+      setErrorMessage(null);
       onWebSuccess?.(data);
     },
-    // Don't reset form to keep URLs visible after extraction
+    onError: (error: any) => {
+      console.error('Web extraction failed:', error);
+      const friendlyMessage = describeRequestError(error);
+      setErrorMessage(friendlyMessage);
+      toast({
+        title: 'Extraction Failed',
+        description: friendlyMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   });
   
   // Handle extraction type change
@@ -164,9 +205,11 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
     setExtractionType(type);
     setShowAuth(false);
     setAuthType('none');
+    setErrorMessage(null);
   };
   
   const onSubmit = (data: SingleSourceRequest) => {
+    setErrorMessage(null);
     if (extractionType === 'figma' && data.figmaUrl) {
       figmaMutation.mutate({ 
         figmaUrl: data.figmaUrl,
@@ -188,7 +231,6 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
   };
   
   const isLoading = figmaMutation.isPending || webMutation.isPending;
-  const error = figmaMutation.error || webMutation.error;
   
   return (
     <div className="w-full">
@@ -197,12 +239,11 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
         <p className="text-lg text-muted-foreground">{PAGE_CONTENT.SINGLE_SOURCE.description}</p>
       </div>
       
-      {error && (
+      {errorMessage && (
         <Alert variant="destructive" className="mb-6">
           <InformationCircleIcon className="h-4 w-4" />
           <AlertDescription>
-            <strong>Error: </strong>
-            {(error as Error).message || 'An error occurred during extraction'}
+            {errorMessage}
           </AlertDescription>
         </Alert>
       )}
