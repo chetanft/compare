@@ -1,5 +1,5 @@
 export const PORTS = {
-  SERVER: 3001,
+  SERVER: 3847,
   WEB_DEV: 5173,
   FIGMA_MCP: 3845,
   PREVIEW: 4173

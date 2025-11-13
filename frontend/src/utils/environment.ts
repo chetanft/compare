@@ -1,6 +1,5 @@
 // Environment configuration utilities
 import { DEFAULT_SERVER_PORT, getServerPort, getApiBaseUrl as getConfigApiBaseUrl, getWebSocketUrl as getConfigWebSocketUrl } from '../config/ports';
-import { defineConfig } from 'vite'
 
 // Safely access environment variables
 const getMode = (): string => {
@@ -40,26 +39,7 @@ export const isProduction = ENV.NODE_ENV === 'production' || import.meta.env.PRO
 
 // API URL detection with consistent port handling
 export function getApiBaseUrl(): string {
-  // Honour explicit override first
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-
-  // If running in browser, prefer same-origin when it already matches backend port
-  if (typeof window !== 'undefined' && window.location) {
-    const currentPort = window.location.port;
-
-    // When the frontend is served by the unified backend (port 3847)
-    if (!currentPort || Number(currentPort) === APP_SERVER_PORT) {
-      return window.location.origin;
-    }
-
-    // During Vite dev server (5173, etc.) always target the unified backend port
-    return `http://localhost:${APP_SERVER_PORT}`;
-  }
-
-  // SSR / tests fallback
-  return `http://localhost:${APP_SERVER_PORT}`;
+  return getConfigApiBaseUrl();
 }
 
 // WebSocket URL detection with consistent port handling

@@ -7,7 +7,7 @@ import fs from 'fs'
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
 
 // SINGLE SOURCE OF TRUTH: API port (validated by scripts/validate-ports.mjs)
-const API_PORT = Number(process.env.VITE_SERVER_PORT || 3001);
+const API_PORT = Number(process.env.VITE_SERVER_PORT || process.env.PORT || 3847);
 
 // printConfig function to log configuration
 function printConfig(config: any) {

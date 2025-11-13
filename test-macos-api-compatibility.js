@@ -4,6 +4,8 @@
  * Tests that macOS app has all required endpoints that frontend expects
  */
 
+import { CONFIGURED_PORTS } from './src/config/PORTS.js';
+
 const requiredEndpoints = [
   // Health and status
   { method: 'GET', path: '/api/health', description: 'Health check' },
@@ -107,7 +109,7 @@ async function testEndpoint(baseUrl, endpoint) {
 }
 
 async function validateApiCompatibility() {
-  const baseUrl = 'http://localhost:3007'; // macOS app port
+  const baseUrl = `http://localhost:${CONFIGURED_PORTS.SERVER}`;
   
   console.log('🔍 Validating API Compatibility between Web App and macOS App');
   console.log(`📡 Testing ${requiredEndpoints.length} endpoints on ${baseUrl}`);
@@ -146,13 +148,13 @@ async function validateApiCompatibility() {
 // Check if server is running first
 async function checkServerHealth() {
   try {
-    const response = await fetch('http://localhost:3007/api/health');
+    const response = await fetch(`http://localhost:${CONFIGURED_PORTS.SERVER}/api/health`);
     if (response.ok) {
       console.log('✅ macOS server is running');
       return true;
     }
   } catch (error) {
-    console.log('❌ macOS server is not running on port 3007');
+    console.log(`❌ macOS server is not running on port ${CONFIGURED_PORTS.SERVER}`);
     console.log('💡 Please start the macOS app first: npm run electron:dev');
     return false;
   }

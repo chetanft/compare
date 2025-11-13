@@ -15,7 +15,12 @@
     "build:frontend": "cd frontend && npm run build",
     "rebuild:electron": "npx @electron/rebuild",
     "clean:dist": "rm -rf dist/mac* dist/*.dmg* dist/builder-debug.yml dist/latest-mac.yml",
-    "build:mac": "npm run clean:dist && npm run build:frontend && npm run rebuild:electron && electron-builder --mac",
+    "build:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:mac:internal",
+    "build:mac:release": "npm run build:mac:internal",
+    "build:mac:internal": "npm run clean:dist && npm run build:frontend && npm run rebuild:electron && electron-builder --mac",
+    "postbuild:frontend": "node scripts/create-share-zips.js --web-only",
+    "postbuild:mac": "node scripts/create-share-zips.js --mac-only",
+    "bundle:share": "node scripts/create-share-zips.js",
     "dist": "npm run build:frontend && electron-builder --mac --publish=never",
     "dev:app": "./scripts/dev-app.sh",
     "dev:restart": "pkill -f 'Figma Comparison Tool' || true && npm run dev:app",
@@ -81,6 +86,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@electron/notarize": "^2.3.0",
     "@electron/rebuild": "^4.0.1",
     "@jest/globals": "^29.7.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
@@ -180,8 +186,12 @@
           "arm64"
         ]
       },
-      "identity": null
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "gatekeeperAssess": false
     },
+    "afterSign": "scripts/after-sign.js",
     "dmg": {
       "title": "Figma Comparison Tool",
       "contents": [

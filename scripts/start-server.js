@@ -6,6 +6,8 @@
  */
 
 import { spawn } from 'child_process';
+import net from 'net';
+import { PORTS } from '../src/config/PORTS.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -13,61 +15,118 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Use PORT environment variable or fallback to web app port
-const SERVER_PORT = process.env.PORT || 3001;
+const DEFAULT_PORT = String(PORTS.SERVER);
+const SERVER_PORT = process.env.PORT || DEFAULT_PORT;
 
 console.log('🚀 Starting Figma Comparison Tool Server...');
-console.log(`📡 Port: ${SERVER_PORT}`);
+console.log(`📡 Desired port: ${SERVER_PORT}`);
 console.log(`📁 Working Directory: ${process.cwd()}`);
 
-// Set environment variables
-process.env.PORT = SERVER_PORT;
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+function isPortInUse(port) {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host: '127.0.0.1' });
+    socket.setTimeout(250);
 
-// Start the server
-let serverPath;
-const packagedServerPath = path.join(__dirname, '..', 'app', 'server.js');
-const localServerPath = path.join(__dirname, '..', 'server.js');
+    const finalize = (inUse) => {
+      socket.destroy();
+      resolve(inUse);
+    };
 
-if (fs.existsSync(packagedServerPath)) {
-  serverPath = packagedServerPath;
-} else {
-  serverPath = localServerPath;
+    socket.once('connect', () => finalize(true));
+    socket.once('timeout', () => finalize(false));
+    socket.once('error', (error) => {
+      if (error && error.code === 'ECONNREFUSED') {
+        finalize(false);
+      } else {
+        finalize(false);
+      }
+    });
+  });
 }
 
-if (!fs.existsSync(serverPath)) {
-  console.error('❌ Server file not found:', serverPath);
-  process.exit(1);
-}
+function openBrowser(url) {
+  try {
+    let child;
+    if (process.platform === 'darwin') {
+      child = spawn('open', [url], { stdio: 'ignore', detached: true });
+    } else if (process.platform === 'win32') {
+      child = spawn('cmd', ['/c', 'start', '', url], { stdio: 'ignore', detached: true });
+    } else {
+      child = spawn('xdg-open', [url], { stdio: 'ignore', detached: true });
+    }
 
-const serverProcess = spawn('node', [serverPath], {
-  stdio: 'inherit',
-  env: process.env,
-  cwd: process.cwd()
-});
-
-serverProcess.on('error', (error) => {
-  console.error('❌ Failed to start server:', error.message);
-  process.exit(1);
-});
-
-serverProcess.on('exit', (code) => {
-  if (code !== 0) {
-    console.error(`❌ Server exited with code ${code}`);
-    process.exit(code);
+    if (child && typeof child.unref === 'function') {
+      child.unref();
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to open browser automatically:', error.message);
   }
-});
+}
 
-// Handle graceful shutdown
-process.on('SIGINT', () => {
-  console.log('\n🛑 Shutting down server...');
-  serverProcess.kill('SIGINT');
-});
+async function start() {
+  const portNumber = Number(SERVER_PORT);
+  const inUse = await isPortInUse(portNumber);
 
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Shutting down server...');
-  serverProcess.kill('SIGTERM');
-});
+  if (inUse) {
+    const url = `http://localhost:${SERVER_PORT}`;
+    console.log(`ℹ️ Detected existing server on port ${SERVER_PORT}. Reusing running instance.`);
+    console.log(`🔗 Opening ${url}`);
+    openBrowser(url);
+    return;
+  }
 
-console.log('✅ Server startup script initialized');
-console.log('💡 Press Ctrl+C to stop the server');
+  // Set environment variables for unified configuration
+  process.env.PORT = SERVER_PORT;
+  process.env.SERVER_PORT = SERVER_PORT;
+  process.env.VITE_SERVER_PORT = SERVER_PORT;
+  process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+
+  // Resolve server path (packaged vs local)
+  let serverPath;
+  const packagedServerPath = path.join(__dirname, '..', 'app', 'server.js');
+  const localServerPath = path.join(__dirname, '..', 'server.js');
+
+  serverPath = fs.existsSync(packagedServerPath) ? packagedServerPath : localServerPath;
+
+  if (!fs.existsSync(serverPath)) {
+    console.error('❌ Server file not found:', serverPath);
+    process.exit(1);
+  }
+
+  const serverProcess = spawn('node', [serverPath], {
+    stdio: 'inherit',
+    env: process.env,
+    cwd: process.cwd()
+  });
+
+  serverProcess.on('error', (error) => {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  });
+
+  serverProcess.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`❌ Server exited with code ${code}`);
+      process.exit(code);
+    }
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down server...');
+    serverProcess.kill('SIGINT');
+  });
+
+  process.on('SIGTERM', () => {
+    console.log('\n🛑 Shutting down server...');
+    serverProcess.kill('SIGTERM');
+  });
+
+  console.log('✅ Server startup script initialized');
+  console.log('💡 Press Ctrl+C to stop the server');
+}
+
+start().catch((error) => {
+  console.error('❌ Unexpected error during server startup:', error.message);
+  process.exit(1);
+});

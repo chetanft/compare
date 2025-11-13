@@ -107,8 +107,8 @@ export class ConfigService {
         endpoint: '/sse'
       },
       ports: {
-        server: 3007,
-        fallback: 3008
+        server: 3847,
+        fallback: 3848
       },
       createdAt: new Date().toISOString()
     };

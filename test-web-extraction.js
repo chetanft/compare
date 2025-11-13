@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { CONFIGURED_PORTS } from './src/config/PORTS.js';
+
+const BASE_URL = `http://localhost:${CONFIGURED_PORTS.SERVER}`;
 
 async function testWebExtraction() {
   try {
@@ -6,7 +9,7 @@ async function testWebExtraction() {
     
     // Test 1: Legacy endpoint should work
     console.log('\n1. Testing legacy /api/web/extract endpoint...');
-    const legacyResponse = await axios.post('http://localhost:3001/api/web/extract', {
+    const legacyResponse = await axios.post(`${BASE_URL}/api/web/extract`, {
       url: 'https://httpbin.org/html'
     });
     
@@ -27,7 +30,7 @@ async function testWebExtraction() {
     
     // Test 2: Web-only endpoint should work
     console.log('\n2. Testing /api/web-only/extract endpoint...');
-    const webOnlyResponse = await axios.post('http://localhost:3001/api/web-only/extract', {
+    const webOnlyResponse = await axios.post(`${BASE_URL}/api/web-only/extract`, {
       webUrl: 'https://httpbin.org/html'
     });
     

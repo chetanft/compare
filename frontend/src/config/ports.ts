@@ -3,14 +3,14 @@
  * This ensures consistent port usage across the frontend application
  */
 
-// Determine the unified server port (defaults to 3001 for both web + mac)
+// Determine the unified server port (defaults to 3847 for both web + mac)
 const resolveConfiguredPort = (): number => {
   const envPort = (typeof import.meta !== 'undefined' && import.meta.env)
     ? import.meta.env.VITE_SERVER_PORT
     : undefined;
 
   const parsed = envPort ? parseInt(envPort, 10) : NaN;
-  return Number.isFinite(parsed) ? parsed : 3001;
+  return Number.isFinite(parsed) ? parsed : 3847;
 };
 
 export const APP_SERVER_PORT = resolveConfiguredPort();
@@ -80,21 +80,26 @@ export function getServerPort(): number {
 
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
-  const env = import.meta.env;
-  
-  // Use explicit environment variable if set
-  if (env.VITE_API_URL) {
-    return env.VITE_API_URL;
+  if (typeof window !== 'undefined') {
+    if (window.location?.origin) {
+      return window.location.origin;
+    }
+
+    const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
+    if (runtimeApiUrl) {
+      return runtimeApiUrl;
+    }
   }
 
-  // In development with Vite dev server, use the explicit URL to the backend server
-  if (env.MODE === 'development') {
-    console.log(`Using API base URL: http://localhost:${getServerPort()}`);
-    return `http://localhost:${getServerPort()}`; // Use explicit URL to backend
+  const viteApiUrl = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env.VITE_API_URL
+    : undefined;
+
+  if (viteApiUrl) {
+    return viteApiUrl;
   }
 
-  // For production, use relative URL to work with Netlify functions
-  return '';  // Empty string will use the current origin
+  return `http://localhost:${APP_SERVER_PORT}`;
 }
 
 // Get WebSocket URL with the correct port

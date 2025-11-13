@@ -51,15 +51,21 @@ fi
 
 # Start the application
 echo "🌐 Starting the application..."
-echo "🔗 The app will open at: http://localhost:3007"
+echo "🔗 The app will open at: http://localhost:3847"
 echo "💡 To stop the app, press Ctrl+C in this window"
 echo
 
-# Kill any existing node processes on port 3007
-lsof -ti:3007 | xargs kill -9 2>/dev/null
+# Reuse existing server if already running
+if lsof -i:3847 -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "ℹ️ Detected existing server on port 3847. Reusing running instance."
+    open "http://localhost:3847"
+    echo "✅ Browser opened."
+    read -p "Press Enter to close this window..."
+    exit 0
+fi
 
 # Open browser after a delay
-(sleep 3 && open http://localhost:3007) &
+(sleep 3 && open http://localhost:3847) &
 
 # Start the server
 node server.js
