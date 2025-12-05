@@ -31,6 +31,7 @@ import rateLimit from 'express-rate-limit';
 import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.js';
 import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
 import { getOutputBaseDir } from '../../utils/outputPaths.js';
+import { getSupabaseClient } from '../../config/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -157,6 +158,20 @@ export async function startServer() {
     screenshotComparisonService = new ScreenshotComparisonService(config);
   } catch (error) {
     console.warn('⚠️ Screenshot comparison service initialization failed:', error.message);
+  }
+
+  // Initialize Supabase client (optional - graceful degradation if not configured)
+  let supabaseClient = null;
+  try {
+    supabaseClient = getSupabaseClient(false); // Use public client for server operations
+    if (supabaseClient) {
+      console.log('✅ Supabase client initialized');
+    } else {
+      console.log('ℹ️ Supabase not configured - features requiring database will use local storage');
+    }
+  } catch (error) {
+    console.warn('⚠️ Supabase initialization failed:', error.message);
+    console.warn('   Continuing without Supabase - features will use local storage');
   }
   
   // Configure enhanced middleware
