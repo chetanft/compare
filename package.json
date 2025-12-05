@@ -52,7 +52,7 @@
     "build:production": "node scripts/production-build.js",
     "deploy:check": "node scripts/production-build.js && npm run start:production",
     "start:production": "NODE_ENV=production node server.js",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node scripts/postinstall.cjs",
     "diagnose": "node scripts/quick-diagnose.cjs",
     "fix:frontend": "npm run build:frontend && npm run diagnose",
     "emergency:reset": "pkill -f \"PORT=3847\" || true && rm -rf frontend/dist && npm run build:frontend && npm start",
@@ -60,6 +60,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
+    "@supabase/supabase-js": "^2.45.0",
     "axios": "^1.11.0",
     "canvas": "^3.2.0",
     "compression": "^1.8.1",
@@ -88,6 +89,7 @@
   "devDependencies": {
     "@electron/notarize": "^2.3.0",
     "@electron/rebuild": "^4.0.1",
+    "@vercel/node": "^3.0.0",
     "@jest/globals": "^29.7.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",

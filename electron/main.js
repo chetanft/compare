@@ -10,12 +10,22 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import net from 'net';
 
-// Disable all security features via command line flags
-app.commandLine.appendSwitch('disable-web-security');
-app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
-app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('allow-running-insecure-content');
-app.commandLine.appendSwitch('ignore-certificate-errors');
+// Security configuration - only disable in development mode
+const isDevelopment = !app.isPackaged;
+
+if (isDevelopment) {
+  // Development mode: Allow insecure content for localhost development
+  console.log('⚠️ Development mode: Running with relaxed security');
+  app.commandLine.appendSwitch('disable-web-security');
+  app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
+  app.commandLine.appendSwitch('disable-site-isolation-trials');
+  app.commandLine.appendSwitch('allow-running-insecure-content');
+  app.commandLine.appendSwitch('ignore-certificate-errors');
+} else {
+  // Production mode: Enable security features
+  console.log('🔒 Production mode: Security features enabled');
+  app.commandLine.appendSwitch('enable-features', 'VizDisplayCompositor');
+}
 
 // Import server utilities
 import { ElectronServerControl } from './server-control.js';
@@ -67,10 +77,10 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true, // Required for contextBridge API
       enableRemoteModule: false,
-      webSecurity: false, // Disable CSP restrictions for local app
-      allowRunningInsecureContent: true, // Allow mixed content
-      experimentalFeatures: true, // Enable experimental features
-      sandbox: false, // Disable sandbox for full access
+      webSecurity: !isDevelopment, // Enable in production, disable in dev
+      allowRunningInsecureContent: isDevelopment, // Only in development
+      experimentalFeatures: isDevelopment, // Only in development
+      sandbox: !isDevelopment, // Enable sandbox in production
       preload: path.join(__dirname, 'preload.cjs')
     },
     icon: path.join(__dirname, '../assets/icon.png'), // Add app icon if available
@@ -114,7 +124,7 @@ function createWindow() {
 
     mainWindow.show();
     console.log('🎉 Figma Comparison Tool is ready!');
-    console.log('🔓 Web security disabled, CSP restrictions bypassed');
+    console.log(isDevelopment ? '🔓 Development mode: Relaxed security' : '🔒 Production mode: Full security enabled');
 
     // Always open dev tools to see console output
     mainWindow.webContents.openDevTools();
