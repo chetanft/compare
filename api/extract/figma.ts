@@ -1,76 +1,78 @@
 /**
- * Figma Extraction API Endpoint
- * Vercel Serverless Function
+ * Figma Extraction API Endpoint - Edge Runtime
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { corsResponse, getEnv, jsonResponse, methodNotAllowed, parseJsonBody } from '../../vercel/edge-helpers';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // CORS preflight
+export const config = {
+    runtime: 'edge'
+};
+
+export default async function handler(req: Request): Promise<Response> {
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        return corsResponse();
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return methodNotAllowed(['POST']);
     }
 
     try {
-        const { figmaUrl, nodeId } = req.body;
-
-        if (!figmaUrl) {
-            return res.status(400).json({ error: 'figmaUrl is required' });
+        const body = await parseJsonBody<{ figmaUrl?: string; nodeId?: string }>(req);
+        if (!body?.figmaUrl) {
+            return jsonResponse({ error: 'figmaUrl is required' }, 400);
         }
 
-        // Extract file key and node from URL
+        const { figmaUrl, nodeId } = body;
         const urlMatch = figmaUrl.match(/figma\.com\/(file|design)\/([a-zA-Z0-9]+)/);
         if (!urlMatch) {
-            return res.status(400).json({ error: 'Invalid Figma URL format' });
+            return jsonResponse({ error: 'Invalid Figma URL format' }, 400);
         }
 
         const fileKey = urlMatch[2];
-        const figmaToken = process.env.FIGMA_ACCESS_TOKEN;
-
+        const figmaToken = getEnv('FIGMA_ACCESS_TOKEN');
         if (!figmaToken) {
-            return res.status(500).json({ error: 'Figma API token not configured' });
+            return jsonResponse({ error: 'Figma API token not configured' }, 500);
         }
 
-        // Fetch from Figma API
         const figmaApiUrl = nodeId
             ? `https://api.figma.com/v1/files/${fileKey}/nodes?ids=${nodeId}`
             : `https://api.figma.com/v1/files/${fileKey}`;
 
         const response = await fetch(figmaApiUrl, {
             headers: {
-                'X-Figma-Token': figmaToken,
-            },
+                'X-Figma-Token': figmaToken
+            }
         });
 
         if (!response.ok) {
-            const error = await response.text();
-            return res.status(response.status).json({
-                error: 'Figma API error',
-                details: error
-            });
+            const errorText = await response.text();
+            return jsonResponse(
+                {
+                    error: 'Figma API error',
+                    details: errorText
+                },
+                response.status
+            );
         }
 
         const figmaData = await response.json();
-
-        // Transform to comparison format
         const extracted = transformFigmaData(figmaData, nodeId);
 
-        return res.status(200).json({
+        return jsonResponse({
             success: true,
             data: extracted,
-            extractedAt: new Date().toISOString(),
+            extractedAt: new Date().toISOString()
         });
-
     } catch (error) {
         console.error('Figma extraction error:', error);
-        return res.status(500).json({
-            error: 'Extraction failed',
-            message: error instanceof Error ? error.message : 'Unknown error'
-        });
+        return jsonResponse(
+            {
+                error: 'Extraction failed',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            },
+            500
+        );
     }
 }
 

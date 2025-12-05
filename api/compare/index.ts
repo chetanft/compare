@@ -1,44 +1,51 @@
 /**
- * Comparison API Endpoint
- * Vercel Serverless Function
+ * Comparison API Endpoint - Edge Runtime
  */
 
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { corsResponse, jsonResponse, methodNotAllowed, parseJsonBody } from '../../vercel/edge-helpers';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // CORS preflight
+export const config = {
+    runtime: 'edge'
+};
+
+export default async function handler(req: Request): Promise<Response> {
     if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+        return corsResponse();
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+        return methodNotAllowed(['POST']);
     }
 
     try {
-        const { figmaData, webData, options = {} } = req.body;
+        const body = await parseJsonBody<{ figmaData?: any; webData?: any; options?: any }>(req);
 
-        if (!figmaData || !webData) {
-            return res.status(400).json({
-                error: 'Both figmaData and webData are required'
-            });
+        if (!body || !body.figmaData || !body.webData) {
+            return jsonResponse(
+                {
+                    error: 'Both figmaData and webData are required'
+                },
+                400
+            );
         }
 
-        // Perform comparison
+        const { figmaData, webData, options = {} } = body;
         const result = compareData(figmaData, webData, options);
 
-        return res.status(200).json({
+        return jsonResponse({
             success: true,
             ...result,
-            comparedAt: new Date().toISOString(),
+            comparedAt: new Date().toISOString()
         });
-
     } catch (error) {
         console.error('Comparison error:', error);
-        return res.status(500).json({
-            error: 'Comparison failed',
-            message: error instanceof Error ? error.message : 'Unknown error'
-        });
+        return jsonResponse(
+            {
+                error: 'Comparison failed',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            },
+            500
+        );
     }
 }
 
