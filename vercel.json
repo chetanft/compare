@@ -15,12 +15,6 @@
             "destination": "/index.html"
         }
     ],
-    "env": {
-        "FIGMA_ACCESS_TOKEN": "@figma_access_token",
-        "SUPABASE_URL": "@supabase_url",
-        "SUPABASE_ANON_KEY": "@supabase_anon_key",
-        "SUPABASE_SERVICE_KEY": "@supabase_service_key"
-    },
     "headers": [
         {
             "source": "/api/(.*)",
