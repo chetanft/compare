@@ -138,7 +138,7 @@ export function NoReportsEmpty({ onCreateNew }: { onCreateNew?: () => void }) {
       illustration="reports"
       title="No comparison reports yet"
       description="Start by creating your first Figma vs Web comparison. Reports will appear here once you've run some comparisons."
-      actionLabel="Create New Comparison"
+      actionLabel="Compare"
       onAction={onCreateNew || (() => navigate('/new-comparison'))}
     />
   )
@@ -152,7 +152,7 @@ export function NoAnalyticsEmpty({ onCreateNew }: { onCreateNew?: () => void }) 
       illustration="analytics"
       title="No analytics data available"
       description="Analytics will appear here once you've run some comparisons. Create your first comparison to start seeing trends and insights."
-      actionLabel="Create New Comparison"
+      actionLabel="Compare"
       onAction={onCreateNew || (() => navigate('/new-comparison'))}
     />
   )
@@ -166,7 +166,7 @@ export function NoInsightsEmpty({ onCreateNew }: { onCreateNew?: () => void }) {
       illustration="insights"
       title="No AI insights available"
       description="AI-powered insights and recommendations will appear here after you've completed some comparisons. Our AI analyzes your results to provide actionable feedback."
-      actionLabel="Create New Comparison"
+      actionLabel="Compare"
       onAction={onCreateNew || (() => navigate('/new-comparison'))}
     />
   )
@@ -182,7 +182,7 @@ export function FilteredResultsEmpty({ onClearFilters }: { onClearFilters?: () =
       description="No reports match your current filters. Try adjusting your search terms or filter criteria."
       actionLabel="Clear Filters"
       onAction={onClearFilters}
-      secondaryActionLabel="Create New Comparison"
+      secondaryActionLabel="Compare"
       onSecondaryAction={() => navigate('/new-comparison')}
     />
   )

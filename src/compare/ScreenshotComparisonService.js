@@ -11,13 +11,14 @@ import { promises as fsPromises } from 'fs';
  * Handles uploaded screenshot comparison with detailed discrepancy analysis
  */
 export class ScreenshotComparisonService {
-  constructor(config) {
+  constructor(config, storageProvider = null) {
     this.config = config;
     this.visualComparison = new EnhancedVisualComparison(config);
     this.discrepancyAnalyzer = new DesignDiscrepancyAnalyzer(config);
     this.comparisonAnalyzer = new ComparisonAnalyzer();
     this.uploadsDir = path.join(process.cwd(), 'output/screenshots/uploads');
     this.comparisonsDir = path.join(process.cwd(), 'output/screenshots/comparisons');
+    this.storageProvider = storageProvider; // Optional StorageProvider for SaaS mode
   }
 
   /**

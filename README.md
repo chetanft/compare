@@ -25,6 +25,12 @@ The project follows a modular architecture:
 - `src/comparison/` - Comparison engine
 - `src/reporting/` - Report generation
 - `src/mcp/` - Figma MCP integration
+- `src/database/` - Unified database layer
+  - `adapters/` - Database adapters (SQLite, Supabase)
+  - `repositories/` - Data access layer
+  - `migrations/` - Schema migration system
+- `src/services/` - Business logic layer
+- `src/storage/` - Storage abstraction (filesystem, Supabase Storage)
 
 ## API Endpoints
 
@@ -52,10 +58,27 @@ The project follows a modular architecture:
 npm install
 ```
 
-3. Create a `.env` file with the following variables:
+3. Create a `.env` file (copy from `env.example`):
 
+```bash
+cp env.example .env
 ```
-FIGMA_API_KEY=your_figma_api_key
+
+Configure environment variables:
+- `FIGMA_API_KEY` - Your Figma Personal Access Token
+- `DATABASE_URL` - SQLite database path (default: `file:./data/app.db`) for local mode
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` - For SaaS mode (optional)
+
+4. Initialize database (runs automatically on first start):
+
+```bash
+npm run db:migrate
+```
+
+5. Migrate existing file-based data (if upgrading):
+
+```bash
+npm run db:migrate-data
 ```
 
 ### Usage

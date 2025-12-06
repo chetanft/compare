@@ -103,7 +103,7 @@ export default function ServerControlButton({
         icon: StopIcon,
         text: 'Stop Server',
         variant: 'secondary' as const,
-        disabled: !managed,
+        disabled: false, // Allow stopping even if externally managed - API will handle it
       };
     }
 
@@ -336,7 +336,7 @@ export default function ServerControlButton({
               </TooltipTrigger>
               {!managed && isServerRunning && (
                 <TooltipContent>
-                  <p className="text-xs">Cannot stop externally managed server</p>
+                  <p className="text-xs">Server started externally - stopping may require manual intervention</p>
                 </TooltipContent>
               )}
             </Tooltip>

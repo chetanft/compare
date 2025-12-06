@@ -149,7 +149,7 @@ export class CredentialManager {
     /**
      * Prepare credentials for Supabase storage
      * Uses Supabase Vault for password storage
-     * @param {Object} credentials - { name, url, username, password }
+     * @param {Object} credentials - { name, url, loginUrl, username, password, notes }
      * @param {Object} supabase - Supabase client
      * @returns {Object} Prepared record for storage
      */
@@ -169,6 +169,7 @@ export class CredentialManager {
             return {
                 name: credentials.name,
                 url: credentials.url,
+                loginUrl: credentials.loginUrl,
                 username_encrypted: usernameEncrypted,
                 password_vault_id: `encrypted:${encrypt(credentials.password, this.encryptionKey)}`
             };
@@ -177,6 +178,7 @@ export class CredentialManager {
         return {
             name: credentials.name,
             url: credentials.url,
+            loginUrl: credentials.loginUrl,
             username_encrypted: usernameEncrypted,
             password_vault_id: vaultData.id
         };
@@ -215,6 +217,7 @@ export class CredentialManager {
         return {
             name: record.name,
             url: record.url,
+            loginUrl: record.login_url,
             username,
             password
         };

@@ -16,6 +16,7 @@ import UnifiedWebExtractor from '../../web/UnifiedWebExtractor.js';
 import ComparisonEngine from '../../compare/comparisonEngine.js';
 import { ScreenshotComparisonService } from '../../compare/ScreenshotComparisonService.js';
 import { loadConfig, getFigmaApiKey } from '../../config/index.js';
+import { getMCPClient, getMCPProvider } from '../../config/mcp-config.js';
 import { logger } from '../../utils/logger.js';
 import { performanceMonitor } from '../../monitoring/performanceMonitor.js';
 import { 
@@ -32,6 +33,7 @@ import { getBrowserPool, shutdownBrowserPool } from '../../browser/BrowserPool.j
 import { getResourceManager, shutdownResourceManager } from '../../utils/ResourceManager.js';
 import { getOutputBaseDir } from '../../utils/outputPaths.js';
 import { getSupabaseClient } from '../../config/supabase.js';
+import { initDatabase } from '../../database/init.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -84,6 +86,9 @@ export async function startServer() {
     config = legacyConfig.config;
   }
   
+  const figmaConnectionMode = getMCPProvider();
+  const isApiOnlyFigma = figmaConnectionMode === 'api';
+  
   // Create Express app and HTTP server
   const app = express();
   const httpServer = createServer(app);
@@ -104,7 +109,13 @@ export async function startServer() {
       console.log('✅ Enhanced service initialization successful');
       
       // Get services from enhanced service manager
-      figmaClient = serviceManager.getService('mcpClient');
+      if (!isApiOnlyFigma) {
+        try {
+          figmaClient = await getMCPClient();
+        } catch (mcpError) {
+          figmaClient = serviceManager.getService('mcpClient');
+        }
+      }
       comparisonEngine = serviceManager.getService('comparisonEngine');
       browserPool = serviceManager.getService('browserPool');
       
@@ -123,7 +134,19 @@ export async function startServer() {
     console.warn('⚠️ Enhanced service initialization failed, using legacy mode:', error.message);
     
     // Fallback to legacy initialization (preserve existing functionality)
-    figmaClient = new FigmaMCPClient();
+    try {
+    if (!isApiOnlyFigma) {
+      figmaClient = await getMCPClient();
+    }
+  } catch (mcpError) {
+    if (!isApiOnlyFigma && figmaConnectionMode === 'desktop') {
+      figmaClient = new FigmaMCPClient({
+        baseUrl: process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp'
+      });
+    } else if (!isApiOnlyFigma) {
+      throw mcpError;
+    }
+  }
     comparisonEngine = new ComparisonEngine();
     browserPool = getBrowserPool();
     unifiedWebExtractor = new UnifiedWebExtractor();
@@ -150,12 +173,15 @@ export async function startServer() {
   };
   
   // Global MCP connection status
-  let mcpConnected = false;
+  let mcpConnected = isApiOnlyFigma ? null : false;
   
   // Initialize Screenshot Comparison Service
   let screenshotComparisonService;
   try {
-    screenshotComparisonService = new ScreenshotComparisonService(config);
+    // Get storage provider for screenshot service
+    const { getStorageProvider } = await import('../../config/storage-config.js');
+    const storage = getStorageProvider(null); // Screenshots don't need userId for local mode
+    screenshotComparisonService = new ScreenshotComparisonService(config, storage);
   } catch (error) {
     console.warn('⚠️ Screenshot comparison service initialization failed:', error.message);
   }
@@ -172,6 +198,16 @@ export async function startServer() {
   } catch (error) {
     console.warn('⚠️ Supabase initialization failed:', error.message);
     console.warn('   Continuing without Supabase - features will use local storage');
+  }
+
+  // Initialize database and services
+  let dbServices = null;
+  try {
+    dbServices = await initDatabase({ userId: null }); // Will be set per-request if user authenticated
+    console.log('✅ Database and services initialized');
+  } catch (error) {
+    console.warn('⚠️ Database initialization failed:', error.message);
+    console.warn('   Continuing without database - some features may be limited');
   }
   
   // Configure enhanced middleware
@@ -196,6 +232,15 @@ export async function startServer() {
 
   // Request logging
   app.use(requestLogger);
+  
+  // Authentication middleware (extracts user if present, but doesn't require it)
+  try {
+    const { extractUser } = await import('../../server/auth-middleware.js');
+    app.use(extractUser);
+    console.log('✅ Auth middleware registered');
+  } catch (error) {
+    console.warn('⚠️ Failed to load auth middleware:', error.message);
+  }
   
   // Response formatting
   app.use(responseFormatter);
@@ -241,6 +286,78 @@ export async function startServer() {
     console.warn('⚠️ Failed to load MCP routes:', error.message);
   }
 
+  /**
+   * MCP Proxy endpoint for remote MCP calls
+   * Prevents tokens from reaching the browser
+   */
+  app.post('/api/mcp/proxy', healthLimiter, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required for remote MCP'
+        });
+      }
+      
+      const { method, params } = req.body;
+      
+      if (!method) {
+        return res.status(400).json({
+          success: false,
+          error: 'Method is required'
+        });
+      }
+      
+      if (isApiOnlyFigma) {
+        return res.status(400).json({
+          success: false,
+          error: 'MCP is disabled in API-only mode.'
+        });
+      }
+
+      // Get MCP client with user's token (force remote provider)
+      const mcpClient = await getMCPClient({
+        userId: req.user.id,
+        mode: 'figma'
+      });
+      
+      // Ensure connected
+      if (!mcpClient.initialized) {
+        await mcpClient.connect();
+      }
+      
+      // Call the MCP method
+      let result;
+      if (method === 'tools/list') {
+        result = await mcpClient.listTools();
+      } else if (method === 'tools/call') {
+        if (!params?.name) {
+          throw new Error('Tool name is required');
+        }
+        result = await mcpClient.callTool(params.name, params.arguments || {});
+      } else {
+        // Generic request
+        result = await mcpClient.sendRequest({
+          jsonrpc: "2.0",
+          id: Date.now(),
+          method,
+          params: params || {}
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      logger.error('MCP proxy error', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
   // Color Analytics Routes
   try {
     const colorAnalyticsRoutes = await import('../../routes/color-analytics-routes.js');
@@ -280,13 +397,14 @@ export async function startServer() {
   const stylesPath = path.join(__dirname, '../../reporting/styles');
   app.use('/styles', express.static(stylesPath));
   
-  // Initialize MCP connection on startup
-  figmaClient.connect().then(connected => {
-    mcpConnected = connected;
-    if (connected) {
-    } else {
-    }
-  });
+  // Initialize MCP connection on startup (if enabled)
+  if (figmaClient) {
+    figmaClient.connect().then(connected => {
+      mcpConnected = connected;
+    }).catch(error => {
+      console.warn('⚠️ MCP connection failed:', error.message);
+    });
+  }
 
   // API Routes - Enhanced health endpoint with comprehensive monitoring
   app.get('/api/health', (req, res) => {
@@ -302,7 +420,11 @@ export async function startServer() {
       
       res.json({
         status: 'ok', 
-        mcp: mcpConnected,
+        mcp: {
+          enabled: !isApiOnlyFigma,
+          connected: !!mcpConnected,
+          mode: figmaConnectionMode
+        },
         webSocket: {
           connected: webSocketManager.getActiveConnectionsCount() > 0,
           activeConnections: webSocketManager.getActiveConnectionsCount(),
@@ -425,8 +547,9 @@ export async function startServer() {
   app.get('/api/mcp/status', async (req, res) => {
     try {
       let mcpStatus = {
-        available: false,
-        connected: mcpConnected,
+        available: !isApiOnlyFigma && !!figmaClient,
+        connected: !!mcpConnected,
+        mode: figmaConnectionMode,
         error: null
       };
 
@@ -438,6 +561,8 @@ export async function startServer() {
         } catch (error) {
           mcpStatus.error = error.message;
         }
+      } else if (isApiOnlyFigma) {
+        mcpStatus.error = 'MCP disabled (using Figma API)';
       }
 
       res.json(mcpStatus);
@@ -518,13 +643,34 @@ export async function startServer() {
    */
   app.get('/api/reports/list', async (req, res) => {
     try {
-      // Import the reports data adapter
-      const { default: ReportsDataAdapter } = await import('../../services/reports/ReportsDataAdapter.js');
-      const { getReportsDir } = await import('../../utils/outputPaths.js');
-      const reportsPath = getReportsDir();
+      // Use ReportService if available, otherwise fall back to StorageProvider
+      let reports = [];
+      if (dbServices) {
+        try {
+          reports = await dbServices.reports.listReports({
+            userId: req.user?.id || null,
+            format: req.query.format || null,
+            comparisonId: req.query.comparisonId || null
+          });
+        } catch (serviceError) {
+          console.warn('⚠️ ReportService failed, falling back to StorageProvider:', serviceError.message);
+          // Fall through to StorageProvider
+        }
+      }
       
-      const adapter = new ReportsDataAdapter(reportsPath);
-      const reports = await adapter.getAllReports();
+      // Fallback to StorageProvider
+      if (reports.length === 0 && !dbServices) {
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider(req.user?.id);
+        
+        const filters = {
+          userId: req.user?.id,
+          format: req.query.format,
+          comparisonId: req.query.comparisonId
+        };
+        
+        reports = await storage.listReports(filters);
+      }
 
       res.json({
         success: true,
@@ -580,6 +726,736 @@ export async function startServer() {
         success: false,
         error: 'Failed to delete report',
         message: error.message
+      });
+    }
+  });
+
+  /**
+   * Auth endpoints
+   */
+  app.get('/api/auth/me', healthLimiter, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.json({
+          success: false,
+          authenticated: false,
+          user: null
+        });
+      }
+      
+      res.json({
+        success: true,
+        authenticated: true,
+        user: {
+          id: req.user.id,
+          email: req.user.email,
+          createdAt: req.user.created_at
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  /**
+   * Design Systems endpoints
+   */
+  app.get('/api/design-systems', healthLimiter, async (req, res) => {
+    try {
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      const filters = {
+        userId: req.user?.id,
+        isGlobal: req.query.isGlobal === 'true' ? true : req.query.isGlobal === 'false' ? false : undefined
+      };
+      
+      const systems = await storage.listDesignSystems(filters);
+      
+      res.json({
+        success: true,
+        data: systems
+      });
+    } catch (error) {
+      logger.error('Failed to list design systems', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/design-systems', healthLimiter, async (req, res) => {
+    try {
+      // Allow local storage mode (no auth required)
+      // Only require auth for global systems or Supabase mode
+      if (req.body.isGlobal && !req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required for global design systems'
+        });
+      }
+      
+      // Validate required fields
+      if (!req.body.name || !req.body.name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Design system name is required'
+        });
+      }
+      
+      // Validate tokens if provided
+      let tokens = {};
+      if (req.body.tokens) {
+        if (typeof req.body.tokens === 'string') {
+          try {
+            tokens = JSON.parse(req.body.tokens);
+          } catch (parseError) {
+            return res.status(400).json({
+              success: false,
+              error: `Invalid JSON in tokens: ${parseError.message}`
+            });
+          }
+        } else if (typeof req.body.tokens === 'object') {
+          tokens = req.body.tokens;
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: 'Tokens must be a valid JSON object'
+          });
+        }
+      }
+      
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      if (!storage) {
+        throw new Error('Storage provider not available');
+      }
+      
+      const systemData = {
+        name: req.body.name.trim(),
+        slug: req.body.slug?.trim(),
+        tokens,
+        cssUrl: req.body.cssUrl,
+        cssText: req.body.cssText,
+        figmaFileKey: req.body.figmaFileKey,
+        figmaNodeId: req.body.figmaNodeId,
+        isGlobal: req.body.isGlobal || false
+      };
+      
+      const saved = await storage.saveDesignSystem(systemData);
+      
+      res.json({
+        success: true,
+        data: saved
+      });
+    } catch (error) {
+      logger.error('Failed to create design system', { error: error.message, stack: error.stack });
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create design system'
+      });
+    }
+  });
+
+  app.get('/api/design-systems/:id', healthLimiter, async (req, res) => {
+    try {
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      const system = await storage.getDesignSystem(req.params.id);
+      
+      res.json({
+        success: true,
+        data: system
+      });
+    } catch (error) {
+      logger.error('Failed to get design system', { error: error.message });
+      res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.put('/api/design-systems/:id', healthLimiter, async (req, res) => {
+    try {
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      // Get existing system to preserve ID
+      const existing = await storage.getDesignSystem(req.params.id);
+      
+      // Check if trying to make global without auth
+      if (req.body.isGlobal && !req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required for global design systems'
+        });
+      }
+      
+      const systemData = {
+        id: existing.id,
+        name: req.body.name ?? existing.name,
+        slug: req.body.slug ?? existing.slug,
+        tokens: req.body.tokens ?? existing.tokens,
+        cssUrl: req.body.cssUrl ?? existing.cssUrl,
+        cssText: req.body.cssText ?? existing.cssText,
+        figmaFileKey: req.body.figmaFileKey ?? existing.figmaFileKey,
+        figmaNodeId: req.body.figmaNodeId ?? existing.figmaNodeId,
+        isGlobal: req.body.isGlobal ?? existing.isGlobal
+      };
+      
+      const updated = await storage.saveDesignSystem(systemData);
+      
+      res.json({
+        success: true,
+        data: updated
+      });
+    } catch (error) {
+      logger.error('Failed to update design system', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.delete('/api/design-systems/:id', healthLimiter, async (req, res) => {
+    try {
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      const deleted = await storage.deleteDesignSystem(req.params.id);
+      
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          error: 'Design system not found'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'Design system deleted'
+      });
+    } catch (error) {
+      logger.error('Failed to delete design system', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.get('/api/design-systems/:id/css', healthLimiter, async (req, res) => {
+    try {
+      const { getStorageProvider } = await import('../../config/storage-config.js');
+      // Use user ID if authenticated, otherwise use local storage
+      const storage = getStorageProvider(req.user?.id || null);
+      
+      const css = await storage.getDesignSystemCSS(req.params.id);
+      
+      if (!css) {
+        return res.status(404).json({
+          success: false,
+          error: 'CSS not found for this design system'
+        });
+      }
+      
+      // If it's a URL, redirect; otherwise return CSS text
+      if (css.startsWith('http')) {
+        return res.redirect(css);
+      }
+      
+      res.setHeader('Content-Type', 'text/css');
+      res.send(css);
+    } catch (error) {
+      logger.error('Failed to get design system CSS', { error: error.message });
+      res.status(404).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  /**
+   * Credentials endpoints
+   */
+  app.get('/api/credentials', healthLimiter, async (req, res) => {
+    try {
+      // Support both Supabase and local storage
+      if (supabaseClient && req.user) {
+        // Use Supabase storage
+        const { data: credentials, error } = await supabaseClient
+          .from('saved_credentials')
+          .select('id, name, url, login_url, notes, last_used_at, created_at, updated_at')
+          .eq('user_id', req.user.id)
+          .order('last_used_at', { ascending: false, nullsFirst: false });
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        // Map login_url to loginUrl for frontend consistency
+        const mappedCredentials = (credentials || []).map(cred => ({
+          ...cred,
+          loginUrl: cred.login_url
+        }));
+        
+        return res.json({
+          success: true,
+          data: mappedCredentials
+        });
+      } else {
+        // Use local storage
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider();
+        
+        // Check if storage is local mode
+        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
+        if (storageMode === 'local') {
+          const credentials = await storage.listCredentials();
+          return res.json({
+            success: true,
+            data: credentials || []
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required for Supabase storage'
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to list credentials', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/credentials', healthLimiter, async (req, res) => {
+    try {
+      const { name, url, loginUrl, username, password, notes } = req.body;
+      
+      // Validate required fields
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Credential name is required'
+        });
+      }
+      if (!url || !url.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Credential URL is required'
+        });
+      }
+      if (!username || !username.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username is required'
+        });
+      }
+      if (!password || !password.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Password is required'
+        });
+      }
+      
+      // Support both Supabase and local storage
+      if (supabaseClient && req.user) {
+        // Use Supabase storage
+        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
+        const credentialManager = new CredentialManager();
+        
+        // Prepare credentials for storage
+        const prepared = await credentialManager.prepareForStorage(
+          { name, url, loginUrl, username, password, notes },
+          supabaseClient
+        );
+        
+        // Save to database
+        const { data: credential, error } = await supabaseClient
+          .from('saved_credentials')
+          .insert({
+            user_id: req.user.id,
+            name: prepared.name,
+            url: prepared.url,
+            login_url: loginUrl || null,
+            username_encrypted: prepared.username_encrypted,
+            password_vault_id: prepared.password_vault_id,
+            notes: notes || null
+          })
+          .select()
+          .single();
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        return res.json({
+          success: true,
+          data: {
+            id: credential.id,
+            name: credential.name,
+            url: credential.url,
+            loginUrl: credential.login_url,
+            notes: credential.notes,
+            last_used_at: credential.last_used_at,
+            created_at: credential.created_at,
+            updated_at: credential.updated_at
+          }
+        });
+      } else {
+        // Use local storage
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider();
+        
+        // Check if storage is local mode
+        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
+        if (storageMode === 'local') {
+          if (!storage) {
+            throw new Error('Storage provider not available');
+          }
+          const saved = await storage.saveCredential(
+            { 
+              name: name.trim(), 
+              url: url.trim(), 
+              loginUrl: loginUrl?.trim(), 
+              username: username.trim(), 
+              password: password.trim(), 
+              notes: notes?.trim() 
+            },
+            {}
+          );
+          return res.json({
+            success: true,
+            data: saved
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required for Supabase storage'
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to create credential', { error: error.message, stack: error.stack });
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create credential'
+      });
+    }
+  });
+
+  app.put('/api/credentials/:id', healthLimiter, async (req, res) => {
+    try {
+      const credentialId = req.params.id;
+      const { name, url, loginUrl, username, password, notes } = req.body;
+      
+      // Validate required fields if provided
+      if (name !== undefined && (!name || !name.trim())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Credential name cannot be empty'
+        });
+      }
+      if (url !== undefined && (!url || !url.trim())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Credential URL cannot be empty'
+        });
+      }
+      
+      // Support both Supabase and local storage
+      if (supabaseClient && req.user) {
+        // Use Supabase storage
+        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
+        const credentialManager = new CredentialManager();
+        
+        // Get existing credential
+        const { data: existing, error: fetchError } = await supabaseClient
+          .from('saved_credentials')
+          .select('*')
+          .eq('id', credentialId)
+          .eq('user_id', req.user.id)
+          .single();
+        
+        if (fetchError || !existing) {
+          return res.status(404).json({
+            success: false,
+            error: 'Credential not found'
+          });
+        }
+        
+        // Prepare updated credentials
+        let prepared = {};
+        if (username || password) {
+          // Decrypt existing to get full data
+          const decrypted = await credentialManager.retrieveFromStorage(existing, supabaseClient);
+          prepared = await credentialManager.prepareForStorage(
+            {
+              name: name || decrypted.name,
+              url: url || decrypted.url,
+              loginUrl: loginUrl !== undefined ? loginUrl : (existing.login_url || decrypted.loginUrl),
+              username: username || decrypted.username,
+              password: password || decrypted.password,
+              notes: notes !== undefined ? notes : decrypted.notes
+            },
+            supabaseClient
+          );
+        } else {
+          // Only update non-sensitive fields
+          prepared = {
+            name: name || existing.name,
+            url: url || existing.url,
+            username_encrypted: existing.username_encrypted,
+            password_vault_id: existing.password_vault_id
+          };
+        }
+        
+        // Update in database
+        const updateData = {
+          name: prepared.name,
+          url: prepared.url,
+          username_encrypted: prepared.username_encrypted || existing.username_encrypted,
+          password_vault_id: prepared.password_vault_id || existing.password_vault_id,
+          notes: notes !== undefined ? notes : existing.notes,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Include loginUrl if provided or if updating credentials
+        if (loginUrl !== undefined) {
+          updateData.login_url = loginUrl || null;
+        } else if (prepared.loginUrl !== undefined) {
+          updateData.login_url = prepared.loginUrl || null;
+        }
+        
+        const { data: updated, error } = await supabaseClient
+          .from('saved_credentials')
+          .update(updateData)
+          .eq('id', credentialId)
+          .eq('user_id', req.user.id)
+          .select()
+          .single();
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        return res.json({
+          success: true,
+          data: {
+            id: updated.id,
+            name: updated.name,
+            url: updated.url,
+            loginUrl: updated.login_url,
+            notes: updated.notes,
+            last_used_at: updated.last_used_at,
+            created_at: updated.created_at,
+            updated_at: updated.updated_at
+          }
+        });
+      } else {
+        // Use local storage
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider();
+        
+        // Check if storage is local mode
+        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
+        if (storageMode === 'local') {
+          // Get existing credential to preserve encrypted values if username/password not provided
+          let existing;
+          try {
+            existing = await storage.getCredential(credentialId);
+          } catch (e) {
+            return res.status(404).json({
+              success: false,
+              error: 'Credential not found'
+            });
+          }
+          
+          // Update credential (username/password optional - will preserve existing if not provided)
+          if (!storage) {
+            throw new Error('Storage provider not available');
+          }
+          const updated = await storage.saveCredential(
+            {
+              name: name !== undefined ? name.trim() : existing.name,
+              url: url !== undefined ? url.trim() : existing.url,
+              loginUrl: loginUrl !== undefined ? (loginUrl?.trim() || null) : existing.loginUrl,
+              username: username !== undefined ? username : '', // Empty string means preserve existing
+              password: password !== undefined ? password : '', // Empty string means preserve existing
+              notes: notes !== undefined ? (notes?.trim() || null) : existing.notes
+            },
+            { id: credentialId }
+          );
+          
+          return res.json({
+            success: true,
+            data: updated
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required for Supabase storage'
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to update credential', { error: error.message, stack: error.stack });
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to update credential'
+      });
+    }
+  });
+
+  app.delete('/api/credentials/:id', healthLimiter, async (req, res) => {
+    try {
+      const credentialId = req.params.id;
+      
+      // Support both Supabase and local storage
+      if (supabaseClient && req.user) {
+        // Use Supabase storage
+        const { error } = await supabaseClient
+          .from('saved_credentials')
+          .delete()
+          .eq('id', credentialId)
+          .eq('user_id', req.user.id);
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        return res.json({
+          success: true,
+          message: 'Credential deleted'
+        });
+      } else {
+        // Use local storage
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider();
+        
+        // Check if storage is local mode
+        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
+        if (storageMode === 'local') {
+          const deleted = await storage.deleteCredential(credentialId);
+          if (!deleted) {
+            return res.status(404).json({
+              success: false,
+              error: 'Credential not found'
+            });
+          }
+          return res.json({
+            success: true,
+            message: 'Credential deleted'
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required for Supabase storage'
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to delete credential', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.get('/api/credentials/:id/decrypt', healthLimiter, async (req, res) => {
+    try {
+      const credentialId = req.params.id;
+      
+      // Support both Supabase and local storage
+      if (supabaseClient && req.user) {
+        // Use Supabase storage
+        // Get credential
+        const { data: credential, error: fetchError } = await supabaseClient
+          .from('saved_credentials')
+          .select('*')
+          .eq('id', credentialId)
+          .eq('user_id', req.user.id)
+          .single();
+        
+        if (fetchError || !credential) {
+          return res.status(404).json({
+            success: false,
+            error: 'Credential not found'
+          });
+        }
+        
+        // Decrypt credentials (server-side only)
+        const { CredentialManager } = await import('../../services/CredentialEncryption.js');
+        const credentialManager = new CredentialManager();
+        const decrypted = await credentialManager.retrieveFromStorage(credential, supabaseClient);
+        
+        // Update last_used_at
+        await supabaseClient
+          .from('saved_credentials')
+          .update({ last_used_at: new Date().toISOString() })
+          .eq('id', credentialId);
+        
+        return res.json({
+          success: true,
+          data: {
+            id: credential.id,
+            name: credential.name,
+            url: decrypted.url,
+            loginUrl: credential.login_url || decrypted.loginUrl,
+            username: decrypted.username,
+            password: decrypted.password
+          }
+        });
+      } else {
+        // Use local storage
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider();
+        
+        // Check if storage is local mode
+        const storageMode = storage.getStorageMode ? storage.getStorageMode() : 'local';
+        if (storageMode === 'local') {
+          const decrypted = await storage.decryptCredential(credentialId);
+          return res.json({
+            success: true,
+            data: {
+              id: decrypted.id,
+              name: decrypted.name,
+              url: decrypted.url,
+              loginUrl: decrypted.loginUrl,
+              username: decrypted.username,
+              password: decrypted.password
+            }
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentication required for Supabase storage'
+          });
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to decrypt credential', { error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message
       });
     }
   });
@@ -1227,8 +2103,28 @@ export async function startServer() {
       // Figma extraction completed successfully
 
       // Generate unique comparison ID for saving reports
-      const comparisonId = `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      let comparisonId = `cmp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       console.log(`📋 Generated comparison ID: ${comparisonId}`);
+      
+      // Save comparison to database if services available
+      if (dbServices) {
+        try {
+          const savedComparison = await dbServices.comparisons.createComparison({
+            userId: req.user?.id || null,
+            figmaUrl,
+            webUrl,
+            credentialId: req.body.credentialId || null,
+            status: 'completed',
+            result: comparison,
+            durationMs: totalDuration,
+            progress: 100
+          });
+          comparisonId = savedComparison.id;
+          console.log(`✅ Comparison saved to database: ${comparisonId}`);
+        } catch (dbError) {
+          console.warn('⚠️ Failed to save comparison to database:', dbError.message);
+        }
+      }
       
       // Prepare extraction details for frontend
       const extractionDetails = {
@@ -1541,6 +2437,32 @@ export async function startServer() {
       
       const result = await screenshotComparisonService.compareScreenshots(uploadId, comparisonSettings);
       
+      // Save screenshot result to database if services available
+      if (dbServices && result.id) {
+        try {
+          await dbServices.screenshots.createScreenshotResult({
+            userId: req.user?.id || null,
+            uploadId,
+            comparisonId: result.id,
+            status: result.status || 'completed',
+            figmaScreenshotPath: result.figmaScreenshotPath,
+            developedScreenshotPath: result.developedScreenshotPath,
+            diffImagePath: result.diffImagePath,
+            sideBySidePath: result.sideBySidePath,
+            metrics: result.metrics,
+            discrepancies: result.discrepancies,
+            enhancedAnalysis: result.enhancedAnalysis,
+            colorPalettes: result.colorPalettes,
+            reportPath: result.reportPath,
+            settings: comparisonSettings,
+            processingTime: result.processingTime
+          });
+          console.log(`✅ Screenshot result saved to database: ${result.id}`);
+        } catch (dbError) {
+          console.warn('⚠️ Failed to save screenshot result to database:', dbError.message);
+        }
+      }
+      
       res.json({
         success: true,
         data: result
@@ -1650,7 +2572,7 @@ export async function startServer() {
    */
   app.post('/api/reports/save', async (req, res) => {
     try {
-      const { comparisonId } = req.body;
+      const { comparisonId, reportData, title, format = 'html' } = req.body;
       
       if (!comparisonId) {
         return res.status(400).json({
@@ -1661,22 +2583,46 @@ export async function startServer() {
       
       console.log(`📋 Saving report for comparison: ${comparisonId}`);
       
-      // For now, we'll create a simple report entry
-      // In a real implementation, you'd save this to a database
-      const reportEntry = {
-        id: `report_${Date.now()}`,
-        comparisonId,
-        title: `Comparison Report - ${new Date().toLocaleDateString()}`,
-        status: 'completed',
-        createdAt: new Date().toISOString(),
-        figmaUrl: 'N/A',
-        webUrl: 'N/A',
-        duration: 0,
-        matchPercentage: 0,
-        url: `/reports/${comparisonId}.html`
-      };
+      // Use ReportService if available, otherwise fall back to StorageProvider
+      let reportEntry;
+      if (dbServices && reportData) {
+        try {
+          reportEntry = await dbServices.reports.generateAndSave(comparisonId, reportData, {
+            userId: req.user?.id || null,
+            title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+            format
+          });
+          console.log(`✅ Report saved via service: ${reportEntry.id}`);
+        } catch (serviceError) {
+          console.warn('⚠️ ReportService failed, falling back to StorageProvider:', serviceError.message);
+          // Fall through to StorageProvider
+        }
+      }
       
-      console.log(`✅ Report saved: ${reportEntry.id}`);
+      // Fallback to StorageProvider
+      if (!reportEntry) {
+        const { getStorageProvider } = await import('../../config/storage-config.js');
+        const storage = getStorageProvider(req.user?.id);
+        
+        if (reportData) {
+          reportEntry = await storage.saveReport(reportData, {
+            comparisonId,
+            title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+            format
+          });
+        } else {
+          // Just create metadata entry (for existing reports)
+          reportEntry = {
+            id: `report_${Date.now()}`,
+            comparisonId,
+            title: title || `Comparison Report - ${new Date().toLocaleDateString()}`,
+            format,
+            url: `/reports/${comparisonId}.html`,
+            createdAt: new Date().toISOString()
+          };
+        }
+        console.log(`✅ Report saved via StorageProvider: ${reportEntry.id}`);
+      }
       
       res.json({
         success: true,
@@ -1688,7 +2634,7 @@ export async function startServer() {
       console.error('❌ Error saving report:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to save report'
+        error: error.message || 'Failed to save report'
       });
     }
   });
@@ -1985,10 +2931,14 @@ export async function startServer() {
     setInterval(async () => {
       try {
         const wasConnected = mcpConnected;
-        mcpConnected = await figmaClient.connect();
-        
-        if (wasConnected !== mcpConnected) {
-          console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+        if (figmaClient) {
+          mcpConnected = await figmaClient.connect();
+          
+          if (wasConnected !== mcpConnected) {
+            console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+          }
+        } else {
+          mcpConnected = null;
         }
       } catch (error) {
         if (mcpConnected) {

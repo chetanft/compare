@@ -5,11 +5,11 @@
  */
 
 class FigmaMCPClient {
-  constructor() {
+  constructor(options = {}) {
     this.messageId = 0;
     this.sessionId = null;
     this.initialized = false;
-    this.baseUrl = 'http://127.0.0.1:3845/mcp';
+    this.baseUrl = options.baseUrl || process.env.FIGMA_DESKTOP_MCP_URL || 'http://127.0.0.1:3845/mcp';
   }
 
   /**

@@ -40,6 +40,7 @@ CREATE TABLE public.saved_credentials (
   user_id UUID REFERENCES auth.users(id) NOT NULL,
   name TEXT NOT NULL,
   url TEXT NOT NULL,
+  login_url TEXT,
   username_encrypted TEXT NOT NULL,
   password_vault_id TEXT NOT NULL, -- Reference to Supabase Vault secret
   notes TEXT,
@@ -163,6 +164,40 @@ CREATE POLICY "Users can manage own reports"
   USING (auth.uid() = user_id);
 
 -- =============================================================================
+-- SCREENSHOT RESULTS (for screenshot comparison metadata)
+-- =============================================================================
+
+CREATE TABLE public.screenshot_results (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  upload_id TEXT NOT NULL,
+  comparison_id TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
+  figma_screenshot_path TEXT NOT NULL,
+  developed_screenshot_path TEXT NOT NULL,
+  diff_image_path TEXT,
+  side_by_side_path TEXT,
+  metrics JSONB,
+  discrepancies JSONB,
+  enhanced_analysis JSONB,
+  color_palettes JSONB,
+  report_path TEXT,
+  settings JSONB,
+  processing_time INTEGER,
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
+-- Enable RLS
+ALTER TABLE public.screenshot_results ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access own screenshot results
+CREATE POLICY "Users can manage own screenshot results"
+  ON public.screenshot_results FOR ALL
+  USING (auth.uid() = user_id OR user_id IS NULL);
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 
@@ -171,6 +206,10 @@ CREATE INDEX idx_comparisons_status ON public.comparisons(status);
 CREATE INDEX idx_comparisons_created_at ON public.comparisons(created_at DESC);
 CREATE INDEX idx_saved_credentials_user_id ON public.saved_credentials(user_id);
 CREATE INDEX idx_reports_user_id ON public.reports(user_id);
+CREATE INDEX idx_reports_comparison_id ON public.reports(comparison_id);
+CREATE INDEX idx_screenshot_results_user_id ON public.screenshot_results(user_id);
+CREATE INDEX idx_screenshot_results_comparison_id ON public.screenshot_results(comparison_id);
+CREATE INDEX idx_screenshot_results_status ON public.screenshot_results(status);
 
 -- =============================================================================
 -- FUNCTIONS

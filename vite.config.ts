@@ -14,12 +14,12 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173,
+    port: 3847,
     proxy: {
       '/api': {
         target: process.env.NODE_ENV === 'production' 
           ? '/.netlify/functions'
-          : 'http://localhost:3006',
+          : 'http://localhost:3847',
         changeOrigin: true,
         rewrite: process.env.NODE_ENV === 'production' 
           ? (path) => path.replace(/^\/api/, '/api')
@@ -28,25 +28,25 @@ export default defineConfig({
       '/output': {
         target: process.env.NODE_ENV === 'production' 
           ? '/.netlify/functions'
-          : 'http://localhost:3006',
+          : 'http://localhost:3847',
         changeOrigin: true
       },
       '/reports': {
         target: process.env.NODE_ENV === 'production' 
           ? '/.netlify/functions'
-          : 'http://localhost:3006',
+          : 'http://localhost:3847',
         changeOrigin: true
       },
       '/screenshots': {
         target: process.env.NODE_ENV === 'production' 
           ? '/.netlify/functions'
-          : 'http://localhost:3006',
+          : 'http://localhost:3847',
         changeOrigin: true
       },
       '/images': {
         target: process.env.NODE_ENV === 'production' 
           ? '/.netlify/functions'
-          : 'http://localhost:3006',
+          : 'http://localhost:3847',
         changeOrigin: true
       }
     }

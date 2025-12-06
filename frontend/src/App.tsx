@@ -22,7 +22,7 @@ function AppContent() {
   const location = useLocation()
 
   const getPageTitle = (pathname: string): string => {
-    if (pathname.includes('new-comparison')) return 'New Comparison'
+    if (pathname.includes('new-comparison')) return 'Compare'
     if (pathname.includes('screenshot-comparison')) return 'Screenshot Comparison'
     if (pathname.includes('settings')) return 'Settings'
     if (pathname.includes('single-source')) return 'Single Source'
@@ -32,9 +32,9 @@ function AppContent() {
   }
 
   const pageVariants = {
-    initial: { opacity: 0, x: 20 },
-    in: { opacity: 1, x: 0 },
-    out: { opacity: 0, x: -20 }
+    initial: { opacity: 0, scale: 0.98, y: 10 },
+    in: { opacity: 1, scale: 1, y: 0 },
+    out: { opacity: 0, scale: 1.02, y: -10 }
   }
 
   // Listen for server stop events
@@ -51,7 +51,7 @@ function AppContent() {
   // Handle server restart
   const handleStartServer = async () => {
     setIsStartingServer(true);
-    
+
     try {
       // If running in Electron, use the IPC API
       if ((window as any).electronAPI) {
@@ -80,7 +80,7 @@ function AppContent() {
   // Show server stopped page if server was explicitly stopped
   if (serverStopped) {
     return (
-      <ServerStoppedPage 
+      <ServerStoppedPage
         onStartServer={handleStartServer}
         isStarting={isStartingServer}
       />
@@ -93,20 +93,26 @@ function AppContent() {
   }
 
   return (
-    <div className="app-container flex h-screen">
-      <Sidebar 
-        isOpen={sidebarOpen} 
+    <div className="app-container flex h-screen overflow-hidden bg-background text-foreground">
+      <Sidebar
+        isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
+
+      <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+        {/* Decorative Background Elements - Subtle Monochrome */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-foreground/5 blur-[100px]" />
+        </div>
+
+        <Header
           title={getPageTitle(location.pathname)}
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           sidebarOpen={sidebarOpen}
         />
-        
-        <main className="main-content">
+
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 scroll-smooth z-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
@@ -114,8 +120,8 @@ function AppContent() {
               animate="in"
               exit="out"
               variants={pageVariants}
-              transition={{ duration: 0.2 }}
-              className="h-full"
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="min-h-full"
             >
               <Routes location={location}>
                 <Route path="/" element={<NewComparison />} />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useForm, Controller } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import {
   CogIcon,
   BellIcon,
@@ -10,8 +11,8 @@ import {
   DocumentTextIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-
-  GlobeAltIcon
+  GlobeAltIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline'
 import { checkServerHealth } from '../services/serverStatus'
 import { getApiBaseUrl } from '../config/ports'
@@ -28,6 +29,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 
 import { cn } from '@/lib/utils'
+import { useAuth } from '../contexts/AuthContext'
+import SignInForm from '../components/auth/SignInForm'
+import SignOutButton from '../components/auth/SignOutButton'
+import { supabase } from '../lib/supabase'
+import DesignSystemsManager from '../components/settings/DesignSystemsManager'
+import CredentialsManager from '../components/settings/CredentialsManager'
 
 
 interface SettingsForm {
@@ -81,12 +88,33 @@ const SETTINGS_PLACEHOLDERS = {
 // No settings cache key needed
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('general')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabFromUrl = searchParams.get('tab') || 'general'
+  const [activeTab, setActiveTab] = useState(tabFromUrl)
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isLoading, setIsLoading] = useState(true)
   const [serverStatus, setServerStatus] = useState<'online' | 'offline' | 'checking'>('checking')
   const [usingCachedSettings, setUsingCachedSettings] = useState(false)
+  const { user, loading: authLoading, signOut } = useAuth()
+
+  // Sync activeTab with URL parameter
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') || 'general'
+    if (tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl)
+    }
+  }, [searchParams, activeTab])
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    const nextTab = tabs.find(tab => tab.id === value)
+    if (nextTab?.disabled) {
+      return
+    }
+    setActiveTab(value)
+    setSearchParams({ tab: value })
+  }
 
   const { control, handleSubmit, formState: { errors, isDirty }, reset } = useForm<SettingsForm>({
     defaultValues: {
@@ -318,10 +346,13 @@ export default function Settings() {
   const tabs = [
     { id: 'general', name: 'General', icon: CogIcon },
     { id: 'figma', name: 'Figma Integration', icon: DocumentTextIcon },
-    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon, disabled: true, hint: 'Web scraping preferences are coming soon.' },
-    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon, disabled: true, hint: 'Visual comparison settings will be available soon.' },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon, disabled: true, hint: 'Notification channels are not yet configurable.' },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon, disabled: true, hint: 'Security preferences are in development.' }
+    { id: 'auth', name: 'Account', icon: UserCircleIcon },
+    { id: 'design-systems', name: 'Design Systems', icon: DocumentTextIcon },
+    { id: 'credentials', name: 'Credentials', icon: ShieldCheckIcon },
+    { id: 'web', name: 'Web Scraping', icon: GlobeAltIcon },
+    { id: 'visual', name: 'Visual Comparison', icon: EyeIcon },
+    { id: 'notifications', name: 'Notifications', icon: BellIcon },
+    { id: 'security', name: 'Security', icon: ShieldCheckIcon }
   ]
 
   if (isLoading) {
@@ -348,9 +379,18 @@ export default function Settings() {
               <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
             </div>
             
-            <ServerStatus 
-              onStatusChange={(status) => setServerStatus(status)} 
-            />
+            <div className="flex items-center gap-4">
+              {user && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <UserCircleIcon className="h-5 w-5" />
+                  <span>{user.email}</span>
+                  <SignOutButton variant="ghost" className="ml-2" />
+                </div>
+              )}
+              <ServerStatus 
+                onStatusChange={(status) => setServerStatus(status)} 
+              />
+            </div>
           </div>
           
           {usingCachedSettings && (
@@ -374,16 +414,10 @@ export default function Settings() {
 
         <Tabs
           value={activeTab}
-          onValueChange={(value) => {
-            const nextTab = tabs.find(tab => tab.id === value)
-            if (nextTab?.disabled) {
-              return
-            }
-            setActiveTab(value)
-          }}
+          onValueChange={handleTabChange}
           className="section-standard"
         >
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-9">
             {tabs.map((tab) => {
               const Icon = tab.icon
               return (
@@ -519,7 +553,8 @@ export default function Settings() {
                             <SelectContent>
                               <SelectItem value="none">No Connection</SelectItem>
                               <SelectItem value="direct_api">Direct Figma API</SelectItem>
-                              <SelectItem value="mcp_server">MCP Server (Advanced)</SelectItem>
+                              <SelectItem value="mcp_server">MCP Server - Local</SelectItem>
+                              <SelectItem value="mcp_server_remote">MCP Server - Remote (SaaS)</SelectItem>
                               <SelectItem value="mcp_tools">MCP Tools (Expert)</SelectItem>
                             </SelectContent>
                           </Select>
@@ -792,300 +827,323 @@ export default function Settings() {
               </div>
             </TabsContent>
 
-
-              {/* Web Scraping Settings */}
-              {activeTab === 'web' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-foreground mb-6">Web Scraping Configuration</h3>
-                  
-                  <div className="space-y-6">
-                    <div className="layout-grid-forms">
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Viewport Width
-                        </label>
-                        <Controller
-                          name="defaultViewport.width"
-                          control={control}
-                          rules={{ required: 'Required', min: 320 }}
-                          render={({ field }) => (
-                            <input
-                              {...field}
-                              type="number"
-                              min="320"
-                              className="input-field"
-                            />
-                          )}
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Viewport Height
-                        </label>
-                        <Controller
-                          name="defaultViewport.height"
-                          control={control}
-                          rules={{ required: 'Required', min: 240 }}
-                          render={({ field }) => (
-                            <input
-                              {...field}
-                              type="number"
-                              min="240"
-                              className="input-field"
-                            />
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        User Agent
-                      </label>
-                      <Controller
-                        name="userAgent"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="text"
-                            className="input-field"
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <Controller
-                          name="enableJavaScript"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Enable JavaScript
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <Controller
-                          name="waitForNetworkIdle"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Wait for network idle
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Visual Comparison Settings */}
-              {activeTab === 'visual' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Visual Comparison</h3>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Pixel Match Threshold (0-1)
-                      </label>
-                      <Controller
-                        name="pixelMatchThreshold"
-                        control={control}
-                        rules={{ required: 'Required', min: 0, max: 1 }}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            className="input-field"
-                          />
-                        )}
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Lower values = more strict matching
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <Controller
-                          name="includeAntiAliasing"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Include anti-aliasing in comparison
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <Controller
-                          name="ignoreColors"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Ignore colors (structure-only comparison)
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Notifications Settings */}
-              {activeTab === 'notifications' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Notifications</h3>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Slack Webhook URL
-                      </label>
-                      <Controller
-                        name="slackWebhook"
-                        control={control}
-                        render={({ field }) => (
-                          <input
-                            {...field}
-                            type="url"
-                            placeholder={SETTINGS_PLACEHOLDERS.webhookUrl}
-                            className="input-field"
-                          />
-                        )}
-                      />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <Controller
-                          name="emailNotifications"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Enable email notifications
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <Controller
-                          name="notifyOnCompletion"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Notify on comparison completion
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <Controller
-                          name="notifyOnError"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              type="checkbox"
-                              checked={field.value}
-                              onChange={field.onChange}
-                              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                          )}
-                        />
-                        <label className="ml-3 text-sm font-medium text-gray-700">
-                          Notify on errors
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Security Settings */}
-              {activeTab === 'security' && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="card"
-                >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Security & Privacy</h3>
-                  
-                  <div className="space-y-6">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-3">
-                        <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-yellow-800">Security Notice</h4>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            Sensitive data like API tokens are encrypted at rest. Never share your configuration files or tokens.
-                          </p>
+            <TabsContent value="auth">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Account & Authentication</CardTitle>
+                  <CardDescription>
+                    Sign in to sync your data with Supabase cloud storage
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {supabase && (
+                    <>
+                      {authLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                          <span className="ml-3 text-muted-foreground">Loading...</span>
                         </div>
-                      </div>
+                      ) : user ? (
+                        <div className="space-y-4">
+                          <Alert>
+                            <CheckCircleIcon className="h-4 w-4" />
+                            <AlertDescription>
+                              Signed in as <strong>{user.email}</strong>
+                            </AlertDescription>
+                          </Alert>
+                          <div className="space-y-2">
+                            <Label>User ID</Label>
+                            <Input value={user.id} readOnly className="font-mono text-xs" />
+                          </div>
+                          <div className="flex justify-end">
+                            <SignOutButton />
+                          </div>
+                        </div>
+                      ) : (
+                        <SignInForm onSuccess={() => window.location.reload()} />
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="design-systems">
+              <DesignSystemsManager />
+            </TabsContent>
+
+            <TabsContent value="credentials">
+              <CredentialsManager />
+            </TabsContent>
+
+            <TabsContent value="web">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Web Scraping Configuration</CardTitle>
+                  <CardDescription>
+                    Configure default settings for web scraping and extraction
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="viewportWidth">Viewport Width</Label>
+                      <Controller
+                        name="defaultViewport.width"
+                        control={control}
+                        rules={{ required: 'Required', min: 320 }}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="viewportWidth"
+                            type="number"
+                            min="320"
+                          />
+                        )}
+                      />
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="viewportHeight">Viewport Height</Label>
+                      <Controller
+                        name="defaultViewport.height"
+                        control={control}
+                        rules={{ required: 'Required', min: 240 }}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            id="viewportHeight"
+                            type="number"
+                            min="240"
+                          />
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="userAgent">User Agent</Label>
+                    <Controller
+                      name="userAgent"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          id="userAgent"
+                          type="text"
+                          placeholder="Mozilla/5.0..."
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="enableJavaScript"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="enableJavaScript"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="enableJavaScript" className="font-normal cursor-pointer">
+                        Enable JavaScript
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="waitForNetworkIdle"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="waitForNetworkIdle"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="waitForNetworkIdle" className="font-normal cursor-pointer">
+                        Wait for network idle
+                      </Label>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="visual">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Visual Comparison</CardTitle>
+                  <CardDescription>
+                    Configure visual diff and screenshot comparison settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="pixelMatchThreshold">Pixel Match Threshold (0-1)</Label>
+                    <Controller
+                      name="pixelMatchThreshold"
+                      control={control}
+                      rules={{ required: 'Required', min: 0, max: 1 }}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          id="pixelMatchThreshold"
+                          type="number"
+                          min="0"
+                          max="1"
+                          step="0.01"
+                        />
+                      )}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Lower values = more strict matching
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="includeAntiAliasing"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="includeAntiAliasing"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="includeAntiAliasing" className="font-normal cursor-pointer">
+                        Include anti-aliasing in comparison
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="ignoreColors"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="ignoreColors"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="ignoreColors" className="font-normal cursor-pointer">
+                        Ignore colors (structure-only comparison)
+                      </Label>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="notifications">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notifications</CardTitle>
+                  <CardDescription>
+                    Configure notification channels and preferences
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="slackWebhook">Slack Webhook URL</Label>
+                    <Controller
+                      name="slackWebhook"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          {...field}
+                          id="slackWebhook"
+                          type="url"
+                          placeholder={SETTINGS_PLACEHOLDERS.webhookUrl}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="emailNotifications"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="emailNotifications"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="emailNotifications" className="font-normal cursor-pointer">
+                        Enable email notifications
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="notifyOnCompletion"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="notifyOnCompletion"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="notifyOnCompletion" className="font-normal cursor-pointer">
+                        Notify on comparison completion
+                      </Label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Controller
+                        name="notifyOnError"
+                        control={control}
+                        render={({ field }) => (
+                          <Checkbox
+                            id="notifyOnError"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <Label htmlFor="notifyOnError" className="font-normal cursor-pointer">
+                        Notify on errors
+                      </Label>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="security">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security & Privacy</CardTitle>
+                  <CardDescription>
+                    Manage security settings and data privacy
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <Alert>
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Security Notice:</strong> Sensitive data like API tokens are encrypted at rest. Never share your configuration files or tokens.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="space-y-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -1116,52 +1174,52 @@ export default function Settings() {
                         Export Settings (Safe)
                       </Button>
                     </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Save Button */}
+            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+              <div className="flex items-center space-x-3">
+                {saveStatus === 'success' && (
+                  <div className="flex items-center space-x-2 text-green-600">
+                    <CheckCircleIcon className="w-5 h-5" />
+                    <span className="text-sm font-medium">Settings saved successfully</span>
                   </div>
-                </motion.div>
-              )}
-
-              {/* Save Button */}
-              <div className="flex items-center justify-between pt-6 border-t border-gray-200">
-                <div className="flex items-center space-x-3">
-                  {saveStatus === 'success' && (
-                    <div className="flex items-center space-x-2 text-green-600">
-                      <CheckCircleIcon className="w-5 h-5" />
-                      <span className="text-sm font-medium">Settings saved successfully</span>
-                    </div>
-                  )}
-                  {saveStatus === 'error' && (
-                    <div className="flex items-center space-x-2 text-red-600">
-                      <ExclamationTriangleIcon className="w-5 h-5" />
-                      <span className="text-sm font-medium">Failed to save settings</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex space-x-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => window.location.reload()}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={!isDirty || isSaving}
-                    className="flex items-center space-x-2"
-                  >
-                    {isSaving ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <span>Save Settings</span>
-                    )}
-                  </Button>
-                </div>
+                )}
+                {saveStatus === 'error' && (
+                  <div className="flex items-center space-x-2 text-red-600">
+                    <ExclamationTriangleIcon className="w-5 h-5" />
+                    <span className="text-sm font-medium">Failed to save settings</span>
+                  </div>
+                )}
               </div>
-            </form>
+
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!isDirty || isSaving}
+                  className="flex items-center space-x-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Settings</span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </form>
         </Tabs>
       </div>
     </div>

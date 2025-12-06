@@ -234,7 +234,7 @@ export default function Reports() {
               </p>
               {!searchTerm && filter === 'all' && (
                 <Button asChild>
-                  <a href="/new-comparison">Create New Comparison</a>
+                  <a href="/new-comparison">Compare</a>
                 </Button>
               )}
             </CardContent>

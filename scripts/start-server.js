@@ -16,7 +16,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DEFAULT_PORT = String(PORTS.SERVER);
-const SERVER_PORT = process.env.PORT || DEFAULT_PORT;
+const requestedPort =
+  process.env.PORT ||
+  process.env.SERVER_PORT ||
+  process.env.VITE_SERVER_PORT ||
+  null;
+
+if (requestedPort && requestedPort !== DEFAULT_PORT) {
+  console.warn(
+    `⚠️ Ignoring custom port "${requestedPort}". This tool is locked to ${DEFAULT_PORT}.`
+  );
+}
+
+const SERVER_PORT = DEFAULT_PORT;
 
 console.log('🚀 Starting Figma Comparison Tool Server...');
 console.log(`📡 Desired port: ${SERVER_PORT}`);
@@ -75,7 +87,7 @@ async function start() {
     return;
   }
 
-  // Set environment variables for unified configuration
+  // Set environment variables for unified configuration (force port 3847)
   process.env.PORT = SERVER_PORT;
   process.env.SERVER_PORT = SERVER_PORT;
   process.env.VITE_SERVER_PORT = SERVER_PORT;

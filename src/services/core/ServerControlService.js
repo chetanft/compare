@@ -209,8 +209,10 @@ export class ServerControlService extends EventEmitter {
       
       logger.info('🛑 Stopping server...');
 
+      const hadManagedProcess = !!this.serverProcess;
+      
       if (this.serverProcess) {
-        // Graceful shutdown
+        // Graceful shutdown for managed process
         this.serverProcess.kill('SIGTERM');
         
         // Wait for graceful shutdown
@@ -229,10 +231,23 @@ export class ServerControlService extends EventEmitter {
             resolve();
           });
         });
+        
+        this.serverProcess = null;
       }
 
-      // Also kill any remaining processes on the port
-      await this.killExistingServer();
+      // Always try to kill any processes on the port (handles externally started servers)
+      const killed = await this.killExistingServer();
+      
+      if (!hadManagedProcess && !killed) {
+        // Server wasn't managed by us and we couldn't kill it
+        logger.warn('⚠️ Could not stop externally managed server');
+        this.serverStatus = 'running'; // Reset status
+        this.emit('statusChange', this.getStatus());
+        return { 
+          success: false, 
+          message: 'Server was started externally and could not be stopped automatically. Please stop it manually.' 
+        };
+      }
 
       this.serverStatus = 'stopped';
       this.serverProcess = null;

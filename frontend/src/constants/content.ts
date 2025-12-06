@@ -27,7 +27,7 @@ export const PAGE_CONTENT = {
     title: 'Screenshot Comparison',
     description: 'Compare visual differences between images',
     error: 'Comparison Failed',
-    reset: 'Start New Comparison'
+    reset: 'Start Compare'
   },
   
   SETTINGS: {

@@ -206,10 +206,12 @@ function useHttpServerControl() {
   }, [startServerMutation, isTransitioning, isServerRunning]);
 
   const stopServer = useCallback(() => {
-    if (!isTransitioning && (serverStatus?.data?.runningProcessManaged || serverStatus?.data?.managed)) {
+    // Allow stopping if server is running and not transitioning
+    // The API will handle checking if it can actually stop the server
+    if (!isTransitioning && isServerRunning) {
       stopServerMutation.mutate();
     }
-  }, [stopServerMutation, isTransitioning, serverStatus?.data]);
+  }, [stopServerMutation, isTransitioning, isServerRunning]);
 
   const restartServer = useCallback(() => {
     if (!isTransitioning) {
@@ -218,12 +220,12 @@ function useHttpServerControl() {
   }, [restartServerMutation, isTransitioning]);
 
   const toggleServer = useCallback(() => {
-    if (isServerRunning && (serverStatus?.data?.runningProcessManaged || serverStatus?.data?.managed)) {
+    if (isServerRunning) {
       stopServer();
     } else if (isServerStopped) {
       startServer();
     }
-  }, [isServerRunning, isServerStopped, startServer, stopServer, serverStatus?.data]);
+  }, [isServerRunning, isServerStopped, startServer, stopServer]);
 
   return {
     // Status

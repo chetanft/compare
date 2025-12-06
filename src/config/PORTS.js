@@ -1,8 +1,8 @@
 export const PORTS = {
   SERVER: 3847,
-  WEB_DEV: 5173,
+  WEB_DEV: 3847,
   FIGMA_MCP: 3845,
-  PREVIEW: 4173
+  PREVIEW: 3847
 };
 
 export const getServerPort = () => PORTS.SERVER;
@@ -17,13 +17,18 @@ export const CONFIGURED_PORTS = {
 };
 
 export const validatePorts = () => {
-  const ports = Object.values(CONFIGURED_PORTS);
-  const duplicates = ports.filter((port, index) => ports.indexOf(port) !== index);
+  // Only validate SERVER and FIGMA_MCP ports (allow WEB_DEV and PREVIEW to match SERVER)
+  const criticalPorts = [
+    CONFIGURED_PORTS.SERVER,
+    CONFIGURED_PORTS.FIGMA_MCP
+  ];
+  const duplicates = criticalPorts.filter((port, index) => criticalPorts.indexOf(port) !== index);
   if (duplicates.length > 0) {
-    throw new Error(`Duplicate ports detected: ${duplicates.join(', ')}`);
+    throw new Error(`Duplicate critical ports detected: ${duplicates.join(', ')}`);
   }
   
-  const invalidPorts = ports.filter(port => port < 1024 || port > 65535);
+  const allPorts = Object.values(CONFIGURED_PORTS);
+  const invalidPorts = allPorts.filter(port => port < 1024 || port > 65535);
   if (invalidPorts.length > 0) {
     throw new Error(`Invalid ports detected (must be 1024-65535): ${invalidPorts.join(', ')}`);
   }

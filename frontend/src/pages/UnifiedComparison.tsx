@@ -97,7 +97,7 @@ export default function UnifiedComparison() {
                     className="mr-4"
                   >
                     <ArrowLeft className="w-4 h-4 mr-2" />
-                    New Comparison
+                    Compare
                   </Button>
                 </div>
 

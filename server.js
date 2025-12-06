@@ -7,6 +7,9 @@
 
 import { startUnifiedServer, shutdownUnifiedServer } from './src/server/unified-server-starter.js';
 
+// Force unified port across all entry points
+process.env.PORT = process.env.SERVER_PORT = process.env.VITE_SERVER_PORT = '3847';
+
 /**
  * Start the server
  */

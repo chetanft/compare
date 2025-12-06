@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { PORTS } from './PORTS.js';
+import { detectDeploymentMode } from '../database/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -187,6 +188,16 @@ function mergeDeep(target, source) {
     }
   }
   
+  // Add database configuration
+  result.database = {
+    deploymentMode: detectDeploymentMode(),
+    databaseUrl: process.env.DATABASE_URL || null,
+    supabaseUrl: process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || null,
+    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || null,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || null,
+    encryptionKey: process.env.CREDENTIAL_ENCRYPTION_KEY || process.env.LOCAL_CREDENTIAL_KEY || null
+  };
+
   return result;
 }
 

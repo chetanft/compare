@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { compareUrls } from '../../services/api'
 import { getApiBaseUrl } from '../../utils/environment'
 import ProgressIndicator, { ProgressStage } from '../ui/ProgressIndicator'
+import { useAuth } from '../../contexts/AuthContext'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   DocumentTextIcon,
   GlobeAltIcon,
@@ -61,10 +63,13 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   const [figmaUrlError, setFigmaUrlError] = useState<string | null>(null)
   const [resetDialogOpen, setResetDialogOpen] = useState(false)
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null)
+  const [savedCredentials, setSavedCredentials] = useState<Array<{ id: string; name: string; url: string }>>([])
+  const [selectedCredentialId, setSelectedCredentialId] = useState<string>('')
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { user } = useAuth()
 
-  const { control, handleSubmit, watch, formState: { errors }, reset } = useForm<ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }>({
+  const { control, handleSubmit, watch, formState: { errors }, reset, setValue } = useForm<ComparisonRequest & { extractionMode: 'frame-only' | 'global-styles' | 'both' }>({
     defaultValues: {
       figmaUrl: '',
       webUrl: '',
@@ -81,6 +86,110 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       }
     }
   })
+
+  // Load saved credentials when credentials auth type is selected or user changes
+  useEffect(() => {
+    if (authType === 'credentials') {
+      loadCredentials()
+    }
+  }, [authType, user])
+
+  const loadCredentials = async () => {
+    try {
+      const apiBaseUrl = getApiBaseUrl()
+      const headers: HeadersInit = {}
+      
+      // Try to get auth token if user is signed in and Supabase is available
+      if (user) {
+        try {
+          const { supabase } = await import('../../lib/supabase')
+          if (supabase) {
+            const session = await supabase.auth.getSession()
+            if (session?.data.session?.access_token) {
+              headers['Authorization'] = `Bearer ${session.data.session.access_token}`
+            }
+          }
+        } catch (e) {
+          // Supabase not available, continue without auth header
+        }
+      }
+      
+      // Load credentials (works with or without auth for local storage)
+      const response = await fetch(`${apiBaseUrl}/api/credentials`, { headers })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setSavedCredentials(result.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to load credentials:', error)
+      // Silently fail - local mode may not have credentials yet
+    }
+  }
+
+  const handleCredentialSelect = async (credentialId: string) => {
+    setSelectedCredentialId(credentialId)
+    
+    if (!credentialId) {
+      // Clear form if "None" selected
+      setValue('authentication.username', '')
+      setValue('authentication.password', '')
+      return
+    }
+    
+    try {
+      const apiBaseUrl = getApiBaseUrl()
+      const headers: HeadersInit = {}
+      
+      // Try to get auth token if user is signed in (optional for local mode)
+      if (user) {
+        try {
+          const { supabase } = await import('../../lib/supabase')
+          if (supabase) {
+            const session = await supabase.auth.getSession()
+            if (session?.data.session?.access_token) {
+              headers['Authorization'] = `Bearer ${session.data.session.access_token}`
+            }
+          }
+        } catch (e) {
+          // Supabase not available, continue without auth (local mode)
+        }
+      }
+      
+      const response = await fetch(`${apiBaseUrl}/api/credentials/${credentialId}/decrypt`, {
+        headers
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        const credential = result.data
+        
+        // Auto-fill form fields
+        setValue('authentication.username', credential.username || '')
+        setValue('authentication.password', credential.password || '')
+        if (credential.loginUrl) {
+          setValue('authentication.loginUrl', credential.loginUrl)
+        }
+        if (credential.url) {
+          setValue('webUrl', credential.url)
+        }
+        
+        toast({
+          title: 'Credential loaded',
+          description: `Loaded credentials for ${credential.name || credential.id || 'selected credential'}`
+        })
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to load credential')
+      }
+    } catch (error) {
+      toast({
+        title: 'Failed to load credential',
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: 'destructive'
+      })
+    }
+  }
 
   const describeError = (error: unknown): string => {
     if (!error) {
@@ -413,7 +522,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
       <form onSubmit={handleSubmit(onSubmit)} className="form-standard">
         
         {/* Main Form */}
-        <div className="layout-grid-forms mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
           {/* Figma Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -423,8 +532,8 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             <Card>
               <CardHeader>
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <DocumentTextIcon className="w-6 h-6 text-purple-600" />
+                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
+                    <DocumentTextIcon className="w-6 h-6 text-muted-foreground" />
                   </div>
                   <div>
                     <CardTitle className="text-lg">Figma Design</CardTitle>
@@ -610,55 +719,17 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
           </motion.div>
         </div>
 
-        {/* Submit Section */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
-          <Button
-            type="button"
-            onClick={() => setResetDialogOpen(true)}
-            variant="outline"
-            disabled={comparisonMutation.isPending}
-            className="flex items-center space-x-2"
-          >
-            <XMarkIcon className="w-5 h-5" />
-            <span>Reset Form</span>
-          </Button>
-
-          <Button
-            type="submit"
-            disabled={isSubmitDisabled}
-            className="flex items-center space-x-2 min-w-[200px]"
-          >
-            {comparisonMutation.isPending ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Extracting Data...</span>
-              </>
-            ) : (
-              <>
-                <PlayIcon className="w-5 h-5" />
-                <span>Extract Design & Web Data</span>
-              </>
-            )}
-          </Button>
-        </div>
-
-        {isSubmitDisabled && !comparisonMutation.isPending && (
-          <p className="text-center text-xs text-muted-foreground mt-2">
-            Enter both a Figma URL and a Web URL to enable extraction.
-          </p>
-        )}
-
         {/* Advanced Options */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="card"
+          className="rounded-xl border bg-card text-card-foreground shadow p-6"
         >
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full text-left"
+            className="flex items-center justify-between w-full text-left p-4 rounded-lg border bg-background hover:bg-accent/50 transition-colors"
           >
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
@@ -693,7 +764,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Authentication Required?
                   </label>
-                  <div className="grid-standard-4 space-standard-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                     {[
                       { value: 'none', label: 'None', desc: 'Public page' },
                       { value: 'credentials', label: 'Login', desc: 'Username/Password' },
@@ -704,7 +775,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                         key={option.value}
                         type="button"
                         onClick={() => setAuthType(option.value as any)}
-                        className={`p-3 rounded-lg border text-left transition-colors ${
+                        className={`p-3 rounded-lg border text-left transition-colors w-full ${
                           authType === option.value
                             ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                             : 'border-border hover:border-border/80'
@@ -722,8 +793,32 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg"
+                    className="space-y-4"
                   >
+                    {/* Saved Credentials Selector */}
+                    {savedCredentials.length > 0 && (
+                      <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+                        <Label>Use Saved Credential</Label>
+                        <Select value={selectedCredentialId} onValueChange={handleCredentialSelect}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a saved credential (optional)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">None (enter manually)</SelectItem>
+                            {savedCredentials.map((cred) => (
+                              <SelectItem key={cred.id} value={cred.id}>
+                                {cred.name} - {cred.url}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Selecting a credential will auto-fill the fields below
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Login URL
@@ -792,6 +887,7 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
                         )}
                       />
                     </div>
+                    </div>
                   </motion.div>
                 )}
 
@@ -824,6 +920,44 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* Submit Section */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6 border-t">
+          <Button
+            type="button"
+            onClick={() => setResetDialogOpen(true)}
+            variant="outline"
+            disabled={comparisonMutation.isPending}
+            className="flex items-center space-x-2"
+          >
+            <XMarkIcon className="w-5 h-5" />
+            <span>Reset Form</span>
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={isSubmitDisabled}
+            className="flex items-center space-x-2 min-w-[200px]"
+          >
+            {comparisonMutation.isPending ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Extracting Data...</span>
+              </>
+            ) : (
+              <>
+                <PlayIcon className="w-5 h-5" />
+                <span>Extract Design & Web Data</span>
+              </>
+            )}
+          </Button>
+        </div>
+
+        {isSubmitDisabled && !comparisonMutation.isPending && (
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Enter both a Figma URL and a Web URL to enable extraction.
+          </p>
+        )}
 
         {/* Progress Indicator */}
         <AnimatePresence>
