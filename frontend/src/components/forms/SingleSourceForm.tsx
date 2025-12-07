@@ -234,11 +234,6 @@ export default function SingleSourceForm({ onFigmaSuccess, onWebSuccess }: Singl
   
   return (
     <div className="w-full">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold tracking-tight mb-3">{PAGE_CONTENT.SINGLE_SOURCE.title}</h2>
-        <p className="text-lg text-muted-foreground">{PAGE_CONTENT.SINGLE_SOURCE.description}</p>
-      </div>
-      
       {errorMessage && (
         <Alert variant="destructive" className="mb-6">
           <InformationCircleIcon className="h-4 w-4" />

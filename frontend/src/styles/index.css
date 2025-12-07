@@ -85,10 +85,6 @@
     --chart-5: 0 0% 30%;
   }
 
-  * {
-    @apply border-border;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
   }

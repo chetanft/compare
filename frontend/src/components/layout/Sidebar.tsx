@@ -140,8 +140,8 @@ const Sidebar: FC<SidebarProps> = ({ isOpen, onToggle }) => {
             className="space-y-4"
           >
             <ServerControlButton variant="default" />
-            <div className="flex items-center justify-end px-2">
-              <VersionBadge className="scale-90 origin-right" />
+            <div className="flex items-center justify-start px-2">
+              <VersionBadge className="scale-90 origin-left" />
             </div>
           </motion.div>
         ) : (

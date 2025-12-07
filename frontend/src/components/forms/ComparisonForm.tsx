@@ -509,8 +509,6 @@ export default function ComparisonForm({ onSuccess, onComparisonStart }: Compari
   return (
     <div className="w-full">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold tracking-tight mb-3">Design & Web Extraction</h2>
-        <p className="text-lg text-muted-foreground mb-4">Extract design elements from Figma and web implementations</p>
         <Alert className="max-w-2xl mx-auto">
           <InformationCircleIcon className="h-4 w-4" />
           <AlertDescription>

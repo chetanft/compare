@@ -80,23 +80,24 @@ export function getServerPort(): number {
 
 // Get the API base URL with the correct port
 export function getApiBaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    if (window.location?.origin) {
-      return window.location.origin;
-    }
+  const envApiUrl = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? import.meta.env.VITE_API_URL
+    : undefined;
 
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+
+  if (typeof window !== 'undefined') {
     const runtimeApiUrl = (window as any).__env?.VITE_API_URL;
     if (runtimeApiUrl) {
       return runtimeApiUrl;
     }
-  }
 
-  const viteApiUrl = (typeof import.meta !== 'undefined' && import.meta.env)
-    ? import.meta.env.VITE_API_URL
-    : undefined;
-
-  if (viteApiUrl) {
-    return viteApiUrl;
+    const origin = window.location?.origin;
+    if (origin && origin !== 'null' && !origin.startsWith('file://')) {
+      return origin;
+    }
   }
 
   return `http://localhost:${APP_SERVER_PORT}`;
@@ -106,18 +107,23 @@ export function getApiBaseUrl(): string {
 export function getWebSocketUrl(): string {
   const env = import.meta.env;
   
-  // Use explicit environment variable if set
   if (env.VITE_WS_URL) {
     return env.VITE_WS_URL;
   }
 
-  // In development, use the server port
-  const port = getServerPort();
-  
-  // In production, WebSockets are not supported with Netlify functions
-  if (env.MODE === 'production') {
-    return ''; // Will be handled gracefully by the app
+  if (typeof window !== 'undefined') {
+    const runtimeWsUrl = (window as any).__env?.VITE_WS_URL;
+    if (runtimeWsUrl) {
+      return runtimeWsUrl;
+    }
+
+    const origin = window.location?.origin;
+    if (origin && origin !== 'null' && !origin.startsWith('file://')) {
+      const protocol = origin.startsWith('https') ? 'wss' : 'ws';
+      const host = window.location.host;
+      return `${protocol}://${host}`;
+    }
   }
   
-  return `ws://localhost:${port}`;
-} 
+  return `ws://localhost:${getServerPort()}`;
+}

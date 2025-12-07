@@ -49,6 +49,14 @@ The project follows a modular architecture:
 - Node.js 18 or later
 - Figma API key
 
+### Environment Variables
+
+**Important for Vite builds**: Vite only reads environment variables from `frontend/.env` at build time, not from the root `.env`. 
+
+For Supabase configuration (SaaS mode), ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set in `frontend/.env`. 
+
+The build process automatically syncs `VITE_` prefixed variables from root `.env` to `frontend/.env` via `npm run sync:env`. See [docs/guides/VITE_ENV_SETUP.md](docs/guides/VITE_ENV_SETUP.md) for details.
+
 ### Installation
 
 1. Clone the repository

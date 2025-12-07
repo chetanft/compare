@@ -179,7 +179,6 @@ export default function Reports() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Comparison Reports</h1>
           <p className="text-muted-foreground">View and manage your design comparison history</p>
         </div>
         <div className="flex items-center space-x-2">

@@ -6,6 +6,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import FigmaMCPClient from '../figma/mcpClient.js';
+import { RemoteMCPClient } from '../figma/RemoteMCPClient.js';
 
 const router = express.Router();
 
@@ -21,10 +22,16 @@ router.post('/test-connection', async (req, res) => {
     
     switch (method) {
       case 'mcp_server':
+      case 'desktop':
         return await testMCPServer(req, res);
         
       case 'direct_api':
+      case 'api':
         return await testDirectAPI(req, res);
+        
+      case 'mcp_server_remote':
+      case 'figma':
+        return await testRemoteMCP(req, res);
         
       case 'mcp_tools':
         return await testMCPTools(req, res);
@@ -38,7 +45,7 @@ router.post('/test-connection', async (req, res) => {
       default:
         return res.json({
           success: false,
-          error: `Unknown connection method: ${method}`
+          error: `Unknown connection method: ${method}. Supported methods: api, desktop, figma, mcp_tools, none.`
         });
     }
   } catch (error) {
@@ -182,6 +189,49 @@ async function testMCPTools(req, res) {
     return res.json({
       success: false,
       error: `MCP tools connection failed: ${error.message}`
+    });
+  }
+}
+
+/**
+ * Test Figma Remote MCP connection
+ */
+async function testRemoteMCP(req, res) {
+  try {
+    const { figmaPersonalAccessToken } = req.body;
+    const token = figmaPersonalAccessToken || process.env.FIGMA_API_KEY || process.env.FIGMA_TOKEN;
+
+    if (!token) {
+      return res.json({
+        success: false,
+        error: 'Figma API token is required for remote MCP connection'
+      });
+    }
+
+    const remoteClient = new RemoteMCPClient({
+      remoteUrl: process.env.FIGMA_MCP_URL || 'https://mcp.figma.com/mcp',
+      figmaToken: token
+    });
+
+    const connected = await remoteClient.connect();
+
+    if (connected) {
+      return res.json({
+        success: true,
+        message: 'Figma Hosted MCP connected successfully!',
+        data: {
+          connected: true,
+          remoteUrl: remoteClient.baseUrl
+        }
+      });
+    }
+
+    throw new Error('Failed to establish remote MCP session');
+  } catch (error) {
+    console.error('❌ Remote MCP test failed:', error);
+    return res.json({
+      success: false,
+      error: `Remote MCP connection failed: ${error.message}`
     });
   }
 }

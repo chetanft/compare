@@ -11,7 +11,9 @@ import { ComparisonSettings as IComparisonSettings, ScreenshotComparisonResult }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';interface ScreenshotComparisonFormProps {
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface ScreenshotComparisonFormProps {
   onSuccess?: (result: ScreenshotComparisonResult) => void;
   onError?: (error: any) => void;
 }
@@ -157,18 +159,9 @@ export default function ScreenshotComparisonForm({
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Screenshot Comparison
-        </h1>
-        <p className="text-muted-foreground">
-          Upload your Figma design and developed implementation screenshots to analyze design discrepancies
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* File Upload Section */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 items-start">
           <FileUploadZone
             title="Figma Design Screenshot"
             description="Upload your design file screenshot from Figma"
@@ -187,21 +180,24 @@ export default function ScreenshotComparisonForm({
         </div>
 
         {/* Metadata Section */}
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-            <PhotoIcon className="w-5 h-5 mr-2 text-indigo-600" />
-            Project Information (Optional)
-          </h3>
-          <div className="grid md:grid-cols-3 gap-4">
+        <Card className="border-gray-200">
+          <CardHeader>
+            <h3 className="text-lg font-medium text-gray-900 flex items-center">
+              <PhotoIcon className="w-5 h-5 mr-2 text-indigo-600" />
+              Project Information (Optional)
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Project Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={metadata.projectName}
                 onChange={(e) => setMetadata({ ...metadata, projectName: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-2 border-gray-300 focus-visible:border-primary-500"
                 placeholder="My Project"
               />
             </div>
@@ -209,11 +205,11 @@ export default function ScreenshotComparisonForm({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Component Name
               </label>
-              <input
+              <Input
                 type="text"
                 value={metadata.componentName}
                 onChange={(e) => setMetadata({ ...metadata, componentName: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-2 border-gray-300 focus-visible:border-primary-500"
                 placeholder="Header Component"
               />
             </div>
@@ -221,61 +217,67 @@ export default function ScreenshotComparisonForm({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
               </label>
-              <input
+              <Input
                 type="text"
                 value={metadata.description}
                 onChange={(e) => setMetadata({ ...metadata, description: e.target.value })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-2 border-gray-300 focus-visible:border-primary-500"
                 placeholder="Landing page header section"
               />
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Settings Toggle */}
-        <div className="card">
-          <button
-            type="button"
-            onClick={() => setShowSettings(!showSettings)}
-            className="flex items-center justify-between w-full text-left"
-          >
-            <div className="flex items-center space-x-2">
-              <Cog6ToothIcon className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-lg font-medium text-gray-900">
-                Advanced Settings
-              </h3>
+        <Card className="border-gray-200">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className="flex items-center justify-between w-full text-left"
+              >
+                <div className="flex items-center space-x-2">
+                  <Cog6ToothIcon className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Advanced Settings
+                  </h3>
+                </div>
+                <motion.div
+                  animate={{ rotate: showSettings ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </motion.div>
+              </button>
             </div>
+            
             <motion.div
-              animate={{ rotate: showSettings ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
+              initial={false}
+              animate={{ height: showSettings ? 'auto' : 0, opacity: showSettings ? 1 : 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
             >
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              {showSettings && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <ComparisonSettings
+                    settings={settings}
+                    onChange={setSettings}
+                  />
+                </div>
+              )}
             </motion.div>
-          </button>
-          
-          <motion.div
-            initial={false}
-            animate={{ height: showSettings ? 'auto' : 0, opacity: showSettings ? 1 : 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            {showSettings && (
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <ComparisonSettings
-                  settings={settings}
-                  onChange={setSettings}
-                />
-              </div>
-            )}
-          </motion.div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Progress Indicator */}
         {uploadMutation.isPending && (
-          <div className="card">
-            <ProgressIndicator
+          <Card className="border-gray-200">
+            <CardContent>
+              <ProgressIndicator
               stages={[
                 { id: 'upload', name: 'Uploading Screenshots', status: 'in_progress' },
                 { id: 'preprocessing', name: 'Preprocessing Images', status: 'pending' },
@@ -285,7 +287,8 @@ export default function ScreenshotComparisonForm({
               ]}
               currentStage="upload"
             />
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Submit Button */}
@@ -314,11 +317,13 @@ export default function ScreenshotComparisonForm({
 
         {/* Error Display */}
         {uploadMutation.error && (
-          <div className="card border-red-200 bg-red-50">
-            <div className="text-red-600 text-sm">
-              <strong>Error:</strong> {(uploadMutation.error as any)?.message || 'An unexpected error occurred'}
-            </div>
-          </div>
+          <Card className="border-2 border-red-400 bg-red-50">
+            <CardContent>
+              <div className="text-red-600 text-sm">
+                <strong>Error:</strong> {(uploadMutation.error as any)?.message || 'An unexpected error occurred'}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </form>
     </div>

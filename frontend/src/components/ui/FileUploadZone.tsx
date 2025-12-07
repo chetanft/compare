@@ -61,7 +61,7 @@ export default function FileUploadZone({
   const hasError = fileRejections.length > 0;
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full flex flex-col ${className}`}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {title}
       </label>
@@ -71,14 +71,16 @@ export default function FileUploadZone({
           {...getRootProps()}
           className={`
             upload-zone cursor-pointer transition-colors duration-200
-            ${isDragActive ? 'upload-zone-active' : ''}
-            ${hasError ? 'border-red-300 bg-red-50' : ''}
+            border-2 border-dashed rounded-lg p-8 flex-1
+            flex flex-col items-center justify-center min-h-[200px]
+            ${isDragActive ? 'upload-zone-active border-primary-500 bg-primary-50' : 'border-gray-300 bg-gray-50'}
+            ${hasError ? 'border-red-400 bg-red-50' : ''}
           `}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
         >
           <input {...getInputProps()} />
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center text-center">
             <CloudArrowUpIcon className={`w-12 h-12 mb-4 ${hasError ? 'text-red-400' : 'text-gray-400'}`} />
             <p className={`text-lg font-medium mb-2 ${hasError ? 'text-red-600' : 'text-gray-900'}`}>
               {isDragActive ? 'Drop the image here' : 'Upload Screenshot'}
@@ -95,12 +97,12 @@ export default function FileUploadZone({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="image-preview relative"
+          className="image-preview relative border-2 border-gray-300 rounded-lg p-2 bg-gray-50"
         >
           <img
             src={URL.createObjectURL(selectedFile)}
             alt="Preview"
-            className="w-full h-48 object-cover rounded-lg"
+            className="w-full h-48 object-cover rounded-md"
           />
           <div className="absolute inset-0 bg-black bg-opacity-50 rounded-lg flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-200">
             <button

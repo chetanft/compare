@@ -47,20 +47,6 @@ export default function UnifiedComparison() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Figma-Web Comparison Tool
-          </h1>
-          <p className="text-lg text-gray-600">
-            Compare your Figma designs with live web implementations
-          </p>
-        </motion.div>
-
         {/* Main Content */}
         <div className="max-w-6xl mx-auto">
           <AnimatePresence mode="wait">

@@ -37,6 +37,8 @@ import DesignSystemsManager from '../components/settings/DesignSystemsManager'
 import CredentialsManager from '../components/settings/CredentialsManager'
 
 
+type MCPConnectionMethod = 'api' | 'desktop' | 'figma' | 'mcp_tools' | 'none';
+
 interface SettingsForm {
   // General Settings
   defaultTimeout: number
@@ -50,7 +52,7 @@ interface SettingsForm {
   figmaExportScale: number
   
   // MCP Settings
-  mcpConnectionMethod: 'api' | 'mcp-server' | 'mcp-tools' | 'none'
+  mcpConnectionMethod: MCPConnectionMethod
   mcpServerUrl: string
   mcpEndpoint: string
   mcpToolsEnvironment: 'auto' | 'global' | 'local'
@@ -83,6 +85,24 @@ const SETTINGS_PLACEHOLDERS = {
   mcpServerUrl: 'http://127.0.0.1:3845/mcp',
   searchReports: 'Search reports by name, date, or status...'
 }
+
+const normalizeConnectionMethod = (value?: string): MCPConnectionMethod => {
+  switch (value) {
+    case 'direct_api':
+    case 'api':
+      return 'api';
+    case 'mcp_server':
+    case 'desktop':
+      return 'desktop';
+    case 'mcp_server_remote':
+    case 'figma':
+      return 'figma';
+    case 'mcp_tools':
+      return 'mcp_tools';
+    default:
+      return 'none';
+  }
+};
 
 // Local storage key for cached settings
 // No settings cache key needed
@@ -125,7 +145,7 @@ export default function Settings() {
       figmaPersonalAccessToken: '',
       defaultFigmaExportFormat: 'svg',
       figmaExportScale: 2,
-      mcpConnectionMethod: 'direct_api',
+      mcpConnectionMethod: 'api',
       mcpServerUrl: 'http://127.0.0.1:3845/mcp',
       mcpEndpoint: '/sse',
       mcpToolsEnvironment: 'auto',
@@ -217,13 +237,12 @@ export default function Settings() {
       }
       
       const result = await response.json();
-      
-      if (result.success && result.settings) {
-        const settings = result.settings;
+      if (result.success) {
+        const settings = result.settings || result.data || {};
         
         // Map backend settings to form format
         const formData: Partial<SettingsForm> = {
-          mcpConnectionMethod: settings.method || 'none',
+          mcpConnectionMethod: normalizeConnectionMethod(settings.method),
           mcpServerUrl: settings.mcpServer?.url || 'http://127.0.0.1:3845',
           mcpEndpoint: settings.mcpServer?.endpoint || '/sse',
           mcpToolsEnvironment: settings.mcpTools?.environment || 'auto',
@@ -375,7 +394,6 @@ export default function Settings() {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Settings</h1>
               <p className="text-muted-foreground">Configure your comparison tool preferences and integrations</p>
             </div>
             
@@ -552,9 +570,9 @@ export default function Settings() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">No Connection</SelectItem>
-                              <SelectItem value="direct_api">Direct Figma API</SelectItem>
-                              <SelectItem value="mcp_server">MCP Server - Local</SelectItem>
-                              <SelectItem value="mcp_server_remote">MCP Server - Remote (SaaS)</SelectItem>
+                              <SelectItem value="api">Direct Figma API</SelectItem>
+                              <SelectItem value="desktop">MCP Server - Local</SelectItem>
+                              <SelectItem value="figma">Figma Hosted MCP</SelectItem>
                               <SelectItem value="mcp_tools">MCP Tools (Expert)</SelectItem>
                             </SelectContent>
                           </Select>
@@ -602,12 +620,12 @@ export default function Settings() {
                   </CardContent>
                 </Card>
 
-                {/* API Token Settings (shown for direct_api method) */}
+                {/* API Token Settings (shown for api method) */}
                 <Controller
                   name="mcpConnectionMethod"
                   control={control}
                   render={({ field: methodField }) => (
-                    methodField.value === 'direct_api' && (
+                    methodField.value === 'api' && (
                       <Card>
                         <CardHeader>
                           <CardTitle>Figma API Token</CardTitle>
@@ -633,12 +651,12 @@ export default function Settings() {
                   )}
                 />
 
-                {/* MCP Server Settings (shown for mcp_server method) */}
+                {/* MCP Server Settings (shown for desktop method) */}
                 <Controller
                   name="mcpConnectionMethod"
                   control={control}
                   render={({ field: methodField }) => (
-                    methodField.value === 'mcp_server' && (
+                    methodField.value === 'desktop' && (
                       <Card>
                         <CardHeader>
                           <CardTitle>MCP Server Configuration</CardTitle>
