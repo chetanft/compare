@@ -1,13 +1,8 @@
 {
     "version": 2,
     "installCommand": "npm install --include=dev && (cd frontend && npm install --include=dev)",
-    "buildCommand": "npm run sync:env && cd frontend && npm run build",
+    "buildCommand": "npm run build",
     "outputDirectory": "frontend/dist",
-    "env": {
-        "_comment": "Required environment variables for Vite build. Set these in Vercel dashboard: Settings > Environment Variables",
-        "_VITE_SUPABASE_URL": "Supabase project URL (required for SaaS mode)",
-        "_VITE_SUPABASE_ANON_KEY": "Supabase anonymous key (required for SaaS mode)"
-    },
     "framework": null,
     "rewrites": [
         {
