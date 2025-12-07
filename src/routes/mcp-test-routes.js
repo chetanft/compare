@@ -16,36 +16,42 @@ const router = express.Router();
  */
 router.post('/test-connection', async (req, res) => {
   try {
-    const { method, serverUrl, endpoint, environment } = req.body;
+    const { method, serverUrl, endpoint } = req.body;
     
-    console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint });
+    console.log('🔍 Testing MCP connection:', { method, serverUrl, endpoint, body: req.body });
     
-    switch (method) {
+    // Normalize method value (handle case variations and aliases)
+    const normalizedMethod = method ? String(method).toLowerCase().trim() : null;
+    
+    console.log('🔍 Normalized method:', normalizedMethod);
+    
+    switch (normalizedMethod) {
       case 'mcp_server':
       case 'desktop':
+      case 'figma-desktop':
+      case 'local':
+        console.log('✅ Routing to testMCPServer');
         return await testMCPServer(req, res);
         
       case 'direct_api':
       case 'api':
+      case 'figma-api':
+        console.log('✅ Routing to testDirectAPI');
         return await testDirectAPI(req, res);
         
       case 'mcp_server_remote':
       case 'figma':
+      case 'figma-cloud':
+      case 'cloud':
+      case 'remote':
+        console.log('✅ Routing to testRemoteMCP');
         return await testRemoteMCP(req, res);
         
-      case 'mcp_tools':
-        return await testMCPTools(req, res);
-        
-      case 'none':
-        return res.json({
-          success: false,
-          error: 'No connection method selected'
-        });
-        
       default:
+        console.error('❌ Unknown method:', { original: method, normalized: normalizedMethod, type: typeof method });
         return res.json({
           success: false,
-          error: `Unknown connection method: ${method}. Supported methods: api, desktop, figma, mcp_tools, none.`
+          error: `Unknown connection method: ${method || 'undefined'}. Supported methods: api, desktop, figma.`
         });
     }
   } catch (error) {
@@ -144,51 +150,6 @@ async function testDirectAPI(req, res) {
     return res.json({
       success: false,
       error: `Direct API connection failed: ${error.message}`
-    });
-  }
-}
-
-/**
- * Test MCP Tools connection
- */
-async function testMCPTools(req, res) {
-  try {
-    const { serverUrl, endpoint } = req.body;
-    
-    if (!serverUrl) {
-      return res.json({
-        success: false,
-        error: 'MCP server URL is required for MCP tools connection'
-      });
-    }
-    
-    // Test connection to external MCP server
-    const testUrl = `${serverUrl}${endpoint || '/health'}`;
-    const response = await fetch(testUrl, {
-      method: 'GET',
-      timeout: 5000
-    });
-    
-    if (!response.ok) {
-      return res.json({
-        success: false,
-        error: `MCP tools server error: ${response.status} ${response.statusText}`
-      });
-    }
-    
-    return res.json({
-      success: true,
-      message: `MCP tools server connected successfully at ${testUrl}`,
-      data: {
-        connected: true,
-        serverUrl: testUrl
-      }
-    });
-  } catch (error) {
-    console.error('❌ MCP tools test failed:', error);
-    return res.json({
-      success: false,
-      error: `MCP tools connection failed: ${error.message}`
     });
   }
 }

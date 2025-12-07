@@ -745,6 +745,172 @@ class ComparisonEngine {
     return { deviations, matches };
   }
 
+  measureContrast(figmaComponent, webElement) {
+    const deviations = [];
+    const matches = [];
+
+    const figmaColors = figmaComponent.properties?.colors || {};
+    const figmaTextColor = this.parseColor(figmaColors.color || figmaComponent.properties?.color);
+    const figmaBackground = this.parseColor(figmaColors.backgroundColor || figmaComponent.properties?.backgroundColor);
+
+    const webTextColor = this.parseColor(webElement.styles?.color);
+    const webBackground = this.parseColor(webElement.styles?.backgroundColor);
+
+    const textColor = figmaTextColor || webTextColor;
+    const backgroundColor = webBackground || figmaBackground;
+
+    if (!textColor || !backgroundColor) {
+      return { deviations, matches };
+    }
+
+    const contrast = this.calculateContrastRatio(textColor, backgroundColor);
+    const fontSize = this.getFontSize(figmaComponent, webElement);
+    const fontWeight = this.getFontWeight(figmaComponent, webElement);
+    const largeText = this.isLargeText(fontSize, fontWeight);
+    const minimumContrast = largeText ? 3 : 4.5;
+
+    if (contrast < minimumContrast) {
+      deviations.push({
+        property: 'contrast',
+        figmaValue: `${contrast.toFixed(2)}:1`,
+        webValue: `${contrast.toFixed(2)}:1`,
+        difference: (minimumContrast - contrast).toFixed(2),
+        severity: 'medium',
+        accessibility: true,
+        message: `Contrast ratio ${contrast.toFixed(2)}:1 is below WCAG ${minimumContrast}:1 requirement`
+      });
+    } else {
+      matches.push({
+        property: 'contrast',
+        value: `${contrast.toFixed(2)}:1`,
+        message: 'Contrast ratio meets WCAG requirements'
+      });
+    }
+
+    return { deviations, matches };
+  }
+
+  evaluateAccessibility(figmaComponent, webElement) {
+    const deviations = [];
+    const matches = [];
+
+    const elementType = webElement.type?.toLowerCase();
+    const hasText = !!(webElement.text && webElement.text.trim().length > 0);
+
+    if (elementType === 'img') {
+      if (webElement.attributes?.alt && webElement.attributes.alt.trim().length > 0) {
+        matches.push({
+          property: 'altText',
+          value: webElement.attributes.alt,
+          message: 'Image has descriptive alt text'
+        });
+      } else {
+        deviations.push({
+          property: 'altText',
+          figmaValue: figmaComponent.name,
+          webValue: null,
+          severity: 'high',
+          accessibility: true,
+          message: 'Image element is missing descriptive alt text'
+        });
+      }
+    }
+
+    if ((elementType === 'a' || elementType === 'button') && !hasText) {
+      deviations.push({
+        property: 'textContent',
+        figmaValue: figmaComponent.name,
+        webValue: webElement.text || null,
+        severity: 'high',
+        accessibility: true,
+        message: 'Interactive element is missing visible text'
+      });
+    } else if (elementType === 'a' || elementType === 'button') {
+      matches.push({
+        property: 'textContent',
+        value: webElement.text?.trim(),
+        message: 'Interactive element has visible label'
+      });
+    }
+
+    return { deviations, matches };
+  }
+
+  parseColor(color) {
+    if (!color || typeof color !== 'string') return null;
+    if (color.startsWith('#')) {
+      const hex = color.replace('#', '');
+      if (hex.length === 3) {
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        return { r, g, b };
+      }
+      if (hex.length === 6) {
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return { r, g, b };
+      }
+    }
+
+    const rgbMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (rgbMatch) {
+      return {
+        r: parseInt(rgbMatch[1], 10),
+        g: parseInt(rgbMatch[2], 10),
+        b: parseInt(rgbMatch[3], 10)
+      };
+    }
+
+    return null;
+  }
+
+  calculateContrastRatio(color1, color2) {
+    const luminance1 = this.calculateRelativeLuminance(color1);
+    const luminance2 = this.calculateRelativeLuminance(color2);
+    const brightest = Math.max(luminance1, luminance2);
+    const darkest = Math.min(luminance1, luminance2);
+    return (brightest + 0.05) / (darkest + 0.05);
+  }
+
+  calculateRelativeLuminance(color) {
+    const normalize = (value) => {
+      const channel = value / 255;
+      return channel <= 0.03928
+        ? channel / 12.92
+        : Math.pow((channel + 0.055) / 1.055, 2.4);
+    };
+
+    return (
+      0.2126 * normalize(color.r) +
+      0.7152 * normalize(color.g) +
+      0.0722 * normalize(color.b)
+    );
+  }
+
+  getFontSize(figmaComponent, webElement) {
+    const figmaSize = figmaComponent.properties?.typography?.fontSize || figmaComponent.style?.fontSize;
+    const webSize = webElement.styles?.fontSize;
+    const value = figmaSize || webSize;
+    return value ? parseFloat(value) : 16;
+  }
+
+  getFontWeight(figmaComponent, webElement) {
+    const figmaWeight = figmaComponent.properties?.typography?.fontWeight || figmaComponent.style?.fontWeight;
+    const webWeight = webElement.styles?.fontWeight;
+    const value = figmaWeight || webWeight || '400';
+    const numeric = parseInt(value, 10);
+    return isNaN(numeric) ? 400 : numeric;
+  }
+
+  isLargeText(fontSize, fontWeight) {
+    if (!fontSize) return false;
+    if (fontSize >= 18) return true;
+    if (fontSize >= 14 && fontWeight >= 700) return true;
+    return false;
+  }
+
   /**
    * Compare border radius values
    * @param {number|string} figmaBorderRadius - Figma border radius

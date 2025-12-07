@@ -1,0 +1,69 @@
+{
+  "metadata": {
+    "figma": {
+      "totalComponents": 1
+    },
+    "web": {
+      "totalElements": 1
+    },
+    "comparedAt": "2025-12-07T11:24:45.819Z",
+    "processingStats": {
+      "chunksProcessed": 1,
+      "componentsProcessed": 1,
+      "originalComponentCount": 1,
+      "originalElementCount": 1
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "1",
+      "componentName": "Btn",
+      "componentType": "FRAME",
+      "status": "matches",
+      "deviations": [],
+      "matches": [
+        {
+          "property": "backgroundColor",
+          "value": "#ffffff",
+          "message": "backgroundColor matches within tolerance"
+        },
+        {
+          "property": "color",
+          "value": "#000000",
+          "message": "color matches within tolerance"
+        },
+        {
+          "property": "contrast",
+          "value": "21.00:1",
+          "message": "Contrast ratio meets WCAG requirements"
+        },
+        {
+          "property": "textContent",
+          "value": "Btn",
+          "message": "Interactive element has visible label"
+        }
+      ],
+      "matchScore": 0.72
+    }
+  ],
+  "summary": {
+    "totalComponents": 1,
+    "totalDeviations": 0,
+    "totalMatches": 4,
+    "severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

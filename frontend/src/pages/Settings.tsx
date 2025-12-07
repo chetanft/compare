@@ -37,7 +37,7 @@ import DesignSystemsManager from '../components/settings/DesignSystemsManager'
 import CredentialsManager from '../components/settings/CredentialsManager'
 
 
-type MCPConnectionMethod = 'api' | 'desktop' | 'figma' | 'mcp_tools' | 'none';
+type MCPConnectionMethod = 'api' | 'desktop' | 'figma';
 
 interface SettingsForm {
   // General Settings
@@ -55,7 +55,6 @@ interface SettingsForm {
   mcpConnectionMethod: MCPConnectionMethod
   mcpServerUrl: string
   mcpEndpoint: string
-  mcpToolsEnvironment: 'auto' | 'global' | 'local'
   
   // Web Scraping Settings
   defaultViewport: {
@@ -97,10 +96,8 @@ const normalizeConnectionMethod = (value?: string): MCPConnectionMethod => {
     case 'mcp_server_remote':
     case 'figma':
       return 'figma';
-    case 'mcp_tools':
-      return 'mcp_tools';
     default:
-      return 'none';
+      return 'api';
   }
 };
 
@@ -148,7 +145,6 @@ export default function Settings() {
       mcpConnectionMethod: 'api',
       mcpServerUrl: 'http://127.0.0.1:3845/mcp',
       mcpEndpoint: '/sse',
-      mcpToolsEnvironment: 'auto',
       defaultViewport: {
         width: 1920,
         height: 1080
@@ -224,7 +220,7 @@ export default function Settings() {
         setServerStatus('offline');
       }
       
-      const response = await fetch('/api/settings/current', {
+      const response = await fetch(`${apiBaseUrl}/api/settings/current`, {
         headers: {
           'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
@@ -243,9 +239,8 @@ export default function Settings() {
         // Map backend settings to form format
         const formData: Partial<SettingsForm> = {
           mcpConnectionMethod: normalizeConnectionMethod(settings.method),
-          mcpServerUrl: settings.mcpServer?.url || 'http://127.0.0.1:3845',
+          mcpServerUrl: settings.mcpServer?.url || 'http://127.0.0.1:3845/mcp',
           mcpEndpoint: settings.mcpServer?.endpoint || '/sse',
-          mcpToolsEnvironment: settings.mcpTools?.environment || 'auto',
           figmaPersonalAccessToken: settings.hasApiKey ? '••••••••' : '',
           defaultTimeout: settings.defaultTimeout || 30000,
           maxConcurrentComparisons: settings.maxConcurrentComparisons || 3,
@@ -270,7 +265,7 @@ export default function Settings() {
     }
   };
 
-  const testMCPConnection = async (method: string, serverUrl?: string, endpoint?: string, environment?: string) => {
+  const testMCPConnection = async (method: string, serverUrl?: string, endpoint?: string) => {
     if (serverStatus === 'offline') {
       return { success: false, error: 'Server is offline. Cannot test connection.' };
     }
@@ -281,7 +276,6 @@ export default function Settings() {
         method,
         serverUrl,
         endpoint,
-        environment,
         figmaPersonalAccessToken: formData.figmaPersonalAccessToken
       };
 
@@ -324,7 +318,6 @@ export default function Settings() {
         figmaPersonalAccessToken: data.figmaPersonalAccessToken,
         mcpServerUrl: data.mcpServerUrl,
         mcpEndpoint: data.mcpEndpoint,
-        mcpToolsEnvironment: data.mcpToolsEnvironment,
         // Include other settings as needed
         defaultTimeout: data.defaultTimeout,
         maxConcurrentComparisons: data.maxConcurrentComparisons,
@@ -334,7 +327,8 @@ export default function Settings() {
         figmaExportScale: data.figmaExportScale
       };
 
-      const response = await fetch('/api/settings/save', {
+      const apiBaseUrl = getApiBaseUrl();
+      const response = await fetch(`${apiBaseUrl}/api/settings/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -569,11 +563,9 @@ export default function Settings() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">No Connection</SelectItem>
-                              <SelectItem value="api">Direct Figma API</SelectItem>
-                              <SelectItem value="desktop">MCP Server - Local</SelectItem>
-                              <SelectItem value="figma">Figma Hosted MCP</SelectItem>
-                              <SelectItem value="mcp_tools">MCP Tools (Expert)</SelectItem>
+                              <SelectItem value="api">Figma API</SelectItem>
+                              <SelectItem value="desktop">Desktop MCP</SelectItem>
+                              <SelectItem value="figma">Remote MCP (Figma)</SelectItem>
                             </SelectContent>
                           </Select>
                         )}
@@ -592,7 +584,7 @@ export default function Settings() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
                         <h4 className="font-medium text-blue-900 mb-2 flex items-center">
-                          🔑 Direct API
+                          🔑 Figma API
                         </h4>
                         <p className="text-sm text-blue-700">
                           Uses your personal Figma access token. Simple and reliable for most use cases.
@@ -601,19 +593,19 @@ export default function Settings() {
                       
                       <div className="p-4 border rounded-lg bg-gray-50 border-gray-200">
                         <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                          🖥️ MCP Server
+                          🖥️ Desktop MCP
                         </h4>
                         <p className="text-sm text-gray-700">
-                          Connects to Figma Desktop App's MCP server. Requires server to be running.
+                          Connects to the Figma Desktop MCP server at http://127.0.0.1:3845/mcp.
                         </p>
                       </div>
                       
                       <div className="p-4 border rounded-lg bg-purple-50 border-purple-200">
                         <h4 className="font-medium text-purple-900 mb-2 flex items-center">
-                          🔧 MCP Tools
+                          ☁️ Remote MCP
                         </h4>
                         <p className="text-sm text-purple-700">
-                          Uses third-party MCP tools. For advanced users with custom MCP setups.
+                          Uses Figma&apos;s hosted MCP service at https://mcp.figma.com/mcp (requires your token).
                         </p>
                       </div>
                     </div>
@@ -704,45 +696,6 @@ export default function Settings() {
                   )}
                 />
 
-                {/* MCP Tools Settings (shown for mcp_tools method) */}
-                <Controller
-                  name="mcpConnectionMethod"
-                  control={control}
-                  render={({ field: methodField }) => (
-                    methodField.value === 'mcp_tools' && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>MCP Tools Configuration</CardTitle>
-                          <CardDescription>
-                            Configure third-party MCP tools environment
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="mcpToolsEnvironment">MCP Tools Environment</Label>
-                            <Controller
-                              name="mcpToolsEnvironment"
-                              control={control}
-                              render={({ field }) => (
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger id="mcpToolsEnvironment">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="auto">Auto-detect</SelectItem>
-                                    <SelectItem value="global">Global MCP Tools</SelectItem>
-                                    <SelectItem value="local">Local Installation</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  )}
-                />
-
                 {/* Export Settings */}
                 <Card>
                   <CardHeader>
@@ -815,7 +768,7 @@ export default function Settings() {
                             variant="outline"
                             onClick={async () => {
                               const method = field.value
-                              if (method === 'none') {
+                              if (!method) {
                                 alert('Please select a connection method first')
                                 return
                               }
@@ -824,8 +777,7 @@ export default function Settings() {
                               const result = await testMCPConnection(
                                 method,
                                 formData.mcpServerUrl,
-                                formData.mcpEndpoint,
-                                formData.mcpToolsEnvironment
+                                formData.mcpEndpoint
                               )
                               
                               if (result.success) {

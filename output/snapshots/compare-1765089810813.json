@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+      "extractedAt": "2025-12-07T06:41:59.869Z",
+      "totalComponents": 53
+    },
+    "web": {
+      "url": "https://www.freighttiger.com/v10/journey/listing",
+      "extractedAt": "2025-12-07T06:43:30.793Z",
+      "totalElements": 1000
+    },
+    "comparedAt": "2025-12-07T06:43:30.987Z",
+    "processingStats": {
+      "chunksProcessed": 6,
+      "componentsProcessed": 0,
+      "originalComponentCount": 53,
+      "originalElementCount": 1000
+    }
+  },
+  "comparisons": [],
+  "summary": {
+    "totalComponents": 0,
+    "totalDeviations": 0,
+    "totalMatches": 0,
+    "severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

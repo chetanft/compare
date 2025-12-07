@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+      "extractedAt": "2025-12-07T11:19:45.474Z",
+      "totalComponents": 91
+    },
+    "web": {
+      "url": "https://www.figma.com",
+      "extractedAt": "2025-12-07T11:20:34.570Z",
+      "totalElements": 548
+    },
+    "comparedAt": "2025-12-07T11:20:34.696Z",
+    "processingStats": {
+      "chunksProcessed": 10,
+      "componentsProcessed": 1,
+      "originalComponentCount": 91,
+      "originalElementCount": 548
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "8548:130447",
+      "componentName": "Background+Shadow",
+      "componentType": "ROUNDED_RECTANGLE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    }
+  ],
+  "summary": {
+    "totalComponents": 1,
+    "totalDeviations": 1,
+    "totalMatches": 0,
+    "severity": {
+      "high": 1,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

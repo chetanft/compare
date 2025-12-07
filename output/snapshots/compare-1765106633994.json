@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "figma": {
+      "totalComponents": 1
+    },
+    "web": {
+      "totalElements": 1
+    },
+    "comparedAt": "2025-12-07T11:23:53.996Z",
+    "processingStats": {
+      "chunksProcessed": 1,
+      "componentsProcessed": 0,
+      "originalComponentCount": 1,
+      "originalElementCount": 1
+    }
+  },
+  "comparisons": [],
+  "summary": {
+    "totalComponents": 0,
+    "totalDeviations": 0,
+    "totalMatches": 0,
+    "severity": {
+      "high": 0,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

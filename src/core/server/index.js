@@ -1985,40 +1985,61 @@ export async function startServer() {
   console.log('🔧 Using UnifiedWebExtractor for comparison with auth:', authentication ? 'enabled' : 'disabled');
   console.log('🔍 DEBUG: Parsed authentication:', JSON.stringify(authentication, null, 2));
   
+  const freightTigerUrl = webUrl.includes('freighttiger.com');
+  const requestedTimeout = req.body.options?.timeout;
+  const comparisonTimeout = requestedTimeout 
+    || (freightTigerUrl ? 300000 : (config?.timeouts?.webExtraction || 90000));
+
+  const extractionOptions = {
+    authentication,
+    timeout: comparisonTimeout,
+    includeScreenshot: false,
+    stabilityTimeout: freightTigerUrl ? 60000 : 5000
+  };
+
+  const attemptWebExtraction = async (label = 'primary') => {
+    console.log(`🌐 Web extraction attempt (${label}) with timeout ${comparisonTimeout}ms`);
+    return unifiedWebExtractor.extractWebData(webUrl, extractionOptions);
+  };
+
   try {
     console.log(`🔧 Using authentication: ${authentication ? 'enabled' : 'disabled'}`);
-    
-    // Use the UnifiedWebExtractor instead of EnhancedWebExtractor
-    webData = await unifiedWebExtractor.extractWebData(webUrl, {
-      authentication: authentication,
-      timeout: webUrl.includes('freighttiger.com') ? 300000 : 60000, // 5 minutes for FreightTiger
-      includeScreenshot: false,
-      stabilityTimeout: webUrl.includes('freighttiger.com') ? 60000 : 5000 // Extra stability time for FreightTiger
-    });
-    
-    console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
-    console.log('📊 Web data summary:', {
-      elements: webData.elements?.length || 0,
-      colors: webData.colorPalette?.length || 0,
-      fontFamilies: webData.typography?.fontFamilies?.length || 0,
-      fontSizes: webData.typography?.fontSizes?.length || 0,
-      spacing: webData.spacing?.length || 0,
-      borderRadius: webData.borderRadius?.length || 0
-    });
-    
-    // Debug: Sample extracted data
-    if (webData.colorPalette?.length > 0) {
-      console.log('🎨 Sample colors:', webData.colorPalette.slice(0, 3));
-    }
-    if (webData.typography?.fontFamilies?.length > 0) {
-      console.log('📝 Sample fonts:', webData.typography.fontFamilies.slice(0, 3));
-    }
-    if (webData.spacing?.length > 0) {
-      console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
-    }
+    webData = await attemptWebExtraction();
   } catch (webError) {
-    console.error('❌ Web extraction failed:', webError.message);
-    throw webError;
+    const message = webError?.message || '';
+    const canRetry = /Page was closed before extraction could begin/i.test(message) ||
+      /Extraction aborted due to timeout/i.test(message);
+
+    if (canRetry) {
+      console.warn(`⚠️ Web extraction aborted early (${message}). Retrying once with fresh session...`);
+      // Give the browser pool a brief moment to recycle pages
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      webData = await attemptWebExtraction('retry');
+    } else {
+      console.error('❌ Web extraction failed:', message);
+      throw webError;
+    }
+  }
+
+  console.log('✅ Web extraction completed:', webData.elements?.length || 0, 'elements');
+  console.log('📊 Web data summary:', {
+    elements: webData.elements?.length || 0,
+    colors: webData.colorPalette?.length || 0,
+    fontFamilies: webData.typography?.fontFamilies?.length || 0,
+    fontSizes: webData.typography?.fontSizes?.length || 0,
+    spacing: webData.spacing?.length || 0,
+    borderRadius: webData.borderRadius?.length || 0
+  });
+  
+  // Debug: Sample extracted data
+  if (webData.colorPalette?.length > 0) {
+    console.log('🎨 Sample colors:', webData.colorPalette.slice(0, 3));
+  }
+  if (webData.typography?.fontFamilies?.length > 0) {
+    console.log('📝 Sample fonts:', webData.typography.fontFamilies.slice(0, 3));
+  }
+  if (webData.spacing?.length > 0) {
+    console.log('📏 Sample spacing:', webData.spacing.slice(0, 3));
   }
   
   const webDuration = Date.now() - webStartTime;

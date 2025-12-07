@@ -38,6 +38,349 @@
         "options": {}
       },
       "payloadPath": "/Users/user/Comparision tool/output/snapshots/compare-1761732805458.json"
+    },
+    {
+      "id": "compare-1765075599872",
+      "createdAt": "2025-12-07T02:46:39.875Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T02:44:40.342Z",
+          "totalComponents": 53
+        },
+        "web": {
+          "url": "https://www.freighttiger.com/v10/journey/listing",
+          "extractedAt": "2025-12-07T02:46:39.860Z",
+          "totalElements": 0
+        },
+        "summary": {
+          "totalComponents": 53,
+          "totalDeviations": 53,
+          "totalMatches": 0,
+          "severity": {
+            "high": 53,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765075599872.json"
+    },
+    {
+      "id": "compare-1765085966668",
+      "createdAt": "2025-12-07T05:39:26.834Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T05:37:56.607Z",
+          "totalComponents": 53
+        },
+        "web": {
+          "url": "https://www.freighttiger.com/v10/journey/listing",
+          "extractedAt": "2025-12-07T05:39:26.654Z",
+          "totalElements": 1000
+        },
+        "summary": {
+          "totalComponents": 0,
+          "totalDeviations": 0,
+          "totalMatches": 0,
+          "severity": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765085966668.json"
+    },
+    {
+      "id": "compare-1765089810813",
+      "createdAt": "2025-12-07T06:43:30.987Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T06:41:59.869Z",
+          "totalComponents": 53
+        },
+        "web": {
+          "url": "https://www.freighttiger.com/v10/journey/listing",
+          "extractedAt": "2025-12-07T06:43:30.793Z",
+          "totalElements": 1000
+        },
+        "summary": {
+          "totalComponents": 0,
+          "totalDeviations": 0,
+          "totalMatches": 0,
+          "severity": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765089810813.json"
+    },
+    {
+      "id": "compare-1765105077467",
+      "createdAt": "2025-12-07T10:57:58.118Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T10:56:27.139Z",
+          "totalComponents": 401
+        },
+        "web": {
+          "url": "https://www.freighttiger.com/v10/journey/listing",
+          "extractedAt": "2025-12-07T10:57:57.442Z",
+          "totalElements": 1000
+        },
+        "summary": {
+          "totalComponents": 9,
+          "totalDeviations": 9,
+          "totalMatches": 0,
+          "severity": {
+            "high": 9,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765105077467.json"
+    },
+    {
+      "id": "compare-1765106086932",
+      "createdAt": "2025-12-07T11:14:47.756Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T11:13:57.658Z",
+          "totalComponents": 496
+        },
+        "web": {
+          "url": "https://www.figma.com",
+          "extractedAt": "2025-12-07T11:14:46.921Z",
+          "totalElements": 550
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 1,
+          "totalMatches": 0,
+          "severity": {
+            "high": 1,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106086932.json"
+    },
+    {
+      "id": "compare-1765106199862",
+      "createdAt": "2025-12-07T11:16:40.677Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T11:15:52.038Z",
+          "totalComponents": 496
+        },
+        "web": {
+          "url": "https://www.figma.com",
+          "extractedAt": "2025-12-07T11:16:39.844Z",
+          "totalElements": 550
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 1,
+          "totalMatches": 0,
+          "severity": {
+            "high": 1,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106199862.json"
+    },
+    {
+      "id": "compare-1765106434582",
+      "createdAt": "2025-12-07T11:20:34.696Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+          "extractedAt": "2025-12-07T11:19:45.474Z",
+          "totalComponents": 91
+        },
+        "web": {
+          "url": "https://www.figma.com",
+          "extractedAt": "2025-12-07T11:20:34.570Z",
+          "totalElements": 548
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 1,
+          "totalMatches": 0,
+          "severity": {
+            "high": 1,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106434582.json"
+    },
+    {
+      "id": "compare-1765106633994",
+      "createdAt": "2025-12-07T11:23:54.004Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "totalComponents": 1
+        },
+        "web": {
+          "totalElements": 1
+        },
+        "summary": {
+          "totalComponents": 0,
+          "totalDeviations": 0,
+          "totalMatches": 0,
+          "severity": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106633994.json"
+    },
+    {
+      "id": "compare-1765106685818",
+      "createdAt": "2025-12-07T11:24:45.821Z",
+      "extractionType": "compare",
+      "metadata": {
+        "figma": {
+          "totalComponents": 1
+        },
+        "web": {
+          "totalElements": 1
+        },
+        "summary": {
+          "totalComponents": 1,
+          "totalDeviations": 0,
+          "totalMatches": 4,
+          "severity": {
+            "high": 0,
+            "medium": 0,
+            "low": 0
+          },
+          "regressionRisk": {
+            "critical": 0,
+            "major": 0,
+            "minor": 0
+          },
+          "accessibility": {
+            "issues": 0,
+            "impactedComponents": 0,
+            "details": []
+          }
+        },
+        "options": {}
+      },
+      "payloadPath": "/Users/user/Documents/Comparision tool/output/snapshots/compare-1765106685818.json"
     }
   ]
 }

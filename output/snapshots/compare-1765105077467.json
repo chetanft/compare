@@ -1,0 +1,196 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+      "extractedAt": "2025-12-07T10:56:27.139Z",
+      "totalComponents": 401
+    },
+    "web": {
+      "url": "https://www.freighttiger.com/v10/journey/listing",
+      "extractedAt": "2025-12-07T10:57:57.442Z",
+      "totalElements": 1000
+    },
+    "comparedAt": "2025-12-07T10:57:58.118Z",
+    "processingStats": {
+      "chunksProcessed": 41,
+      "componentsProcessed": 9,
+      "originalComponentCount": 401,
+      "originalElementCount": 1000
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "7843:79519",
+      "componentName": "Vector 65",
+      "componentType": "VECTOR",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79523",
+      "componentName": "Vector 64",
+      "componentType": "VECTOR",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79534",
+      "componentName": "Vector 65",
+      "componentType": "VECTOR",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79545",
+      "componentName": "Vector 65",
+      "componentType": "VECTOR",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79549",
+      "componentName": "Vector 64",
+      "componentType": "VECTOR",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79649",
+      "componentName": "Ellipse 1406",
+      "componentType": "ELLIPSE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79696",
+      "componentName": "Ellipse 1406",
+      "componentType": "ELLIPSE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79791",
+      "componentName": "Ellipse 1406",
+      "componentType": "ELLIPSE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7843:79884",
+      "componentName": "Ellipse 1406",
+      "componentType": "ELLIPSE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    }
+  ],
+  "summary": {
+    "totalComponents": 9,
+    "totalDeviations": 9,
+    "totalMatches": 0,
+    "severity": {
+      "high": 9,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

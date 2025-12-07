@@ -1,0 +1,944 @@
+{
+  "metadata": {
+    "figma": {
+      "fileId": "fb5Yc1aKJv9YWsMLnNlWeK",
+      "extractedAt": "2025-12-07T02:44:40.342Z",
+      "totalComponents": 53
+    },
+    "web": {
+      "url": "https://www.freighttiger.com/v10/journey/listing",
+      "extractedAt": "2025-12-07T02:46:39.860Z",
+      "totalElements": 0
+    },
+    "comparedAt": "2025-12-07T02:46:39.875Z",
+    "processingStats": {
+      "chunksProcessed": 6,
+      "componentsProcessed": 53,
+      "originalComponentCount": 53,
+      "originalElementCount": 0
+    }
+  },
+  "comparisons": [
+    {
+      "componentId": "7092:50140",
+      "componentName": "Icon Container",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50096",
+      "componentName": "Pending submission",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50105",
+      "componentName": "Filter Container",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50109",
+      "componentName": "Table",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77530",
+      "componentName": "Frame 1984078040",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77533",
+      "componentName": "KPI 4B",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77536",
+      "componentName": "Frame 1984078040",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77539",
+      "componentName": "KPI 4B",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77542",
+      "componentName": "Frame 1984078040",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77545",
+      "componentName": "KPI 4B",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77548",
+      "componentName": "Frame 1984078040",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50135",
+      "componentName": "Toggle Container",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50138",
+      "componentName": "Action Buttons",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50147",
+      "componentName": "Action Button Group",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50151",
+      "componentName": "Frame 1984078379",
+      "componentType": "FRAME",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50098",
+      "componentName": "Header",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50102",
+      "componentName": "Icon",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50106",
+      "componentName": "Filter Option",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50107",
+      "componentName": "Filter Option",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50917",
+      "componentName": "Filter Option",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7664:75968",
+      "componentName": "Date range filter",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7676:73151",
+      "componentName": "Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77531",
+      "componentName": "triangle-alert",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77537",
+      "componentName": "clock-alert",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77543",
+      "componentName": "cross-icon",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77549",
+      "componentName": "Check",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50142",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50143",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50144",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50145",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50146",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50148",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50149",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50150",
+      "componentName": "Action Button",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50153",
+      "componentName": "Table Columns/Checkbox/1",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50154",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50155",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50156",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7676:76277",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50972",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50157",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50158",
+      "componentName": "Table Columns",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50159",
+      "componentName": "Table Columns/Actions/1",
+      "componentType": "INSTANCE",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50103",
+      "componentName": "Title",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77529",
+      "componentName": "KPI 3B Value Text",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77532",
+      "componentName": "Hero KPI Title",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77535",
+      "componentName": "KPI 3B Value Text",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77538",
+      "componentName": "Hero KPI Title",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77541",
+      "componentName": "KPI 3B Value Text",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77544",
+      "componentName": "Hero KPI Title",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77547",
+      "componentName": "KPI 3B Value Text",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7695:77550",
+      "componentName": "Hero KPI Title",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    },
+    {
+      "componentId": "7092:50137",
+      "componentName": "256 Loads available",
+      "componentType": "TEXT",
+      "status": "no_match",
+      "deviations": [
+        {
+          "property": "existence",
+          "figmaValue": "exists",
+          "webValue": "not found",
+          "difference": "missing",
+          "severity": "high",
+          "message": "Component not found in web implementation"
+        }
+      ],
+      "matches": []
+    }
+  ],
+  "summary": {
+    "totalComponents": 53,
+    "totalDeviations": 53,
+    "totalMatches": 0,
+    "severity": {
+      "high": 53,
+      "medium": 0,
+      "low": 0
+    },
+    "regressionRisk": {
+      "critical": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "accessibility": {
+      "issues": 0,
+      "impactedComponents": 0,
+      "details": []
+    }
+  }
+}

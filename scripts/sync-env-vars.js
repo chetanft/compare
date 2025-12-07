@@ -96,22 +96,31 @@ function writeEnvFile(filePath, vars, examplePath) {
 
 function main() {
   console.log('🔄 Syncing environment variables to frontend/.env...');
-  
-  // Read root .env
+
+  // Read root .env and merge with process.env fallbacks
   const rootVars = readEnvFile(rootEnvPath);
-  
-  // Filter only VITE_ variables
   const viteVars = {};
+  let sourcedFromProcessEnv = false;
   for (const key of VITE_VARS) {
     if (rootVars[key]) {
       viteVars[key] = rootVars[key];
+      continue;
+    }
+    
+    if (process.env[key]) {
+      viteVars[key] = process.env[key];
+      sourcedFromProcessEnv = true;
     }
   }
   
   if (Object.keys(viteVars).length === 0) {
-    console.log('ℹ️  No VITE_ prefixed variables found in root .env');
+    console.log('ℹ️  No VITE_ prefixed variables found in root .env or process.env');
     console.log('ℹ️  Frontend build will use values from frontend/.env if present');
     return;
+  }
+  
+  if (sourcedFromProcessEnv) {
+    console.log('✅ Pulled VITE_ variables from process.env for CI/CD environments');
   }
   
   // Read existing frontend/.env to preserve non-VITE vars
@@ -128,4 +137,3 @@ function main() {
 }
 
 main();
-
