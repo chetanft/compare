@@ -57,8 +57,9 @@ Or use the test script:
 
 ## ⚡ Expected Build Time
 
-- **Before**: Build timeout (20+ minutes trying to install Chromium)
-- **Now**: 2-5 minutes (Chromium download skipped)
+- **Before**: Build timeout (10+ minutes copying large context, then Chromium install)
+- **Now**: 2-5 minutes (small context + Chromium download skipped)
+- **Build Context**: Reduced from ~200MB+ to ~10-20MB
 
 ## 📋 Environment Variables Checklist
 
