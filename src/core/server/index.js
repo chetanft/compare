@@ -2949,25 +2949,32 @@ export async function startServer() {
     console.log(`🔧 Enhanced features: Browser Pool, Security, Rate Limiting`);
     
     // Start periodic status checks
-    setInterval(async () => {
-      try {
-        const wasConnected = mcpConnected;
-        if (figmaClient) {
-          mcpConnected = await figmaClient.connect();
-          
-          if (wasConnected !== mcpConnected) {
-            console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+    // Skip local MCP checks in production (Railway/cloud deployments don't have Figma Desktop)
+    const allowLocalMCP = process.env.ENABLE_LOCAL_MCP === 'true' || process.env.NODE_ENV !== 'production';
+    
+    if (allowLocalMCP) {
+      setInterval(async () => {
+        try {
+          const wasConnected = mcpConnected;
+          if (figmaClient) {
+            mcpConnected = await figmaClient.connect();
+            
+            if (wasConnected !== mcpConnected) {
+              console.log(`🔌 MCP Status changed: ${mcpConnected ? 'Connected' : 'Disconnected'}`);
+            }
+          } else {
+            mcpConnected = null;
           }
-        } else {
-          mcpConnected = null;
+        } catch (error) {
+          if (mcpConnected) {
+            mcpConnected = false;
+            console.log('🔌 MCP Status changed: Disconnected');
+          }
         }
-      } catch (error) {
-        if (mcpConnected) {
-          mcpConnected = false;
-          console.log('🔌 MCP Status changed: Disconnected');
-        }
-      }
-    }, 30000); // Check every 30 seconds
+      }, 30000); // Check every 30 seconds
+    } else {
+      console.log('ℹ️  Local MCP health checks disabled in production (ENABLE_LOCAL_MCP not set)');
+    }
   });
 
   // Setup signal handlers
