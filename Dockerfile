@@ -21,9 +21,14 @@ COPY frontend/package*.json ./frontend/
 
 # Install dependencies immediately (before copying large source files)
 # This runs right after copying package files to avoid timeout
-RUN npm ci --include=dev && \
+# Using explicit echo to verify execution and prevent caching issues
+RUN echo "Installing root dependencies..." && \
+    npm ci --include=dev && \
+    echo "Installing frontend dependencies..." && \
     cd frontend && \
-    npm ci --include=dev
+    npm ci --include=dev && \
+    cd .. && \
+    echo "Dependencies installed successfully"
 
 # Copy only frontend source files needed for build (minimal copy)
 COPY frontend/src ./frontend/src
@@ -37,7 +42,11 @@ COPY frontend/components.json ./frontend/components.json
 RUN mkdir -p ./frontend/public
 
 # Build frontend (now that we have source files)
-RUN cd frontend && npm run build
+RUN echo "Building frontend..." && \
+    cd frontend && \
+    npm run build && \
+    cd .. && \
+    echo "Frontend build completed successfully"
 
 # Copy server source files (only what's needed for production)
 COPY server.js ./
