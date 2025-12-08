@@ -1,8 +1,12 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm install --include=dev && (cd frontend && npm install --include=dev) && npm run build"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "npm start"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+[variables]
+# Skip Chromium download during build (Chromium will be installed at runtime if needed)
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
