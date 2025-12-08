@@ -6,11 +6,14 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install only essential build dependencies (no Chromium)
+# Include xz-utils for lzma-native native module compilation
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
+    xz-utils \
+    liblzma-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
