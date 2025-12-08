@@ -33,7 +33,8 @@ COPY frontend/tsconfig.json ./frontend/tsconfig.json
 COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
 COPY frontend/postcss.config.js ./frontend/postcss.config.js
 COPY frontend/components.json ./frontend/components.json
-COPY frontend/public ./frontend/public
+# Create empty public directory if it doesn't exist (Vite handles this gracefully)
+RUN mkdir -p ./frontend/public
 
 # Build frontend (now that we have source files)
 RUN cd frontend && npm run build
