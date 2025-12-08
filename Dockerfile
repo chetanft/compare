@@ -37,7 +37,8 @@ RUN npm run build
 FROM node:20-slim AS production
 
 ENV NODE_ENV=production
-ENV PORT=3847
+# PORT is set by Railway automatically via environment variable
+# Default PORT=3847 is set in server.js, Railway will override it
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 # Install runtime dependencies (Chromium dependencies for Puppeteer if needed at runtime)
