@@ -61,7 +61,7 @@ COPY src ./src
 COPY scripts ./scripts
 COPY config.example.json ./config.json
 
-# Production stage
+# Production stage - Railway will use this as the final stage
 FROM node:20-slim AS production
 
 ENV NODE_ENV=production
@@ -108,8 +108,11 @@ COPY src ./src
 COPY scripts ./scripts
 COPY config.example.json ./config.json
 
-# Expose port
+# Set production environment
+ENV NODE_ENV=production
+
+# Expose port (Railway will override PORT env var, but we expose default)
 EXPOSE 3847
 
-# Start server
+# Start server - Railway requires this CMD to know the build is complete
 CMD ["npm", "start"]

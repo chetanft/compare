@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+# Railway will automatically use the last stage (production) as the final image
 
 [deploy]
 startCommand = "npm start"
