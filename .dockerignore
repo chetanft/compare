@@ -1,27 +1,94 @@
+# Dependencies
 node_modules
 frontend/node_modules
+**/node_modules
+
+# Build outputs
 frontend/dist
 dist
+build
+*.zip
+
+# Git
 .git
 .github
-.cursor
-*.log
-*.md
-!README.md
-docs
-tests
+.gitignore
+
+# IDE
 .vscode
 .idea
+.cursor
+
+# Documentation (large markdown files)
+docs
+*.md
+!README.md
+
+# Tests
+tests
+test-*.js
+test-*.sh
+*.test.js
+*.spec.js
+
+# Database files
 *.db
 *.db-shm
 *.db-wal
 data
+
+# Output directories
 output
 reports
 screenshots
 share
-*.zip
-.DS_Store
+*.html
+report.html
+latest_report.html
+new_report.html
+fixed_report.html
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
 .env
 .env.local
 .env.*.local
+.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Electron (not needed for Railway)
+electron
+macos-server
+
+# Debug/test files
+debug-*.js
+debug-*.html
+debug-*.png
+test-*.js
+test-*.sh
+
+# CI/CD (not needed in image)
+.github
+
+# Vercel (not needed for Railway)
+vercel
+vercel.json
+
+# Config files not needed
+.eslintrc.js
+.prettierrc
+babel.config.js
+postcss.config.js
+tsconfig.json
+vite.config.ts
+
+# Large directories
+supabase/migrations

@@ -19,19 +19,30 @@ WORKDIR /app
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
-# Install root dependencies (skip Chromium)
-RUN npm ci --include=dev
+# Install dependencies immediately (before copying large source files)
+# This runs right after copying package files to avoid timeout
+RUN npm ci --include=dev && \
+    cd frontend && \
+    npm ci --include=dev
 
-# Install frontend dependencies
-WORKDIR /app/frontend
-RUN npm ci --include=dev
+# Copy only frontend source files needed for build (minimal copy)
+COPY frontend/src ./frontend/src
+COPY frontend/index.html ./frontend/index.html
+COPY frontend/vite.config.ts ./frontend/vite.config.ts
+COPY frontend/tsconfig.json ./frontend/tsconfig.json
+COPY frontend/tailwind.config.js ./frontend/tailwind.config.js
+COPY frontend/postcss.config.js ./frontend/postcss.config.js
+COPY frontend/components.json ./frontend/components.json
+COPY frontend/public ./frontend/public
 
-# Copy source files
-WORKDIR /app
-COPY . .
+# Build frontend (now that we have source files)
+RUN cd frontend && npm run build
 
-# Build frontend
-RUN npm run build
+# Copy server source files (only what's needed for production)
+COPY server.js ./
+COPY src ./src
+COPY scripts ./scripts
+COPY config.example.json ./config.json
 
 # Production stage
 FROM node:20-slim AS production
