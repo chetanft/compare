@@ -11,3 +11,5 @@ restartPolicyMaxRetries = 10
 [variables]
 # Skip Chromium download during build (Chromium will be installed at runtime if needed)
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+# Disable local MCP health checks in production (Railway doesn't have Figma Desktop)
+ENABLE_LOCAL_MCP = "false"

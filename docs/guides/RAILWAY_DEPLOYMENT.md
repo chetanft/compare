@@ -44,6 +44,9 @@ NODE_ENV=production
 
 # Skip Chromium download during build (already set in Dockerfile, but good to have here too)
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+# Disable local MCP health checks (Railway doesn't have Figma Desktop running)
+ENABLE_LOCAL_MCP=false
 ```
 
 #### **Figma API Configuration**
