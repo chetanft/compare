@@ -76,6 +76,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Copy scripts directory before npm ci (needed for postinstall hook)
+COPY scripts ./scripts
+
 # Install production dependencies only (Puppeteer will be installed but Chromium download is skipped)
 RUN npm ci --omit=dev && \
     npm cache clean --force
