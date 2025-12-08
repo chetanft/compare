@@ -13,6 +13,7 @@
     "electron:dev": "NODE_ENV=development electron .",
     "build": "npm run build:frontend",
     "build:frontend": "npm run sync:env && cd frontend && npm run build",
+    "build:railway": "npm run setup && npm run build",
     "sync:env": "node scripts/sync-env-vars.js",
     "rebuild:electron": "npx @electron/rebuild",
     "clean:dist": "rm -rf dist/mac* dist/*.dmg* dist/builder-debug.yml dist/latest-mac.yml",
